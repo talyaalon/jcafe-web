@@ -66,6 +66,30 @@ export async function GET() {
         { limit: 12 },
       ),
     ),
+    // מוצרים בעלי attributes (תוספות/אפשרויות) בפוקט
+    await safe("productsWithAttributes", () =>
+      searchRead(
+        "product.template",
+        [
+          ["available_in_pos", "=", true],
+          ["company_id", "in", [14, false]],
+          ["attribute_line_ids", "!=", false],
+        ],
+        ["id", "name", "attribute_line_ids"],
+        { limit: 8 },
+      ),
+    ),
+    await safe("attributes", () =>
+      searchRead("product.attribute", [], ["id", "name", "display_type", "create_variant"], { limit: 40 }),
+    ),
+    await safe("attrLineSample", () =>
+      searchRead(
+        "product.template.attribute.line",
+        [],
+        ["id", "product_tmpl_id", "attribute_id", "value_ids"],
+        { limit: 8 },
+      ),
+    ),
   );
 
   return NextResponse.json(results);
