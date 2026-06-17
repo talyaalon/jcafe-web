@@ -31,6 +31,8 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
   });
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const [orderNo, setOrderNo] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
   const storeName = (s: CartStoreRef) => (locale === "he" ? s.nameHe : s.nameEn);
@@ -46,7 +48,7 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
     if (!Object.keys(e).length) setStep("review");
   }
 
-  function placeOrder() {
+  async function placeOrder() {
     const e: Record<string, boolean> = {};
     if (method === "delivery") {
       if (!form.city.trim()) e.city = true;
@@ -55,10 +57,45 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
     }
     setErrors(e);
     if (Object.keys(e).length) return;
-    // TODO: יצירת לקוח + Sales Order ב-ODOO + תשלום Stripe.
-    setOrderNo("#" + Math.floor(100000 + Math.random() * 900000));
-    clear();
-    setStep("done");
+
+    setApiError(null);
+    setSubmitting(true);
+    try {
+      const payload = {
+        customer: {
+          name: form.name,
+          email: form.email,
+          phone: form.phone,
+          street: method === "delivery" ? [form.addr1, form.addr2].filter(Boolean).join(" ") : undefined,
+          city: method === "delivery" ? form.city : undefined,
+          zip: method === "delivery" ? form.postcode : undefined,
+        },
+        items: items.map((i) => ({
+          id: i.product.id,
+          qty: i.qty,
+          price: i.product.price,
+          name: i.product.nameEn || i.product.nameHe,
+          storeName: i.store.nameEn || i.store.nameHe,
+        })),
+        method,
+        notes: form.notes || undefined,
+      };
+      // TODO: תשלום Stripe לפני יצירת ההזמנה (שלב הבא).
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || "Order failed");
+      setOrderNo(data.orderNo);
+      clear();
+      setStep("done");
+    } catch (err) {
+      setApiError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   // ===== עגלה ריקה =====
@@ -270,11 +307,17 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
               </section>
 
               <p className="text-[12px] text-ink/55">{t.terms}</p>
+              {apiError && (
+                <p className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                  {apiError}
+                </p>
+              )}
               <button
                 onClick={placeOrder}
-                className="w-full bg-wine text-white font-extrabold rounded-xl py-3.5 hover:bg-wine-hover"
+                disabled={submitting}
+                className="w-full bg-wine text-white font-extrabold rounded-xl py-3.5 hover:bg-wine-hover disabled:opacity-60"
               >
-                {t.placeOrder}
+                {submitting ? "…" : t.placeOrder}
               </button>
             </>
           )}
