@@ -1,5 +1,9 @@
+"use client";
+
+import type { Provider } from "@supabase/supabase-js";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
+import { supabaseBrowser } from "@/lib/supabase/client";
 import { SimpleHeader } from "./SimpleHeader";
 import { SiteFooter } from "./SiteFooter";
 
@@ -26,10 +30,15 @@ export function AuthShell({
 
 export function SocialButtons({ dict }: { dict: Dictionary }) {
   const t = dict.auth;
-  const btns = [
-    { icon: "G", label: t.continueGoogle, color: "#4285F4" },
-    { icon: "f", label: t.continueFacebook, color: "#1877F2" },
-    { icon: "", label: t.continueApple, color: "#000" },
+  const oauth = (provider: Provider) =>
+    supabaseBrowser.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: typeof window !== "undefined" ? window.location.origin : undefined },
+    });
+  const btns: { icon: string; label: string; color: string; provider: Provider }[] = [
+    { icon: "G", label: t.continueGoogle, color: "#4285F4", provider: "google" },
+    { icon: "f", label: t.continueFacebook, color: "#1877F2", provider: "facebook" },
+    { icon: "", label: t.continueApple, color: "#000", provider: "apple" },
   ];
   return (
     <div className="space-y-2.5">
@@ -37,6 +46,7 @@ export function SocialButtons({ dict }: { dict: Dictionary }) {
         <button
           key={b.label}
           type="button"
+          onClick={() => oauth(b.provider)}
           className="w-full flex items-center justify-center gap-3 border border-line rounded-lg py-2.5 text-sm font-medium hover:bg-soft"
         >
           <span className="font-bold" style={{ color: b.color }}>

@@ -6,7 +6,9 @@ import {
   toggleBannerAction,
   deleteBannerAction,
   editBannerAction,
+  saveDeliveryAction,
 } from "@/app/[lang]/manager/actions";
+import type { DeliverySettings } from "@/lib/delivery";
 import { BannerUploader } from "./BannerUploader";
 
 interface DayH {
@@ -29,16 +31,18 @@ export interface BannerRow {
   sort: number;
 }
 
-type Section = "hours" | "banners";
+type Section = "hours" | "banners" | "delivery";
 
 export function ManagerDashboard({
   locale,
   stores,
   banners,
+  delivery,
 }: {
   locale: "he" | "en";
   stores: StoreHours[];
   banners: BannerRow[];
+  delivery: DeliverySettings;
 }) {
   const he = locale === "he";
   const [section, setSection] = useState<Section>("hours");
@@ -50,10 +54,11 @@ export function ManagerDashboard({
   const nav = [
     { key: "hours" as const, icon: "🕐", label: he ? "שעות פעילות" : "Store hours" },
     { key: "banners" as const, icon: "🖼️", label: he ? "באנרים ומבצעים" : "Banners & promos" },
+    { key: "delivery" as const, icon: "🛵", label: he ? "משלוחים" : "Delivery" },
   ];
   const soon = he
-    ? ["הזמנות", "לקוחות", "מוצרים", "משלוחים", "הגדרות"]
-    : ["Orders", "Customers", "Products", "Delivery", "Settings"];
+    ? ["הזמנות", "לקוחות", "מוצרים", "הגדרות"]
+    : ["Orders", "Customers", "Products", "Settings"];
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-[230px_1fr] gap-6 p-6 max-w-6xl mx-auto">
@@ -231,6 +236,43 @@ export function ManagerDashboard({
             <div className="max-w-lg">
               <BannerUploader he={he} />
             </div>
+          </section>
+        )}
+
+        {section === "delivery" && (
+          <section>
+            <h2 className="text-xl font-extrabold text-wine mb-1">{he ? "משלוחים" : "Delivery"}</h2>
+            <p className="text-ink/55 text-sm mb-4">
+              {he
+                ? "דמי משלוח מחושבים לפי מרחק (קו אווירי מהסניף לעיר). מעבר לרדיוס המקסימלי — משלוח נחסם."
+                : "Delivery fee is distance-based (from the branch to the city). Beyond max radius — delivery is blocked."}
+            </p>
+            <form action={saveDeliveryAction} className="bg-white border border-line rounded-xl p-4 max-w-lg space-y-3">
+              {(
+                [
+                  ["base_fee", he ? "דמי בסיס (฿)" : "Base fee (฿)", delivery.base_fee],
+                  ["per_km", he ? "מחיר לק״מ (฿)" : "Per km (฿)", delivery.per_km],
+                  ["free_over", he ? "משלוח חינם מעל (฿, 0=כבוי)" : "Free over (฿, 0=off)", delivery.free_over],
+                  ["max_km", he ? "רדיוס מקסימלי (ק״מ)" : "Max radius (km)", delivery.max_km],
+                  ["origin_lat", he ? "קו רוחב הסניף" : "Branch latitude", delivery.origin_lat],
+                  ["origin_lng", he ? "קו אורך הסניף" : "Branch longitude", delivery.origin_lng],
+                ] as const
+              ).map(([name, label, val]) => (
+                <div key={name} className="flex items-center justify-between gap-3">
+                  <label className="text-sm text-ink/70">{label}</label>
+                  <input
+                    name={name}
+                    type="number"
+                    step="any"
+                    defaultValue={String(val)}
+                    className="w-40 border border-line rounded-lg px-3 py-2 text-sm"
+                  />
+                </div>
+              ))}
+              <button className="bg-wine text-white font-bold rounded-lg px-4 py-2 text-sm hover:bg-wine-hover">
+                {he ? "שמירה" : "Save"}
+              </button>
+            </form>
           </section>
         )}
       </main>

@@ -1,5 +1,24 @@
 import "server-only";
 import { supabasePublic, supabaseConfigured } from "./server";
+import { DEFAULT_DELIVERY, type DeliverySettings } from "@/lib/delivery";
+
+export async function getDeliverySettings(): Promise<DeliverySettings> {
+  if (!supabaseConfigured) return DEFAULT_DELIVERY;
+  const { data } = await supabasePublic
+    .from("delivery_settings")
+    .select("origin_lat,origin_lng,base_fee,per_km,free_over,max_km")
+    .eq("id", 1)
+    .maybeSingle();
+  if (!data) return DEFAULT_DELIVERY;
+  return {
+    origin_lat: Number(data.origin_lat),
+    origin_lng: Number(data.origin_lng),
+    base_fee: Number(data.base_fee),
+    per_km: Number(data.per_km),
+    free_over: Number(data.free_over),
+    max_km: Number(data.max_km),
+  };
+}
 
 export interface Banner {
   id: number;

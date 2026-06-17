@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
@@ -10,6 +10,7 @@ import { CheckoutFooter } from "./CheckoutFooter";
 import { CartThumb } from "./CartThumb";
 import { useStoreStatus, useStoreHours } from "@/lib/store-status";
 import { isOpenAt, minDateTime } from "@/lib/schedule";
+import { quoteDelivery, DEFAULT_DELIVERY, type DeliverySettings } from "@/lib/delivery";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
@@ -25,6 +26,13 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
   const { user } = useAuth();
   const statuses = useStoreStatus();
   const storeHours = useStoreHours();
+  const [deliverySettings, setDeliverySettings] = useState<DeliverySettings>(DEFAULT_DELIVERY);
+  useEffect(() => {
+    fetch("/api/delivery/settings")
+      .then((r) => r.json())
+      .then((d) => d?.settings && setDeliverySettings(d.settings))
+      .catch(() => {});
+  }, []);
   const [step, setStep] = useState<Step>("contact");
   const [method, setMethod] = useState<Method>("delivery");
   const [payment, setPayment] = useState<Payment>("card");
@@ -53,6 +61,13 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
   const storeName = (s: CartStoreRef) => (he ? s.nameHe : s.nameEn);
   const pName = (p: { nameHe: string; nameEn: string }) => (he ? p.nameHe : p.nameEn);
   const t = dict.checkout;
+
+  // חישוב דמי משלוח לפי מרחק (עיר → קו אווירי מהסניף → מדרגות)
+  const quote =
+    method === "delivery" && form.city ? quoteDelivery(deliverySettings, form.city, subtotal) : null;
+  const deliveryFee = quote && !quote.outOfRange ? quote.fee : 0;
+  const total = subtotal + deliveryFee;
+  const deliveryBlocked = method === "delivery" && !!quote?.outOfRange;
 
   // חנויות סגורות שיש להן פריטים בעגלה → חוסם הזמנה רגילה, מחייב תזמון.
   const closedStoreIds = [...new Set(items.map((i) => i.store.id))].filter(
@@ -102,7 +117,7 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
         const piRes = await fetch("/api/stripe/payment-intent", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: subtotal }),
+          body: JSON.stringify({ amount: total }),
         });
         const piData = await piRes.json();
         if (!piRes.ok || !piData.ok) throw new Error(piData.error || "Payment init failed");
@@ -137,7 +152,12 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
         })),
         method,
         notes:
-          [form.notes, paymentRef, scheduledAt ? `Scheduled for: ${scheduledAt}` : ""]
+          [
+            form.notes,
+            paymentRef,
+            scheduledAt ? `Scheduled for: ${scheduledAt}` : "",
+            method === "delivery" && deliveryFee ? `Delivery fee: ${deliveryFee} THB` : "",
+          ]
             .filter(Boolean)
             .join(" | ") || undefined,
       };
@@ -149,12 +169,20 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || "Order failed");
       setOrderNo(data.orderNo);
+      // מייל אישור הזמנה (אם מוגדר Resend) — fire-and-forget
+      if (form.email) {
+        fetch("/api/notify/order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ to: form.email, orderNo: data.orderNo, total, name: form.name }),
+        }).catch(() => {});
+      }
       // שמירת ההזמנה בהיסטוריית המשתמש (אם מחובר)
       if (user) {
         await supabaseBrowser.from("orders").insert({
           user_id: user.id,
           odoo_name: data.orderNo,
-          total: subtotal,
+          total,
           item_count: items.reduce((s, i) => s + i.qty, 0),
           method,
         });
@@ -400,6 +428,13 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
                   {apiError}
                 </p>
               )}
+              {deliveryBlocked && (
+                <p className="text-red-700 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                  {he
+                    ? "הכתובת מחוץ לטווח המשלוח. בחר/י איסוף עצמי או עיר קרובה יותר."
+                    : "Address is out of delivery range. Choose pickup or a closer city."}
+                </p>
+              )}
 
               {hasClosed ? (
                 <>
@@ -438,7 +473,7 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
                       {scheduleError && <p className="text-red-600 text-xs">{scheduleError}</p>}
                       <button
                         onClick={placeOrder}
-                        disabled={submitting || !scheduledAt || !!scheduleError}
+                        disabled={submitting || !scheduledAt || !!scheduleError || deliveryBlocked}
                         className="w-full bg-wine text-white font-extrabold rounded-xl py-3 hover:bg-wine-hover disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {submitting ? "…" : he ? "אשר הזמנה מתוזמנת" : "Confirm scheduled order"}
@@ -449,8 +484,8 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
               ) : (
                 <button
                   onClick={placeOrder}
-                  disabled={submitting}
-                  className="w-full bg-wine text-white font-extrabold rounded-xl py-3.5 hover:bg-wine-hover disabled:opacity-60"
+                  disabled={submitting || deliveryBlocked}
+                  className="w-full bg-wine text-white font-extrabold rounded-xl py-3.5 hover:bg-wine-hover disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {submitting ? "…" : t.placeOrder}
                 </button>
@@ -490,11 +525,27 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
             </div>
             <div className="flex justify-between py-0.5 text-ink/55">
               <span>{t.deliveryFee}</span>
-              <span>{t.enterPostcode}</span>
+              <span>
+                {method !== "delivery"
+                  ? he
+                    ? "איסוף עצמי"
+                    : "Pickup"
+                  : !form.city
+                    ? t.enterPostcode
+                    : quote?.outOfRange
+                      ? he
+                        ? "מחוץ לטווח"
+                        : "Out of range"
+                      : quote?.free
+                        ? he
+                          ? "חינם"
+                          : "Free"
+                        : `${formatTHB(deliveryFee)} · ~${quote ? quote.km.toFixed(1) : ""}km`}
+              </span>
             </div>
             <div className="flex justify-between pt-2 mt-1 border-t border-line font-extrabold text-wine text-[15px]">
               <span>{t.total}</span>
-              <span>{formatTHB(subtotal)}</span>
+              <span>{formatTHB(total)}</span>
             </div>
           </div>
         </aside>

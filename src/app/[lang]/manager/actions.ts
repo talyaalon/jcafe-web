@@ -75,6 +75,25 @@ export async function toggleBannerAction(formData: FormData) {
   revalidatePath("/", "layout");
 }
 
+export async function saveDeliveryAction(formData: FormData) {
+  const num = (k: string, d: number) => {
+    const v = Number(formData.get(k));
+    return Number.isFinite(v) ? v : d;
+  };
+  await supabaseAdmin()
+    .from("delivery_settings")
+    .update({
+      origin_lat: num("origin_lat", 7.8804),
+      origin_lng: num("origin_lng", 98.3923),
+      base_fee: num("base_fee", 40),
+      per_km: num("per_km", 10),
+      free_over: num("free_over", 0),
+      max_km: num("max_km", 25),
+    })
+    .eq("id", 1);
+  revalidatePath("/", "layout");
+}
+
 export async function editBannerAction(formData: FormData) {
   const id = Number(formData.get("id"));
   if (!id) return;
