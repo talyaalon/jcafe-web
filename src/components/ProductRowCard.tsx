@@ -61,7 +61,9 @@ export function ProductRowCard({
 
         <div className="mt-auto pt-2 flex items-center justify-between">
           <span className="font-extrabold text-ink text-sm">{formatTHB(product.price)}</span>
-          {qty > 0 ? (
+          {product.qtyAvailable === 0 ? (
+            <span className="text-red-600 font-semibold text-xs">{dict.product.outOfStock}</span>
+          ) : qty > 0 ? (
             <div className="flex items-center gap-3 border border-wine rounded-lg px-2.5 py-1 text-wine">
               <button onClick={() => dec(product.id)} className="text-lg leading-none font-bold w-5">
                 −

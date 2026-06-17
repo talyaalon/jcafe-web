@@ -48,7 +48,7 @@ export interface OrderRow {
   created_at: string;
 }
 
-type Section = "orders" | "hours" | "banners" | "delivery";
+type Section = "orders" | "customers" | "hours" | "banners" | "delivery";
 
 export function ManagerDashboard({
   locale,
@@ -72,11 +72,41 @@ export function ManagerDashboard({
 
   const nav = [
     { key: "orders" as const, icon: "🧾", label: he ? "הזמנות" : "Orders" },
+    { key: "customers" as const, icon: "🧑‍🤝‍🧑", label: he ? "לקוחות" : "Customers" },
     { key: "hours" as const, icon: "🕐", label: he ? "שעות פעילות" : "Store hours" },
     { key: "banners" as const, icon: "🖼️", label: he ? "באנרים ומבצעים" : "Banners & promos" },
     { key: "delivery" as const, icon: "🛵", label: he ? "משלוחים" : "Delivery" },
   ];
-  const soon = he ? ["לקוחות", "מוצרים", "הגדרות"] : ["Customers", "Products", "Settings"];
+  const soon = he ? ["מוצרים", "הגדרות"] : ["Products", "Settings"];
+
+  // נגזרות: סטטיסטיקה + לקוחות (מתוך ההזמנות)
+  const totalRevenue = orders.reduce((s, o) => s + Number(o.total || 0), 0);
+  const todayKey = new Date().toDateString();
+  const todayCount = orders.filter((o) => new Date(o.created_at).toDateString() === todayKey).length;
+
+  const custMap = new Map<
+    string,
+    { name: string; phone: string; email: string; count: number; total: number; last: string }
+  >();
+  for (const o of orders) {
+    const key = o.phone || o.email || o.customer_name || o.id;
+    const ex = custMap.get(key);
+    if (ex) {
+      ex.count++;
+      ex.total += Number(o.total || 0);
+      if (o.created_at > ex.last) ex.last = o.created_at;
+    } else {
+      custMap.set(key, {
+        name: o.customer_name ?? "—",
+        phone: o.phone ?? "",
+        email: o.email ?? "",
+        count: 1,
+        total: Number(o.total || 0),
+        last: o.created_at,
+      });
+    }
+  }
+  const customers = [...custMap.values()].sort((a, b) => b.last.localeCompare(a.last));
 
   const fmtDateTime = (iso: string) => {
     const d = new Date(iso);
@@ -127,6 +157,18 @@ export function ManagerDashboard({
             <p className="text-ink/55 text-sm mb-4">
               {he ? "כל ההזמנות שנכנסו דרך האתר (אחרונות למעלה)." : "All orders placed through the site (newest first)."}
             </p>
+            <div className="grid grid-cols-3 gap-3 mb-5">
+              {[
+                { label: he ? "סה״כ הזמנות" : "Total orders", val: String(orders.length) },
+                { label: he ? "הזמנות היום" : "Orders today", val: String(todayCount) },
+                { label: he ? "הכנסות" : "Revenue", val: formatTHB(totalRevenue) },
+              ].map((s) => (
+                <div key={s.label} className="bg-white border border-line rounded-xl p-3 text-center">
+                  <div className="text-xl font-extrabold text-wine">{s.val}</div>
+                  <div className="text-[11px] text-ink/55 mt-0.5">{s.label}</div>
+                </div>
+              ))}
+            </div>
             {orders.length === 0 ? (
               <p className="text-ink/40 text-sm">{he ? "אין הזמנות עדיין." : "No orders yet."}</p>
             ) : (
@@ -174,6 +216,48 @@ export function ManagerDashboard({
                     {o.notes && <div className="text-[11px] text-ink/50 mt-2">📝 {o.notes}</div>}
                   </div>
                 ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {section === "customers" && (
+          <section>
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="text-xl font-extrabold text-wine">{he ? "לקוחות" : "Customers"}</h2>
+              <span className="text-xs text-ink/45">
+                {customers.length} {he ? "לקוחות" : "customers"}
+              </span>
+            </div>
+            <p className="text-ink/55 text-sm mb-4">
+              {he ? "לקוחות שביצעו הזמנות (לפי טלפון/אימייל)." : "Customers who placed orders (by phone/email)."}
+            </p>
+            {customers.length === 0 ? (
+              <p className="text-ink/40 text-sm">{he ? "אין לקוחות עדיין." : "No customers yet."}</p>
+            ) : (
+              <div className="bg-white border border-line rounded-xl overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-ink/60 bg-soft">
+                      <th className="text-start font-bold p-3">{he ? "שם" : "Name"}</th>
+                      <th className="text-start font-bold p-3">{he ? "טלפון" : "Phone"}</th>
+                      <th className="text-start font-bold p-3">{he ? "אימייל" : "Email"}</th>
+                      <th className="text-start font-bold p-3">{he ? "הזמנות" : "Orders"}</th>
+                      <th className="text-start font-bold p-3">{he ? "סה״כ" : "Total"}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {customers.map((c, i) => (
+                      <tr key={i} className="border-t border-line">
+                        <td className="p-3 font-semibold text-ink">{c.name}</td>
+                        <td className="p-3 text-ink/70">{c.phone || "—"}</td>
+                        <td className="p-3 text-ink/70">{c.email || "—"}</td>
+                        <td className="p-3 text-ink/70">{c.count}</td>
+                        <td className="p-3 font-bold text-wine">{formatTHB(c.total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </section>

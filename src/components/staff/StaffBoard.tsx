@@ -3,8 +3,8 @@ import { type PosOrder, isGrocery, isKitchen } from "@/lib/supabase/pos";
 import { setPosStatus, setKitchenStatus } from "@/lib/staff/actions";
 
 const STATUSES: Record<"pos" | "kitchen", string[]> = {
-  pos: ["new", "picking", "ready"],
-  kitchen: ["new", "preparing", "ready"],
+  pos: ["new", "picking", "ready", "done"],
+  kitchen: ["new", "preparing", "ready", "hold", "done"],
 };
 
 function labels(he: boolean): Record<string, string> {
@@ -13,6 +13,8 @@ function labels(he: boolean): Record<string, string> {
     picking: he ? "בליקוט" : "Picking",
     preparing: he ? "בהכנה" : "Preparing",
     ready: he ? "מוכן" : "Ready",
+    hold: he ? "בהמתנה" : "On hold",
+    done: he ? "הושלם" : "Done",
   };
 }
 
@@ -39,7 +41,9 @@ export function StaffBoard({
 
   const cards = orders
     .map((o) => ({ o, view: o.items.filter((i) => match(i.storeId)) }))
-    .filter((x) => x.view.length > 0);
+    .filter((x) => x.view.length > 0)
+    // הזמנות שהושלמו יוצאות מהלוח הפעיל
+    .filter((x) => (type === "pos" ? x.o.pos_status : x.o.kitchen_status) !== "done");
 
   if (cards.length === 0) {
     return (
@@ -51,12 +55,14 @@ export function StaffBoard({
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4 sm:p-6">
       {cards.map(({ o, view }) => {
         const status = type === "pos" ? o.pos_status : o.kitchen_status;
-        const ready = status === "ready";
+        const tone =
+          status === "ready"
+            ? "border-brand-green bg-green-50"
+            : status === "hold"
+              ? "border-amber-300 bg-amber-50"
+              : "border-line bg-white";
         return (
-          <div
-            key={o.id}
-            className={`rounded-xl border p-4 ${ready ? "border-brand-green bg-green-50" : "border-line bg-white"}`}
-          >
+          <div key={o.id} className={`rounded-xl border p-4 ${tone}`}>
             <div className="flex justify-between items-start gap-2">
               <div>
                 <div className="font-extrabold text-wine">{o.order_name || "—"}</div>

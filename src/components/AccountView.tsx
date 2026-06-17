@@ -6,9 +6,10 @@ import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { formatTHB } from "@/lib/format";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { useFavorites } from "@/lib/favorites/FavoritesContext";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
-type Section = "dashboard" | "orders" | "details";
+type Section = "dashboard" | "orders" | "favorites" | "details";
 
 interface OrderRow {
   id: string;
@@ -23,6 +24,7 @@ export function AccountView({ locale, dict }: { locale: Locale; dict: Dictionary
   const a = dict.account;
   const router = useRouter();
   const { user, displayName, loading, signOut } = useAuth();
+  const { favorites, toggle } = useFavorites();
   const [section, setSection] = useState<Section>("dashboard");
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const he = locale === "he";
@@ -49,6 +51,7 @@ export function AccountView({ locale, dict }: { locale: Locale; dict: Dictionary
   const nav: { key: Section; label: string }[] = [
     { key: "dashboard", label: a.dashboard },
     { key: "orders", label: a.orders },
+    { key: "favorites", label: he ? "מועדפים" : "Favorites" },
     { key: "details", label: a.accountDetails },
   ];
   const fieldRO = "w-full bg-soft border border-line rounded-md px-3 py-2.5 text-sm text-ink/70";
@@ -126,6 +129,41 @@ export function AccountView({ locale, dict }: { locale: Locale; dict: Dictionary
                     ))}
                   </tbody>
                 </table>
+              )}
+            </div>
+          )}
+
+          {section === "favorites" && (
+            <div>
+              {favorites.length === 0 ? (
+                <p className="text-ink/50 text-sm">{he ? "אין מועדפים עדיין." : "No favorites yet."}</p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {favorites.map((p) => (
+                    <div key={p.id} className="border border-line rounded-lg overflow-hidden bg-white">
+                      <div className="h-28 bg-white grid place-items-center p-2">
+                        {p.image ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={p.image} alt="" className="max-h-full max-w-full object-contain" />
+                        ) : (
+                          <span className="text-2xl text-wine/40">🛍️</span>
+                        )}
+                      </div>
+                      <div className="p-2">
+                        <div className="text-[13px] leading-tight line-clamp-2">
+                          {he ? p.nameHe : p.nameEn}
+                        </div>
+                        <div className="font-bold text-wine text-sm mt-1">{formatTHB(p.price)}</div>
+                        <button
+                          onClick={() => toggle(p)}
+                          className="text-[11px] text-red-500 font-bold mt-1"
+                        >
+                          {he ? "הסר ♥" : "Remove ♥"}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           )}
