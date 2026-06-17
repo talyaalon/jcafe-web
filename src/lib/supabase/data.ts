@@ -18,6 +18,20 @@ export async function getActiveBanners(): Promise<Banner[]> {
   return data ?? [];
 }
 
+export interface BannerRow extends Banner {
+  active: boolean;
+  sort: number;
+}
+
+export async function getAllBanners(): Promise<BannerRow[]> {
+  if (!supabaseConfigured) return [];
+  const { data } = await supabasePublic
+    .from("banners")
+    .select("id,title,image_url,link,active,sort")
+    .order("sort", { ascending: true });
+  return (data as BannerRow[]) ?? [];
+}
+
 export interface DayHours {
   day_of_week: number;
   closed: boolean;
