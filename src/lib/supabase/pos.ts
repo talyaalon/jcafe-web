@@ -6,6 +6,7 @@ export interface PosOrderItem {
   qty: number;
   storeId: string;
   storeName: string;
+  status?: "pending" | "done" | "unavailable";
 }
 
 export interface PosOrder {
@@ -38,5 +39,16 @@ export async function getPosOrders(): Promise<PosOrder[]> {
   }
 }
 
+export async function getPosOrder(id: string): Promise<PosOrder | null> {
+  if (!supabaseConfigured) return null;
+  try {
+    const { data } = await supabaseAdmin().from("pos_orders").select("*").eq("id", id).maybeSingle();
+    return (data as PosOrder) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export const isGrocery = (storeId: string) => storeId === "grocery";
 export const isKitchen = (storeId: string) => !!storeId && storeId !== "grocery";
+export const itemStatus = (it: PosOrderItem) => it.status ?? "pending";
