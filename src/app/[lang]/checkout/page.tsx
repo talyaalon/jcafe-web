@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getDictionary } from "@/i18n/dictionaries";
 import { isLocale, type Locale } from "@/i18n/config";
 import { CheckoutForm } from "@/components/CheckoutForm";
+import { StripeProvider } from "@/components/StripeProvider";
 
 export default async function CheckoutPage({
   params,
@@ -13,5 +14,9 @@ export default async function CheckoutPage({
   const locale = lang as Locale;
   const dict = await getDictionary(locale);
 
-  return <CheckoutForm locale={locale} dict={dict} />;
+  return (
+    <StripeProvider>
+      <CheckoutForm locale={locale} dict={dict} />
+    </StripeProvider>
+  );
 }

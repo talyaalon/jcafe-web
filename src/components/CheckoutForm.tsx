@@ -7,6 +7,7 @@ import type { Dictionary } from "@/i18n/dictionaries";
 import { formatTHB } from "@/lib/format";
 import { useCart, type CartStoreRef } from "@/lib/cart/CartContext";
 import { CheckoutFooter } from "./CheckoutFooter";
+import { CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
 type Method = "delivery" | "pickup";
 type Step = "contact" | "review" | "done";
@@ -33,6 +34,8 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
   const [orderNo, setOrderNo] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const stripe = useStripe();
+  const elements = useElements();
 
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
   const storeName = (s: CartStoreRef) => (locale === "he" ? s.nameHe : s.nameEn);
@@ -61,6 +64,30 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
     setApiError(null);
     setSubmitting(true);
     try {
+      // ===== תשלום Stripe (כרטיס) לפני יצירת ההזמנה =====
+      let paymentRef = "";
+      if (payment === "card") {
+        if (!stripe || !elements) throw new Error("Payment is not ready, please retry");
+        const piRes = await fetch("/api/stripe/payment-intent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: subtotal }),
+        });
+        const piData = await piRes.json();
+        if (!piRes.ok || !piData.ok) throw new Error(piData.error || "Payment init failed");
+        const card = elements.getElement(CardElement);
+        if (!card) throw new Error("Please enter card details");
+        const { error, paymentIntent } = await stripe.confirmCardPayment(piData.clientSecret, {
+          payment_method: { card },
+        });
+        if (error) throw new Error(error.message || "Payment failed");
+        paymentRef = `Paid via Stripe: ${paymentIntent?.id ?? ""}`;
+      } else if (payment === "cod") {
+        paymentRef = "Cash on Delivery";
+      } else if (payment === "qr") {
+        paymentRef = "QR PromptPay (pending)";
+      }
+
       const payload = {
         customer: {
           name: form.name,
@@ -78,9 +105,8 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
           storeName: i.store.nameEn || i.store.nameHe,
         })),
         method,
-        notes: form.notes || undefined,
+        notes: [form.notes, paymentRef].filter(Boolean).join(" | ") || undefined,
       };
-      // TODO: תשלום Stripe לפני יצירת ההזמנה (שלב הבא).
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -292,6 +318,27 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
                     {label}
                   </button>
                 ))}
+
+                {payment === "card" && (
+                  <div className="mt-2 border border-line rounded-xl px-3 py-3.5">
+                    <CardElement
+                      options={{
+                        style: {
+                          base: {
+                            fontSize: "14px",
+                            color: "#2a2a2a",
+                            "::placeholder": { color: "#9ca3af" },
+                          },
+                        },
+                      }}
+                    />
+                    <p className="text-[11px] text-ink/45 mt-2">
+                      {locale === "he"
+                        ? "כרטיס בדיקה: 4242 4242 4242 4242 · 12/34 · 123"
+                        : "Test card: 4242 4242 4242 4242 · 12/34 · 123"}
+                    </p>
+                  </div>
+                )}
               </section>
 
               {/* notes */}
