@@ -6,6 +6,7 @@ import type { Dictionary } from "@/i18n/dictionaries";
 import type { Product } from "@/lib/odoo/types";
 import { formatTHB } from "@/lib/format";
 import { useCart } from "@/lib/cart/CartContext";
+import { HeartButton } from "./HeartButton";
 
 export function ProductCard({
   product,
@@ -27,7 +28,8 @@ export function ProductCard({
   const qty = items.find((i) => i.product.id === product.id)?.qty ?? 0;
 
   return (
-    <div className="border border-line rounded-lg bg-white overflow-hidden flex flex-col transition hover:shadow-[0_8px_22px_rgba(0,0,0,0.08)]">
+    <div className="relative border border-line rounded-lg bg-white overflow-hidden flex flex-col transition hover:shadow-[0_8px_22px_rgba(0,0,0,0.08)]">
+      <HeartButton product={product} className="absolute top-2 end-2 z-10" />
       {/* image — fixed height, opens modal */}
       <button
         onClick={() => onOpen(product)}

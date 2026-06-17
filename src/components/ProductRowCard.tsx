@@ -6,6 +6,7 @@ import type { Dictionary } from "@/i18n/dictionaries";
 import type { Product } from "@/lib/odoo/types";
 import { formatTHB } from "@/lib/format";
 import { useCart } from "@/lib/cart/CartContext";
+import { HeartButton } from "./HeartButton";
 
 // כרטיס אופקי לחנויות מטבח: לחיצה על השם/תמונה → Pop-up; "Add to cart" → הוספה מיידית + stepper.
 export function ProductRowCard({
@@ -28,7 +29,8 @@ export function ProductRowCard({
   const qty = items.find((i) => i.product.id === product.id)?.qty ?? 0;
 
   return (
-    <div className="flex gap-3 border border-line rounded-xl p-3 bg-white transition hover:shadow-md">
+    <div className="relative flex gap-3 border border-line rounded-xl p-3 bg-white transition hover:shadow-md">
+      <HeartButton product={product} className="absolute top-2 end-2 z-10" />
       <button
         onClick={() => onOpen(product)}
         className="w-24 h-24 rounded-lg bg-soft grid place-items-center overflow-hidden flex-none"

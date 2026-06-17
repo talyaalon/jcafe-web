@@ -90,6 +90,22 @@ export async function GET() {
         { limit: 8 },
       ),
     ),
+    await safe("recentSO", () =>
+      searchRead(
+        "sale.order",
+        [["company_id", "=", 14]],
+        ["id", "name", "amount_total", "amount_untaxed", "state"],
+        { limit: 3, order: "id desc" },
+      ),
+    ),
+    await safe("recentSOLines", () =>
+      searchRead(
+        "sale.order.line",
+        [["order_id.company_id", "=", 14]],
+        ["order_id", "name", "product_uom_qty", "price_unit", "price_subtotal", "display_type"],
+        { limit: 25, order: "id desc" },
+      ),
+    ),
   );
 
   return NextResponse.json(results);

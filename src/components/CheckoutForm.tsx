@@ -172,16 +172,13 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
                 <div className="text-ink/60 text-[13px] mt-1">{addr}</div>
               </div>
             )}
-            <div className="mt-6 space-y-2">
+            <div className="mt-6">
               <Link
                 href={`/${locale}`}
                 className="block bg-wine text-white font-bold rounded-xl py-3 hover:bg-wine-hover"
               >
                 {t.continueShopping}
               </Link>
-              <button className="block w-full border-2 border-gold text-wine font-bold rounded-xl py-3">
-                {t.viewOrder}
-              </button>
             </div>
           </div>
         </div>
