@@ -74,3 +74,17 @@ export async function toggleBannerAction(formData: FormData) {
   if (id) await supabaseAdmin().from("banners").update({ active: !active }).eq("id", id);
   revalidatePath("/", "layout");
 }
+
+export async function editBannerAction(formData: FormData) {
+  const id = Number(formData.get("id"));
+  if (!id) return;
+  await supabaseAdmin()
+    .from("banners")
+    .update({
+      title: String(formData.get("title") ?? "").trim() || null,
+      link: String(formData.get("link") ?? "").trim() || null,
+      sort: Number(formData.get("sort") ?? 0) || 0,
+    })
+    .eq("id", id);
+  revalidatePath("/", "layout");
+}

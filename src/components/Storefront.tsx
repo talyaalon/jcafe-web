@@ -18,6 +18,7 @@ export interface StoreBundle {
   store: Store;
   categories: Category[];
   products: Product[];
+  open?: boolean;
 }
 
 export interface Banner {
@@ -49,7 +50,9 @@ export function Storefront({
 
   const { addItem, count } = useCart();
   const stores = data.map((d) => d.store);
+  const openMap = new Map(data.map((d) => [d.store.id, d.open ?? true]));
   const bundle = data.find((d) => d.store.id === activeStoreId) ?? data[0];
+  const activeClosed = bundle ? openMap.get(bundle.store.id) === false : false;
 
   const storeRef = (p: Product): CartStoreRef => {
     const s = stores.find((st) => st.id === p.storeId);
@@ -129,9 +132,24 @@ export function Storefront({
             }`}
           >
             {sName(s)}
+            {openMap.get(s.id) === false && (
+              <span className="ms-1 text-[10px] font-bold text-red-500">
+                ({locale === "he" ? "סגור" : "Closed"})
+              </span>
+            )}
           </button>
         ))}
       </div>
+
+      {activeClosed && (
+        <div className="shrink-0 px-4 sm:px-7 pt-3">
+          <div className="bg-amber-50 border border-amber-200 text-amber-800 text-[13px] rounded-lg px-4 py-2">
+            {locale === "he"
+              ? "החנות סגורה כעת. ניתן להוסיף מוצרים לסל ולהזמין למועד מאוחר יותר."
+              : "This store is closed now. You can still add items and order for later."}
+          </div>
+        </div>
+      )}
 
       {/* banners — visible when no category filter (All) */}
       {activeCat === null && (
