@@ -1,26 +1,41 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ===== J-Cafe — צבעי Figma מדויקים (פוקסיה #861E74 + פחם #2E3333) ===== */
+@theme {
+  --color-wine: #861e74;        /* Primary — Fuchsia (כפתורים, פעיל, נבחר) */
+  --color-wine-hover: #6d1860;  /* פוקסיה כהה (hover) */
+  --color-wine-dark: #2e3333;   /* Footer — פחם */
+  --color-wine-bright: #a02a8c; /* פוקסיה בהיר (גרדיאנט) */
+  --color-gold: #861e74;        /* אקסנט = פוקסיה (אין זהב ב-Figma) */
+  --color-gold-soft: #d6d2da;   /* אפור בהיר (טקסט Footer) */
+  --color-slate: #6e7491;       /* משני — אפור-כחלחל */
+  --color-cream: #f4eef3;       /* רקע עדין לכפתור + */
+  --color-ink: #2a2a2a;         /* טקסט גוף */
+  --color-label: #3c3c43;       /* טקסט תווית (טאב לא-פעיל) */
+  --color-soft: #f7f6f8;        /* רקע אפור-בהיר */
+  --color-line: #e6e3ea;        /* קווים */
+  --color-brand-green: #1f9d55;
+  --color-brand-amber: #c7882a;
+
+  --font-sans: var(--font-heebo), "Segoe UI", Arial, sans-serif;
+  --font-tabs: var(--font-nunito), var(--font-heebo), "Segoe UI", sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-soft);
+  color: var(--color-ink);
+}
+
+/* גלילה אופקית עדינה לפסי קטגוריות */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
