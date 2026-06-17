@@ -108,12 +108,12 @@ export function Storefront({
       />
 
       {/* store tabs — centered, underline active (Figma style) */}
-      <div className="bg-white border-b border-line flex justify-center gap-6 sm:gap-10 px-4 overflow-x-auto no-scrollbar">
+      <div className="shrink-0 bg-white border-b border-line flex justify-center gap-6 sm:gap-10 px-4 overflow-x-auto no-scrollbar">
         {stores.map((s) => (
           <button
             key={s.id}
             onClick={() => switchStore(s.id)}
-            className={`font-tabs font-extrabold text-[15px] tracking-[0.15px] uppercase py-3.5 whitespace-nowrap border-b-[3px] -mb-px transition ${
+            className={`shrink-0 font-tabs font-extrabold text-[15px] tracking-[0.15px] uppercase py-3.5 whitespace-nowrap border-b-[3px] -mb-px transition ${
               s.id === activeStoreId
                 ? "text-wine border-wine"
                 : "text-label/60 border-transparent hover:text-label"
@@ -126,7 +126,7 @@ export function Storefront({
 
       {/* banners — visible when no category filter (All) */}
       {activeCat === null && (
-        <div className="px-4 sm:px-7 pt-4">
+        <div className="shrink-0 px-4 sm:px-7 pt-4">
           <div className="grid grid-cols-3 gap-3 sm:gap-4">
             {[0, 1, 2].map((i) => (
               <div
@@ -143,7 +143,7 @@ export function Storefront({
       )}
 
       {/* category pills */}
-      <div className="flex gap-2 px-4 sm:px-7 py-3 overflow-x-auto no-scrollbar border-b border-line bg-white">
+      <div className="shrink-0 flex gap-2 px-4 sm:px-7 py-3 overflow-x-auto no-scrollbar border-b border-line bg-white">
         <Pill active={activeCat === null} onClick={() => setActiveCat(null)}>
           {dict.filters.all}
         </Pill>
@@ -155,7 +155,7 @@ export function Storefront({
       </div>
 
       {/* breadcrumb + sort */}
-      <div className="flex justify-between items-center px-4 sm:px-7 pt-3 text-[13px] text-ink/60">
+      <div className="shrink-0 flex justify-between items-center px-4 sm:px-7 pt-3 text-[13px] text-ink/60">
         <div>
           {dict.breadcrumb.home} ›{" "}
           <b className="text-wine">{activeStore ? sName(activeStore) : dict.breadcrumb.all}</b>
@@ -257,7 +257,7 @@ function Pill({
   return (
     <button
       onClick={onClick}
-      className={`whitespace-nowrap rounded-full px-4 py-1.5 text-[13px] border ${
+      className={`shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-[13px] border ${
         active ? "bg-wine text-white border-wine" : "bg-white text-ink/60 border-line"
       }`}
     >
