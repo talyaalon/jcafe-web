@@ -38,7 +38,13 @@ export function ProductModal({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    // נעילת גלילת הרקע כל עוד המודאל פתוח
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
   }, [onClose]);
 
   // שליפת תוספות אמיתיות מ-ODOO (רק אם המוצר מוגדר כך).
@@ -104,7 +110,7 @@ export function ProductModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* image (fixed) */}
-        <div className="relative h-44 grid place-items-center bg-white p-4 flex-none border-b border-line">
+        <div className="relative h-44 grid place-items-center bg-white p-4 flex-none border-b border-line overflow-hidden">
           {product.image ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={product.image} alt={name} className="max-h-full max-w-full object-contain mix-blend-multiply" />
@@ -130,7 +136,7 @@ export function ProductModal({
         </div>
 
         {/* scrollable: description + modifier groups */}
-        <div className="px-5 py-3 flex-1 min-h-0 overflow-y-auto">
+        <div className="px-5 py-3 flex-1 min-h-0 overflow-y-auto overscroll-contain">
           {desc && <p className="text-ink/60 text-[13px] leading-relaxed">{desc}</p>}
 
           {groups.map((g) => (
