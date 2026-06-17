@@ -109,13 +109,17 @@ export function ProductModal({
         className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* image (fixed) */}
-        <div className="relative h-44 grid place-items-center bg-white p-4 flex-none border-b border-line overflow-hidden">
+        {/* image (fixed, fully contained) */}
+        <div className="relative bg-white p-4 flex-none border-b border-line">
           {product.image ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={product.image} alt={name} className="max-h-full max-w-full object-contain mix-blend-multiply" />
+            <img
+              src={product.image}
+              alt={name}
+              className="mx-auto h-48 w-auto max-w-full object-contain"
+            />
           ) : (
-            <div className="w-24 h-28 rounded-xl bg-gradient-to-b from-cream to-gold-soft/40 grid place-items-center text-3xl text-wine">
+            <div className="mx-auto h-48 w-32 rounded-xl bg-gradient-to-b from-cream to-gold-soft/40 grid place-items-center text-3xl text-wine">
               🍽️
             </div>
           )}
