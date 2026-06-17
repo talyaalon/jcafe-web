@@ -49,8 +49,11 @@ export async function POST(req: Request) {
             order_name: order.name,
             customer_name: body.customer.name,
             phone: body.customer.phone,
+            email: body.customer.email || null,
             method: body.method,
             scheduled_for: body.scheduledFor || null,
+            notes: body.notes || null,
+            total: body.items.reduce((s, i) => s + i.price * i.qty, 0),
             items: body.items.map((i) => ({
               name: i.name,
               qty: i.qty,

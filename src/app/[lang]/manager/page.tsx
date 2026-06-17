@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { isLocale, type Locale } from "@/i18n/config";
 import { isAdmin } from "@/lib/admin/session";
 import { getStoreHours, getAllBanners, getDeliverySettings } from "@/lib/supabase/data";
+import { getPosOrders } from "@/lib/supabase/pos";
 import { phuketStores } from "@/lib/odoo/phuket";
 import { ManagerLogin } from "@/components/manager/ManagerLogin";
 import { ManagerDashboard, type StoreHours } from "@/components/manager/ManagerDashboard";
@@ -23,6 +24,7 @@ export default async function ManagerPage({ params }: { params: Promise<{ lang: 
 
   const banners = await getAllBanners();
   const delivery = await getDeliverySettings();
+  const orders = await getPosOrders();
   const stores: StoreHours[] = await Promise.all(
     phuketStores.map(async (s) => ({
       id: s.id,
@@ -42,7 +44,13 @@ export default async function ManagerPage({ params }: { params: Promise<{ lang: 
           </button>
         </form>
       </header>
-      <ManagerDashboard locale={locale} stores={stores} banners={banners} delivery={delivery} />
+      <ManagerDashboard
+        locale={locale}
+        stores={stores}
+        banners={banners}
+        delivery={delivery}
+        orders={orders}
+      />
     </div>
   );
 }

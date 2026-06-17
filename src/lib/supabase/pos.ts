@@ -13,8 +13,11 @@ export interface PosOrder {
   order_name: string | null;
   customer_name: string | null;
   phone: string | null;
+  email: string | null;
   method: string | null;
   scheduled_for: string | null;
+  notes: string | null;
+  total: number;
   items: PosOrderItem[];
   pos_status: string;
   kitchen_status: string;

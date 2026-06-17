@@ -9,6 +9,7 @@ import {
   saveDeliveryAction,
 } from "@/app/[lang]/manager/actions";
 import type { DeliverySettings } from "@/lib/delivery";
+import { formatTHB } from "@/lib/format";
 import { BannerUploader } from "./BannerUploader";
 
 interface DayH {
@@ -31,34 +32,64 @@ export interface BannerRow {
   sort: number;
 }
 
-type Section = "hours" | "banners" | "delivery";
+export interface OrderRow {
+  id: string;
+  order_name: string | null;
+  customer_name: string | null;
+  phone: string | null;
+  email: string | null;
+  method: string | null;
+  scheduled_for: string | null;
+  notes: string | null;
+  total: number;
+  items: { name: string; qty: number; storeId: string; storeName: string }[];
+  pos_status: string;
+  kitchen_status: string;
+  created_at: string;
+}
+
+type Section = "orders" | "hours" | "banners" | "delivery";
 
 export function ManagerDashboard({
   locale,
   stores,
   banners,
   delivery,
+  orders,
 }: {
   locale: "he" | "en";
   stores: StoreHours[];
   banners: BannerRow[];
   delivery: DeliverySettings;
+  orders: OrderRow[];
 }) {
   const he = locale === "he";
-  const [section, setSection] = useState<Section>("hours");
+  const [section, setSection] = useState<Section>("orders");
   const [editId, setEditId] = useState<number | null>(null);
   const days = he
     ? ["א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "שבת"]
     : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   const nav = [
+    { key: "orders" as const, icon: "🧾", label: he ? "הזמנות" : "Orders" },
     { key: "hours" as const, icon: "🕐", label: he ? "שעות פעילות" : "Store hours" },
     { key: "banners" as const, icon: "🖼️", label: he ? "באנרים ומבצעים" : "Banners & promos" },
     { key: "delivery" as const, icon: "🛵", label: he ? "משלוחים" : "Delivery" },
   ];
-  const soon = he
-    ? ["הזמנות", "לקוחות", "מוצרים", "הגדרות"]
-    : ["Orders", "Customers", "Products", "Settings"];
+  const soon = he ? ["לקוחות", "מוצרים", "הגדרות"] : ["Customers", "Products", "Settings"];
+
+  const fmtDateTime = (iso: string) => {
+    const d = new Date(iso);
+    const p = (n: number) => String(n).padStart(2, "0");
+    return `${p(d.getDate())}/${p(d.getMonth() + 1)} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  };
+  const statusLabel = (s: string) =>
+    ({
+      new: he ? "חדש" : "New",
+      picking: he ? "בליקוט" : "Picking",
+      preparing: he ? "בהכנה" : "Preparing",
+      ready: he ? "מוכן" : "Ready",
+    })[s] ?? s;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-[230px_1fr] gap-6 p-6 max-w-6xl mx-auto">
@@ -87,6 +118,67 @@ export function ManagerDashboard({
 
       {/* content */}
       <main>
+        {section === "orders" && (
+          <section>
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="text-xl font-extrabold text-wine">{he ? "הזמנות" : "Orders"}</h2>
+              <span className="text-xs text-ink/45">{orders.length} {he ? "הזמנות" : "orders"}</span>
+            </div>
+            <p className="text-ink/55 text-sm mb-4">
+              {he ? "כל ההזמנות שנכנסו דרך האתר (אחרונות למעלה)." : "All orders placed through the site (newest first)."}
+            </p>
+            {orders.length === 0 ? (
+              <p className="text-ink/40 text-sm">{he ? "אין הזמנות עדיין." : "No orders yet."}</p>
+            ) : (
+              <div className="space-y-3">
+                {orders.map((o) => (
+                  <div key={o.id} className="bg-white border border-line rounded-xl p-4">
+                    <div className="flex justify-between items-start gap-3 flex-wrap">
+                      <div>
+                        <span className="font-extrabold text-wine">{o.order_name || "—"}</span>
+                        <span className="text-xs text-ink/50 ms-2">{fmtDateTime(o.created_at)}</span>
+                      </div>
+                      <span className="font-extrabold text-ink">{formatTHB(o.total)}</span>
+                    </div>
+                    <div className="text-[13px] text-ink/70 mt-1">
+                      {o.customer_name}
+                      {o.phone ? ` · ${o.phone}` : ""}
+                      {o.email ? ` · ${o.email}` : ""}
+                    </div>
+                    <div className="flex gap-2 mt-2 flex-wrap text-[11px]">
+                      <span className="px-2 py-0.5 rounded-full bg-soft">
+                        {o.method === "delivery" ? (he ? "משלוח" : "Delivery") : he ? "איסוף" : "Pickup"}
+                      </span>
+                      {o.scheduled_for && (
+                        <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">
+                          🗓 {o.scheduled_for}
+                        </span>
+                      )}
+                      <span className="px-2 py-0.5 rounded-full bg-soft">
+                        {he ? "מלקט" : "Picker"}: {statusLabel(o.pos_status)}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full bg-soft">
+                        {he ? "מטבח" : "Kitchen"}: {statusLabel(o.kitchen_status)}
+                      </span>
+                    </div>
+                    <ul className="mt-2 text-[13px] text-ink/80 border-t border-line pt-2 grid sm:grid-cols-2 gap-x-4 gap-y-0.5">
+                      {o.items.map((it, idx) => (
+                        <li key={idx} className="flex justify-between gap-2">
+                          <span>
+                            {it.name} <span className="text-ink/40">({it.storeName})</span>
+                          </span>
+                          <span className="font-bold flex-none">×{it.qty}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    {o.notes && <div className="text-[11px] text-ink/50 mt-2">📝 {o.notes}</div>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
         {section === "hours" && (
           <section>
             <h2 className="text-xl font-extrabold text-wine mb-1">
