@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { formatTHB } from "@/lib/format";
 import { useCart, type CartStoreRef } from "@/lib/cart/CartContext";
+import { useStoreStatus } from "@/lib/store-status";
+import { minDateTime, prettyDateTime } from "@/lib/schedule";
 import { CartThumb } from "./CartThumb";
 
 // סל נשלף (slide-over) — מובייל/טאבלט. נפתח מהסרגל הדביק או מאייקון העגלה.
@@ -20,9 +22,13 @@ export function CartDrawer({
   locale: Locale;
   dict: Dictionary;
 }) {
-  const { items, subtotal, count, inc, dec, remove, clear } = useCart();
-  const storeName = (s: CartStoreRef) => (locale === "he" ? s.nameHe : s.nameEn);
-  const pName = (p: { nameHe: string; nameEn: string }) => (locale === "he" ? p.nameHe : p.nameEn);
+  const { items, subtotal, count, inc, dec, remove, removeStore, clear, schedules, setSchedule, clearSchedule } =
+    useCart();
+  const statuses = useStoreStatus();
+  const [pickerFor, setPickerFor] = useState<string | null>(null);
+  const he = locale === "he";
+  const storeName = (s: CartStoreRef) => (he ? s.nameHe : s.nameEn);
+  const pName = (p: { nameHe: string; nameEn: string }) => (he ? p.nameHe : p.nameEn);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -36,6 +42,7 @@ export function CartDrawer({
   const groups = groupIds.map((id) => ({
     store: items.find((i) => i.store.id === id)!.store,
     items: items.filter((i) => i.store.id === id),
+    closed: statuses[id] === false,
   }));
 
   return (
@@ -77,10 +84,13 @@ export function CartDrawer({
               <div className="px-4 py-2 text-sm font-bold text-ink border-b border-line">
                 {count} {dict.cart.items}
               </div>
-              {groups.map(({ store, items: gItems }) => (
+              {groups.map(({ store, items: gItems, closed }) => (
                 <div key={store.id}>
                   <div className="px-4 py-2 text-[12px] font-bold text-wine bg-soft">
                     {store.emoji} {storeName(store)}
+                    {closed && (
+                      <span className="ms-2 text-red-500">{he ? "סגור כעת" : "Closed now"}</span>
+                    )}
                   </div>
                   {gItems.map(({ product, qty }) => (
                     <div key={product.id} className="flex gap-3 px-4 py-3 border-b border-line">
@@ -107,6 +117,55 @@ export function CartDrawer({
                       </div>
                     </div>
                   ))}
+                  {closed && (
+                    <div className="mx-4 my-2 rounded-lg bg-amber-50 border border-amber-200 p-2.5">
+                      {schedules[store.id] ? (
+                        <div className="text-[12px] text-amber-800">
+                          <div className="font-bold">
+                            🗓 {he ? "מתוזמן ל:" : "Scheduled for:"} {prettyDateTime(schedules[store.id])}
+                          </div>
+                          <button onClick={() => clearSchedule(store.id)} className="text-wine font-bold mt-1">
+                            {he ? "בטל תזמון" : "Clear"}
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="text-[12px] text-amber-800 mb-2">
+                            {he
+                              ? "החנות סגורה כעת. הסירו את הפריטים או תזמנו את ההזמנה."
+                              : "Store is closed now. Remove items or schedule the order."}
+                          </p>
+                          <div className="flex gap-2 flex-wrap">
+                            <button
+                              onClick={() => removeStore(store.id)}
+                              className="text-[12px] font-bold text-red-600 border border-red-200 rounded-lg px-2.5 py-1"
+                            >
+                              {he ? "הסר פריטים" : "Remove items"}
+                            </button>
+                            <button
+                              onClick={() => setPickerFor(pickerFor === store.id ? null : store.id)}
+                              className="text-[12px] font-bold text-white bg-wine rounded-lg px-2.5 py-1"
+                            >
+                              🗓 {he ? "תזמן" : "Schedule"}
+                            </button>
+                          </div>
+                          {pickerFor === store.id && (
+                            <input
+                              type="datetime-local"
+                              min={minDateTime()}
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  setSchedule(store.id, e.target.value);
+                                  setPickerFor(null);
+                                }
+                              }}
+                              className="mt-2 w-full border border-line rounded-lg px-2 py-1.5 text-sm"
+                            />
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

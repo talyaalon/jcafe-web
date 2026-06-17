@@ -17,7 +17,7 @@ type Payment = "card" | "qr" | "cod";
 const PHUKET_CITIES = ["Phuket Town", "Rawai", "Patong", "Kata", "Karon", "Chalong", "Kathu", "Thalang"];
 
 export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionary }) {
-  const { items, subtotal, remove, clear } = useCart();
+  const { items, subtotal, remove, clear, schedules } = useCart();
   const [step, setStep] = useState<Step>("contact");
   const [method, setMethod] = useState<Method>("delivery");
   const [payment, setPayment] = useState<Payment>("card");
@@ -106,7 +106,19 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
           storeName: i.store.nameEn || i.store.nameHe,
         })),
         method,
-        notes: [form.notes, paymentRef].filter(Boolean).join(" | ") || undefined,
+        notes:
+          [
+            form.notes,
+            paymentRef,
+            ...Object.entries(schedules)
+              .filter(([sid]) => items.some((i) => i.store.id === sid))
+              .map(([sid, dt]) => {
+                const st = items.find((i) => i.store.id === sid)?.store;
+                return `Scheduled ${st ? st.nameEn : sid}: ${dt}`;
+              }),
+          ]
+            .filter(Boolean)
+            .join(" | ") || undefined,
       };
       const res = await fetch("/api/orders", {
         method: "POST",

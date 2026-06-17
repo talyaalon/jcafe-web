@@ -30,14 +30,22 @@ interface CartContextValue {
   inc: (id: string) => void;
   dec: (id: string) => void;
   remove: (id: string) => void;
+  removeStore: (storeId: string) => void;
   clear: () => void;
+  /** תזמון הזמנה לכל חנות: storeId → datetime-local string */
+  schedules: Record<string, string>;
+  setSchedule: (storeId: string, value: string) => void;
+  clearSchedule: (storeId: string) => void;
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
 const STORAGE_KEY = "jcafe_cart";
 
+const SCHED_KEY = "jcafe_schedules";
+
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [schedules, setSchedules] = useState<Record<string, string>>({});
   const [hydrated, setHydrated] = useState(false);
 
   // טעינה מ-localStorage אחרי mount (מונע אי-התאמת hydration).
@@ -45,6 +53,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) setItems(JSON.parse(raw) as CartItem[]);
+      const s = localStorage.getItem(SCHED_KEY);
+      if (s) setSchedules(JSON.parse(s) as Record<string, string>);
     } catch {
       /* ignore */
     }
@@ -56,10 +66,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (!hydrated) return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      localStorage.setItem(SCHED_KEY, JSON.stringify(schedules));
     } catch {
       /* ignore */
     }
-  }, [items, hydrated]);
+  }, [items, schedules, hydrated]);
 
   const addItem: CartContextValue["addItem"] = (product, store, qty = 1) => {
     setItems((prev) => {
@@ -89,14 +100,42 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const remove = (id: string) =>
     setItems((prev) => prev.filter((i) => i.product.id !== id));
 
-  const clear = () => setItems([]);
+  const removeStore = (storeId: string) =>
+    setItems((prev) => prev.filter((i) => i.store.id !== storeId));
+
+  const clear = () => {
+    setItems([]);
+    setSchedules({});
+  };
+
+  const setSchedule = (storeId: string, value: string) =>
+    setSchedules((prev) => ({ ...prev, [storeId]: value }));
+  const clearSchedule = (storeId: string) =>
+    setSchedules((prev) => {
+      const next = { ...prev };
+      delete next[storeId];
+      return next;
+    });
 
   const count = items.reduce((s, i) => s + i.qty, 0);
   const subtotal = items.reduce((s, i) => s + i.product.price * i.qty, 0);
 
   return (
     <CartContext.Provider
-      value={{ items, count, subtotal, addItem, inc, dec, remove, clear }}
+      value={{
+        items,
+        count,
+        subtotal,
+        addItem,
+        inc,
+        dec,
+        remove,
+        removeStore,
+        clear,
+        schedules,
+        setSchedule,
+        clearSchedule,
+      }}
     >
       {children}
     </CartContext.Provider>
