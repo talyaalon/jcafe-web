@@ -28,7 +28,7 @@ export function Header({
     <header className="flex items-center gap-4 px-4 sm:px-7 py-3 bg-white border-b border-line">
       {/* logo */}
       <Link href={`/${locale}`} className="leading-none flex-none">
-        <span className="block text-2xl font-extrabold text-ink">{dict.brand.name}</span>
+        <span className="block text-2xl font-extrabold text-ink">{dict.brand.name} Phuket</span>
         <span className="block text-[8px] tracking-[3px] text-wine font-bold">
           {dict.brand.tagline}
         </span>

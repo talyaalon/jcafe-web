@@ -113,13 +113,13 @@ export function Storefront({
           <button
             key={s.id}
             onClick={() => switchStore(s.id)}
-            className={`shrink-0 font-tabs font-extrabold text-[15px] tracking-[0.15px] uppercase py-3.5 whitespace-nowrap border-b-[3px] -mb-px transition ${
+            className={`shrink-0 font-tabs font-extrabold text-[14px] tracking-[0.15px] uppercase py-3.5 whitespace-nowrap border-b-[3px] -mb-px transition ${
               s.id === activeStoreId
                 ? "text-wine border-wine"
                 : "text-label/60 border-transparent hover:text-label"
             }`}
           >
-            {s.emoji} {sName(s)}
+            {sName(s)}
           </button>
         ))}
       </div>

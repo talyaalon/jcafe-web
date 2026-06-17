@@ -5,6 +5,7 @@ import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { formatTHB } from "@/lib/format";
 import { useCart } from "@/lib/cart/CartContext";
+import { CartThumb } from "./CartThumb";
 
 export function CartPanel({ locale, dict }: { locale: Locale; dict: Dictionary }) {
   const { items, subtotal, inc, dec, remove, clear } = useCart();
@@ -46,7 +47,7 @@ export function CartPanel({ locale, dict }: { locale: Locale; dict: Dictionary }
       <div className="flex-1 overflow-y-auto divide-y divide-line">
         {items.map(({ product, qty }) => (
           <div key={product.id} className="flex gap-3 px-4 py-3">
-            <div className="w-12 h-12 rounded-md bg-gradient-to-b from-blue-800 to-blue-500 flex-none" />
+            <CartThumb src={product.image} alt={pName(product)} />
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-2">
                 <span className="text-[13px] leading-tight line-clamp-2">{pName(product)}</span>
@@ -63,7 +64,12 @@ export function CartPanel({ locale, dict }: { locale: Locale; dict: Dictionary }
                   <span className="text-xs font-bold w-4 text-center">{qty}</span>
                   <button onClick={() => inc(product.id)} className="font-bold w-4">+</button>
                 </div>
-                <span className="font-bold text-sm">{formatTHB(product.price * qty)}</span>
+                <div className="text-end leading-tight">
+                  <div className="font-bold text-sm">{formatTHB(product.price * qty)}</div>
+                  <div className="text-[10px] text-ink/45">
+                    {formatTHB(product.price)} {locale === "he" ? "ליח׳" : "/ea"}
+                  </div>
+                </div>
               </div>
             </div>
           </div>

@@ -6,6 +6,7 @@ import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { formatTHB } from "@/lib/format";
 import { useCart, type CartStoreRef } from "@/lib/cart/CartContext";
+import { CartThumb } from "./CartThumb";
 
 // סל נשלף (slide-over) — מובייל/טאבלט. נפתח מהסרגל הדביק או מאייקון העגלה.
 export function CartDrawer({
@@ -83,7 +84,7 @@ export function CartDrawer({
                   </div>
                   {gItems.map(({ product, qty }) => (
                     <div key={product.id} className="flex gap-3 px-4 py-3 border-b border-line">
-                      <div className="w-12 h-12 rounded-md bg-gradient-to-b from-blue-800 to-blue-500 flex-none" />
+                      <CartThumb src={product.image} alt={pName(product)} />
                       <div className="flex-1">
                         <div className="text-[13px] leading-tight line-clamp-2">{pName(product)}</div>
                         {product.weight && (

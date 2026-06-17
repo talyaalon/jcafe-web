@@ -7,6 +7,7 @@ import type { Dictionary } from "@/i18n/dictionaries";
 import { formatTHB } from "@/lib/format";
 import { useCart, type CartStoreRef } from "@/lib/cart/CartContext";
 import { CheckoutFooter } from "./CheckoutFooter";
+import { CartThumb } from "./CartThumb";
 import { CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
 type Method = "delivery" | "pickup";
@@ -380,7 +381,7 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
           <div className="max-h-[46vh] overflow-y-auto divide-y divide-line">
             {items.map(({ product, qty, store }) => (
               <div key={product.id} className="flex items-center gap-3 px-4 py-3 text-[12.5px]">
-                <div className="w-10 h-10 rounded-md bg-gradient-to-b from-blue-800 to-blue-500 flex-none" />
+                <CartThumb src={product.image} alt={pName(product)} />
                 <div className="flex-1">
                   <div className="leading-tight line-clamp-2">{pName(product)}</div>
                   <div className="text-ink/45">
