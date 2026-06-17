@@ -14,6 +14,7 @@ export async function loginAction(
 ): Promise<{ error?: string } | null> {
   const pw = String(formData.get("password") ?? "");
   const lang = String(formData.get("lang") ?? "he");
+  const next = String(formData.get("next") ?? "");
   if (pw && pw === process.env.ADMIN_PASSWORD) {
     const c = await cookies();
     c.set(ADMIN_COOKIE, "1", {
@@ -22,7 +23,7 @@ export async function loginAction(
       path: "/",
       maxAge: 60 * 60 * 8,
     });
-    redirect(`/${lang}/manager`);
+    redirect(next || `/${lang}/manager`);
   }
   return { error: "wrong" };
 }

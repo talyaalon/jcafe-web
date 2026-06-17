@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { findOrCreatePartner, createOrder, type OrderItem } from "@/lib/odoo/orders";
+import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase/server";
 
 interface OrderBody {
   customer: {
@@ -10,9 +11,10 @@ interface OrderBody {
     city?: string;
     zip?: string;
   };
-  items: { id: string; qty: number; price: number; name: string; storeName: string }[];
+  items: { id: string; qty: number; price: number; name: string; storeName: string; storeId?: string }[];
   method?: "delivery" | "pickup";
   notes?: string;
+  scheduledFor?: string;
 }
 
 // POST /api/orders — יוצר לקוח + Sales Order ב-ODOO.
@@ -37,6 +39,29 @@ export async function POST(req: Request) {
     }));
 
     const order = await createOrder({ partnerId, items, notes: body.notes });
+
+    // שמירה למסכי הצוות (מלקט/מטבח) — best-effort, לא חוסם
+    if (supabaseConfigured) {
+      try {
+        await supabaseAdmin()
+          .from("pos_orders")
+          .insert({
+            order_name: order.name,
+            customer_name: body.customer.name,
+            phone: body.customer.phone,
+            method: body.method,
+            scheduled_for: body.scheduledFor || null,
+            items: body.items.map((i) => ({
+              name: i.name,
+              qty: i.qty,
+              storeId: i.storeId || "",
+              storeName: i.storeName,
+            })),
+          });
+      } catch {
+        /* ignore — לא לשבור את ההזמנה */
+      }
+    }
 
     return NextResponse.json({
       ok: true,
