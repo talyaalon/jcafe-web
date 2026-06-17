@@ -20,16 +20,25 @@ export interface StoreBundle {
   products: Product[];
 }
 
+export interface Banner {
+  id: number;
+  title: string | null;
+  image_url: string;
+  link: string | null;
+}
+
 type SortKey = "featured" | "newest" | "nameAsc" | "priceLow" | "priceHigh";
 
 export function Storefront({
   locale,
   dict,
   data,
+  banners = [],
 }: {
   locale: Locale;
   dict: Dictionary;
   data: StoreBundle[];
+  banners?: Banner[];
 }) {
   const [activeStoreId, setActiveStoreId] = useState(data[0]?.store.id ?? "");
   const [activeCat, setActiveCat] = useState<string | null>(null);
@@ -127,18 +136,38 @@ export function Storefront({
       {/* banners — visible when no category filter (All) */}
       {activeCat === null && (
         <div className="shrink-0 px-4 sm:px-7 pt-4">
-          <div className="grid grid-cols-3 gap-3 sm:gap-4">
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                className="h-28 sm:h-44 rounded-2xl bg-[#ece9f1] grid place-items-center text-white border border-line"
-              >
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor" className="opacity-80">
-                  <path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2ZM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-4.5Z" />
-                </svg>
-              </div>
-            ))}
-          </div>
+          {banners.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+              {banners.slice(0, 3).map((b) => (
+                <a
+                  key={b.id}
+                  href={b.link ?? undefined}
+                  className="relative block h-28 sm:h-44 rounded-2xl overflow-hidden border border-line"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={b.image_url} alt={b.title ?? ""} className="w-full h-full object-cover" />
+                  {b.title && (
+                    <span className="absolute bottom-2 start-3 bg-black/45 text-white text-xs font-bold px-2.5 py-1 rounded-md">
+                      {b.title}
+                    </span>
+                  )}
+                </a>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-3 sm:gap-4">
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="h-28 sm:h-44 rounded-2xl bg-[#ece9f1] grid place-items-center text-white border border-line"
+                >
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor" className="opacity-80">
+                    <path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2ZM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-4.5Z" />
+                  </svg>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
