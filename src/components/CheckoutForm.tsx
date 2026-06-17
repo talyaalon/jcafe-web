@@ -8,6 +8,8 @@ import { formatTHB } from "@/lib/format";
 import { useCart, type CartStoreRef } from "@/lib/cart/CartContext";
 import { CheckoutFooter } from "./CheckoutFooter";
 import { CartThumb } from "./CartThumb";
+import { useStoreStatus, useStoreHours } from "@/lib/store-status";
+import { isOpenAt, minDateTime } from "@/lib/schedule";
 import { CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
 type Method = "delivery" | "pickup";
@@ -17,7 +19,9 @@ type Payment = "card" | "qr" | "cod";
 const PHUKET_CITIES = ["Phuket Town", "Rawai", "Patong", "Kata", "Karon", "Chalong", "Kathu", "Thalang"];
 
 export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionary }) {
-  const { items, subtotal, remove, clear, schedules } = useCart();
+  const { items, subtotal, remove, clear } = useCart();
+  const statuses = useStoreStatus();
+  const storeHours = useStoreHours();
   const [step, setStep] = useState<Step>("contact");
   const [method, setMethod] = useState<Method>("delivery");
   const [payment, setPayment] = useState<Payment>("card");
@@ -35,13 +39,36 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
   const [orderNo, setOrderNo] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [scheduleMode, setScheduleMode] = useState(false);
+  const [scheduledAt, setScheduledAt] = useState("");
+  const [scheduleError, setScheduleError] = useState("");
   const stripe = useStripe();
   const elements = useElements();
 
+  const he = locale === "he";
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
-  const storeName = (s: CartStoreRef) => (locale === "he" ? s.nameHe : s.nameEn);
-  const pName = (p: { nameHe: string; nameEn: string }) => (locale === "he" ? p.nameHe : p.nameEn);
+  const storeName = (s: CartStoreRef) => (he ? s.nameHe : s.nameEn);
+  const pName = (p: { nameHe: string; nameEn: string }) => (he ? p.nameHe : p.nameEn);
   const t = dict.checkout;
+
+  // חנויות סגורות שיש להן פריטים בעגלה → חוסם הזמנה רגילה, מחייב תזמון.
+  const closedStoreIds = [...new Set(items.map((i) => i.store.id))].filter(
+    (id) => statuses[id] === false,
+  );
+  const hasClosed = closedStoreIds.length > 0;
+
+  function onScheduleChange(v: string) {
+    setScheduledAt(v);
+    if (!v) return setScheduleError("");
+    const allOpen = closedStoreIds.every((id) => isOpenAt(storeHours[id] ?? [], v));
+    setScheduleError(
+      allOpen
+        ? ""
+        : he
+          ? "בתאריך/שעה שבחרת אנחנו סגורים. אנא בחר/י תאריך או שעה אחרים."
+          : "We're closed at the selected date/time. Please choose another date or time.",
+    );
+  }
 
   function continueGuest() {
     const e: Record<string, boolean> = {};
@@ -107,16 +134,7 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
         })),
         method,
         notes:
-          [
-            form.notes,
-            paymentRef,
-            ...Object.entries(schedules)
-              .filter(([sid]) => items.some((i) => i.store.id === sid))
-              .map(([sid, dt]) => {
-                const st = items.find((i) => i.store.id === sid)?.store;
-                return `Scheduled ${st ? st.nameEn : sid}: ${dt}`;
-              }),
-          ]
+          [form.notes, paymentRef, scheduledAt ? `Scheduled for: ${scheduledAt}` : ""]
             .filter(Boolean)
             .join(" | ") || undefined,
       };
@@ -369,13 +387,61 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
                   {apiError}
                 </p>
               )}
-              <button
-                onClick={placeOrder}
-                disabled={submitting}
-                className="w-full bg-wine text-white font-extrabold rounded-xl py-3.5 hover:bg-wine-hover disabled:opacity-60"
-              >
-                {submitting ? "…" : t.placeOrder}
-              </button>
+
+              {hasClosed ? (
+                <>
+                  <div className="text-[13px] text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                    {he
+                      ? "יש בעגלה מוצרים מחנות שסגורה כעת — ניתן רק לבצע הזמנה מתוזמנת."
+                      : "Cart has items from a store that's closed now — only a scheduled order is available."}
+                  </div>
+                  {/* Place order — חסום */}
+                  <button
+                    disabled
+                    className="w-full bg-wine/40 text-white font-extrabold rounded-xl py-3.5 cursor-not-allowed"
+                  >
+                    {t.placeOrder}
+                  </button>
+                  {/* Scheduled order — בהיר */}
+                  {!scheduleMode ? (
+                    <button
+                      onClick={() => setScheduleMode(true)}
+                      className="w-full border-2 border-wine text-wine font-bold rounded-xl py-3 hover:bg-wine/5"
+                    >
+                      🗓 {he ? "הזמנה מתוזמנת" : "Scheduled order"}
+                    </button>
+                  ) : (
+                    <div className="border border-line rounded-xl p-3 space-y-2">
+                      <label className="block text-sm text-ink/70">
+                        {he ? "בחר/י תאריך ושעה (בשעות הפתיחה)" : "Choose date & time (within opening hours)"}
+                      </label>
+                      <input
+                        type="datetime-local"
+                        min={minDateTime()}
+                        value={scheduledAt}
+                        onChange={(e) => onScheduleChange(e.target.value)}
+                        className={`w-full border rounded-lg px-3 py-2.5 text-sm outline-none ${scheduleError ? "border-red-500" : "border-line focus:border-wine"}`}
+                      />
+                      {scheduleError && <p className="text-red-600 text-xs">{scheduleError}</p>}
+                      <button
+                        onClick={placeOrder}
+                        disabled={submitting || !scheduledAt || !!scheduleError}
+                        className="w-full bg-wine text-white font-extrabold rounded-xl py-3 hover:bg-wine-hover disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {submitting ? "…" : he ? "אשר הזמנה מתוזמנת" : "Confirm scheduled order"}
+                      </button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <button
+                  onClick={placeOrder}
+                  disabled={submitting}
+                  className="w-full bg-wine text-white font-extrabold rounded-xl py-3.5 hover:bg-wine-hover disabled:opacity-60"
+                >
+                  {submitting ? "…" : t.placeOrder}
+                </button>
+              )}
             </>
           )}
         </div>

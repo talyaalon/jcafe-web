@@ -1,20 +1,16 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { formatTHB } from "@/lib/format";
 import { useCart } from "@/lib/cart/CartContext";
 import { useStoreStatus } from "@/lib/store-status";
-import { minDateTime, prettyDateTime } from "@/lib/schedule";
 import { CartThumb } from "./CartThumb";
 
 export function CartPanel({ locale, dict }: { locale: Locale; dict: Dictionary }) {
-  const { items, subtotal, inc, dec, remove, removeStore, schedules, setSchedule, clearSchedule } =
-    useCart();
+  const { items, subtotal, inc, dec, remove } = useCart();
   const statuses = useStoreStatus();
-  const [pickerFor, setPickerFor] = useState<string | null>(null);
   const he = locale === "he";
   const pName = (p: { nameHe: string; nameEn: string }) => (he ? p.nameHe : p.nameEn);
   const orderTotal = he ? 'סה"כ הזמנה' : "Order total";
@@ -54,9 +50,7 @@ export function CartPanel({ locale, dict }: { locale: Locale; dict: Dictionary }
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {groups.map(({ store, items: gItems, closed }) => {
-          const sched = schedules[store.id];
-          return (
+        {groups.map(({ store, items: gItems, closed }) => (
             <div key={store.id} className="border-b border-line">
               {/* store header */}
               <div className="flex items-center justify-between px-4 pt-3 pb-1">
@@ -100,62 +94,15 @@ export function CartPanel({ locale, dict }: { locale: Locale; dict: Dictionary }
                 </div>
               ))}
 
-              {/* closed-store handling */}
               {closed && (
-                <div className="mx-4 mb-3 mt-1 rounded-lg bg-amber-50 border border-amber-200 p-2.5">
-                  {sched ? (
-                    <div className="text-[12px] text-amber-800">
-                      <div className="font-bold">
-                        🗓 {he ? "מתוזמן ל:" : "Scheduled for:"} {prettyDateTime(sched)}
-                      </div>
-                      <button
-                        onClick={() => clearSchedule(store.id)}
-                        className="text-wine font-bold mt-1"
-                      >
-                        {he ? "בטל תזמון" : "Clear"}
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <p className="text-[12px] text-amber-800 mb-2">
-                        {he
-                          ? "החנות סגורה כעת. הסירו את הפריטים או תזמנו את ההזמנה."
-                          : "Store is closed now. Remove the items or schedule the order."}
-                      </p>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <button
-                          onClick={() => removeStore(store.id)}
-                          className="text-[12px] font-bold text-red-600 border border-red-200 rounded-lg px-2.5 py-1"
-                        >
-                          {he ? "הסר פריטים" : "Remove items"}
-                        </button>
-                        <button
-                          onClick={() => setPickerFor(pickerFor === store.id ? null : store.id)}
-                          className="text-[12px] font-bold text-white bg-wine rounded-lg px-2.5 py-1"
-                        >
-                          🗓 {he ? "תזמן הזמנה" : "Schedule"}
-                        </button>
-                      </div>
-                      {pickerFor === store.id && (
-                        <input
-                          type="datetime-local"
-                          min={minDateTime()}
-                          onChange={(e) => {
-                            if (e.target.value) {
-                              setSchedule(store.id, e.target.value);
-                              setPickerFor(null);
-                            }
-                          }}
-                          className="mt-2 w-full border border-line rounded-lg px-2 py-1.5 text-sm"
-                        />
-                      )}
-                    </>
-                  )}
+                <div className="mx-4 mb-3 mt-1 rounded-lg bg-red-50 border border-red-200 p-2.5 text-[12px] text-red-700">
+                  {he
+                    ? "החנות סגורה כעת — הסירו את הפריט (✕) או בצעו הזמנה מתוזמנת בתשלום."
+                    : "Store closed — remove the item (✕) or schedule the order at checkout."}
                 </div>
               )}
             </div>
-          );
-        })}
+          ))}
       </div>
 
       <div className="border-t border-line px-4 py-3">
