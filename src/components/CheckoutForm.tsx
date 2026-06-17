@@ -10,6 +10,8 @@ import { CheckoutFooter } from "./CheckoutFooter";
 import { CartThumb } from "./CartThumb";
 import { useStoreStatus, useStoreHours } from "@/lib/store-status";
 import { isOpenAt, minDateTime } from "@/lib/schedule";
+import { useAuth } from "@/lib/auth/AuthContext";
+import { supabaseBrowser } from "@/lib/supabase/client";
 import { CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
 type Method = "delivery" | "pickup";
@@ -20,6 +22,7 @@ const PHUKET_CITIES = ["Phuket Town", "Rawai", "Patong", "Kata", "Karon", "Chalo
 
 export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionary }) {
   const { items, subtotal, remove, clear } = useCart();
+  const { user } = useAuth();
   const statuses = useStoreStatus();
   const storeHours = useStoreHours();
   const [step, setStep] = useState<Step>("contact");
@@ -146,6 +149,16 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || "Order failed");
       setOrderNo(data.orderNo);
+      // שמירת ההזמנה בהיסטוריית המשתמש (אם מחובר)
+      if (user) {
+        await supabaseBrowser.from("orders").insert({
+          user_id: user.id,
+          odoo_name: data.orderNo,
+          total: subtotal,
+          item_count: items.reduce((s, i) => s + i.qty, 0),
+          method,
+        });
+      }
       clear();
       setStep("done");
     } catch (err) {

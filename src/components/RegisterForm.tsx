@@ -5,19 +5,44 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
+import { useAuth } from "@/lib/auth/AuthContext";
 import { SocialButtons } from "./AuthShell";
 
 export function RegisterForm({ locale, dict }: { locale: Locale; dict: Dictionary }) {
   const t = dict.auth;
   const router = useRouter();
+  const { signIn } = useAuth();
   const [form, setForm] = useState({ email: "", name: "", password: "", confirm: "" });
   const [alerts, setAlerts] = useState(true);
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
   const input =
     "w-full border border-line rounded-lg px-3 py-2.5 text-sm outline-none focus:border-wine";
+  const he = locale === "he";
 
-  // TODO: יצירת חשבון אמיתית מול backend. כרגע stub שמפנה לדף הבית.
-  const submit = () => router.push(`/${locale}`);
+  const submit = async () => {
+    setErr("");
+    if (form.password.length < 6) return setErr(he ? "סיסמה לפחות 6 תווים" : "Password min 6 chars");
+    if (form.password !== form.confirm) return setErr(he ? "הסיסמאות אינן תואמות" : "Passwords don't match");
+    setBusy(true);
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: form.email.trim(), password: form.password, name: form.name.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || "Registration failed");
+      const { error } = await signIn(form.email.trim(), form.password);
+      if (error) throw new Error(error);
+      router.push(`/${locale}/account`);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="bg-white border border-line rounded-2xl p-6 w-full max-w-md shadow-sm">
@@ -52,11 +77,13 @@ export function RegisterForm({ locale, dict }: { locale: Locale; dict: Dictionar
         {t.dealAlerts}
       </label>
 
+      {err && <p className="text-red-600 text-xs mt-3">{err}</p>}
       <button
         onClick={submit}
-        className="w-full bg-wine text-white font-bold rounded-lg py-2.5 mt-4 hover:bg-wine-hover"
+        disabled={busy}
+        className="w-full bg-wine text-white font-bold rounded-lg py-2.5 mt-4 hover:bg-wine-hover disabled:opacity-60"
       >
-        {t.signMeUp}
+        {busy ? "…" : t.signMeUp}
       </button>
       <p className="text-[12px] text-ink/55 mt-3 text-center">{t.terms}</p>
       <p className="text-center text-sm text-ink/60 mt-2">

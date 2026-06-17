@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
+import { useAuth } from "@/lib/auth/AuthContext";
 
 export function Header({
   locale,
@@ -21,6 +22,7 @@ export function Header({
   onCartClick: () => void;
 }) {
   const pathname = usePathname();
+  const { user, displayName } = useAuth();
   const other: Locale = locale === "he" ? "en" : "he";
   const otherHref = pathname.replace(/^\/(he|en)/, `/${other}`) || `/${other}`;
 
@@ -51,9 +53,14 @@ export function Header({
         <Link href={otherHref} className="hover:text-wine font-medium">
           {other === "en" ? "EN" : "עב"} ▾
         </Link>
-        <Link href={`/${locale}/login`} className="flex items-center gap-1.5 hover:text-wine">
+        <Link
+          href={`/${locale}/${user ? "account" : "login"}`}
+          className="flex items-center gap-1.5 hover:text-wine"
+        >
           <span className="text-lg">👤</span>
-          <span className="hidden sm:inline">{dict.header.login}</span>
+          <span className="hidden sm:inline">
+            {user ? displayName || (locale === "he" ? "החשבון שלי" : "Account") : dict.header.login}
+          </span>
         </Link>
         <button onClick={onCartClick} className="relative flex items-center gap-1.5 hover:text-wine">
           <span className="text-lg">🛒</span>

@@ -4,11 +4,23 @@ import { useState } from "react";
 import Link from "next/link";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
+import { supabaseBrowser } from "@/lib/supabase/client";
 
 export function ForgotPasswordForm({ locale, dict }: { locale: Locale; dict: Dictionary }) {
   const t = dict.auth;
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    if (!email.trim()) return;
+    setBusy(true);
+    await supabaseBrowser.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/${locale}/reset-password`,
+    });
+    setBusy(false);
+    setSent(true);
+  };
 
   if (sent) {
     return (
@@ -34,10 +46,11 @@ export function ForgotPasswordForm({ locale, dict }: { locale: Locale; dict: Dic
         className="w-full border border-line rounded-lg px-3 py-2.5 text-sm outline-none focus:border-wine"
       />
       <button
-        onClick={() => setSent(true)}
-        className="w-full bg-wine text-white font-bold rounded-lg py-2.5 mt-4 hover:bg-wine-hover"
+        onClick={submit}
+        disabled={busy}
+        className="w-full bg-wine text-white font-bold rounded-lg py-2.5 mt-4 hover:bg-wine-hover disabled:opacity-60"
       >
-        {t.submit}
+        {busy ? "…" : t.submit}
       </button>
       <Link
         href={`/${locale}/login`}

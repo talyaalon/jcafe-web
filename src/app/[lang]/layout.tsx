@@ -5,6 +5,7 @@ import { i18n, isLocale, dir, type Locale } from "@/i18n/config";
 import { notFound } from "next/navigation";
 import { CartProvider } from "@/lib/cart/CartContext";
 import { FavoritesProvider } from "@/lib/favorites/FavoritesContext";
+import { AuthProvider } from "@/lib/auth/AuthContext";
 
 const heebo = Heebo({
   subsets: ["hebrew", "latin"],
@@ -44,9 +45,11 @@ export default async function RootLayout({
       className={`${heebo.variable} ${nunito.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans bg-soft text-ink">
-        <CartProvider>
-          <FavoritesProvider>{children}</FavoritesProvider>
-        </CartProvider>
+        <AuthProvider>
+          <CartProvider>
+            <FavoritesProvider>{children}</FavoritesProvider>
+          </CartProvider>
+        </AuthProvider>
       </body>
     </html>
   );

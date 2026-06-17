@@ -5,17 +5,30 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
+import { useAuth } from "@/lib/auth/AuthContext";
 import { SocialButtons } from "./AuthShell";
 
 export function LoginForm({ locale, dict }: { locale: Locale; dict: Dictionary }) {
   const t = dict.auth;
   const router = useRouter();
+  const { signIn } = useAuth();
   const [mode, setMode] = useState<"choose" | "password">("choose");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  // TODO: אימות אמיתי מול backend (sessions). כרגע stub שמפנה לדף הבית.
-  const submit = () => router.push(`/${locale}`);
+  const submit = async () => {
+    setErr("");
+    setBusy(true);
+    const { error } = await signIn(email.trim(), password);
+    setBusy(false);
+    if (error) {
+      setErr(locale === "he" ? "אימייל או סיסמה שגויים" : "Invalid email or password");
+      return;
+    }
+    router.push(`/${locale}/account`);
+  };
 
   return (
     <div className="bg-white border border-line rounded-2xl p-6 w-full max-w-md shadow-sm">
@@ -64,11 +77,13 @@ export function LoginForm({ locale, dict }: { locale: Locale; dict: Dictionary }
             onChange={(e) => setPassword(e.target.value)}
             className="w-full border border-line rounded-lg px-3 py-2.5 text-sm outline-none focus:border-wine"
           />
+          {err && <p className="text-red-600 text-xs mt-3">{err}</p>}
           <button
             onClick={submit}
-            className="w-full bg-wine text-white font-bold rounded-lg py-2.5 mt-4 hover:bg-wine-hover"
+            disabled={busy}
+            className="w-full bg-wine text-white font-bold rounded-lg py-2.5 mt-4 hover:bg-wine-hover disabled:opacity-60"
           >
-            {t.loginBtn}
+            {busy ? "…" : t.loginBtn}
           </button>
           <Link
             href={`/${locale}/forgot-password`}

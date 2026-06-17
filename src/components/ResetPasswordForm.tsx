@@ -4,14 +4,29 @@ import { useState } from "react";
 import Link from "next/link";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
+import { supabaseBrowser } from "@/lib/supabase/client";
 
 export function ResetPasswordForm({ locale, dict }: { locale: Locale; dict: Dictionary }) {
   const t = dict.auth;
   const [pw, setPw] = useState("");
   const [confirm, setConfirm] = useState("");
   const [done, setDone] = useState(false);
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
   const input =
     "w-full border border-line rounded-lg px-3 py-2.5 text-sm outline-none focus:border-wine";
+  const he = locale === "he";
+
+  const submit = async () => {
+    setErr("");
+    if (pw.length < 6) return setErr(he ? "סיסמה לפחות 6 תווים" : "Password min 6 chars");
+    if (pw !== confirm) return setErr(he ? "הסיסמאות אינן תואמות" : "Passwords don't match");
+    setBusy(true);
+    const { error } = await supabaseBrowser.auth.updateUser({ password: pw });
+    setBusy(false);
+    if (error) return setErr(error.message);
+    setDone(true);
+  };
 
   if (done) {
     return (
@@ -41,11 +56,13 @@ export function ResetPasswordForm({ locale, dict }: { locale: Locale; dict: Dict
         onChange={(e) => setConfirm(e.target.value)}
         className={input}
       />
+      {err && <p className="text-red-600 text-xs mt-3">{err}</p>}
       <button
-        onClick={() => setDone(true)}
-        className="w-full bg-wine text-white font-bold rounded-lg py-2.5 mt-4 hover:bg-wine-hover"
+        onClick={submit}
+        disabled={busy}
+        className="w-full bg-wine text-white font-bold rounded-lg py-2.5 mt-4 hover:bg-wine-hover disabled:opacity-60"
       >
-        {t.submit}
+        {busy ? "…" : t.submit}
       </button>
     </div>
   );
