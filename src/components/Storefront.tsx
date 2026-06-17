@@ -209,6 +209,7 @@ export function Storefront({
                         product={p}
                         locale={locale}
                         dict={dict}
+                        onAdd={addProduct}
                         onOpen={setSelected}
                       />
                     ))}
