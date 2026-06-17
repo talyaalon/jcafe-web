@@ -31,8 +31,17 @@ export async function POST(req: Request) {
         html,
       }),
     });
-    const data = await res.json();
-    if (!res.ok) return NextResponse.json({ ok: false, error: data?.message || "send failed" }, { status: 502 });
+    // קריאה הגנתית — לא לקרוס אם התשובה אינה JSON תקין
+    const text = await res.text();
+    let data: { message?: string; id?: string } = {};
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { message: text.slice(0, 200) };
+    }
+    if (!res.ok) {
+      return NextResponse.json({ ok: false, error: data?.message || "send failed" }, { status: 502 });
+    }
     return NextResponse.json({ ok: true, id: data?.id });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : String(e) }, { status: 500 });
