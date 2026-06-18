@@ -1,10 +1,20 @@
 "use server";
 
+import crypto from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { ADMIN_COOKIE } from "@/lib/admin/session";
+import { ADMIN_COOKIE, createAdminToken, SESSION_MAX_AGE } from "@/lib/admin/session";
+
+// השוואת סיסמה בזמן-קבוע (מונע timing attack)
+function passwordOk(pw: string): boolean {
+  const expected = process.env.ADMIN_PASSWORD ?? "";
+  if (!pw || !expected) return false;
+  const a = Buffer.from(pw);
+  const b = Buffer.from(expected);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
 
 const DAYS = [0, 1, 2, 3, 4, 5, 6];
 
@@ -15,13 +25,14 @@ export async function loginAction(
   const pw = String(formData.get("password") ?? "");
   const lang = String(formData.get("lang") ?? "he");
   const next = String(formData.get("next") ?? "");
-  if (pw && pw === process.env.ADMIN_PASSWORD) {
+  if (passwordOk(pw)) {
     const c = await cookies();
-    c.set(ADMIN_COOKIE, "1", {
+    c.set(ADMIN_COOKIE, createAdminToken(), {
       httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: 60 * 60 * 8,
+      maxAge: SESSION_MAX_AGE,
     });
     redirect(next || `/${lang}/manager`);
   }
