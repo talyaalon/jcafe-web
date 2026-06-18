@@ -140,3 +140,65 @@ export async function buildPricer(pricelistId: number | null): Promise<Pricer> {
     return listPrice;
   };
 }
+
+// ===== תמחור הזמנה בצד-שרת (מקור אמת לאימות) =====
+// מחשב את מחיר הבסיס המהימן לכל פריט מ-ODOO + ה-Pricelist של הסניף.
+// פריט רגיל → נכפה מחיר השרת. פריט עם תוספות (id מכיל "|") → מחיר הלקוח
+// מתקבל רק אם הוא ≥ מחיר הבסיס (התוספות מוסיפות), אחרת נכפה הבסיס.
+export interface OrderItemIn {
+  id: string;
+  qty: number;
+  price: number;
+}
+export interface PricedOrderItem {
+  templateId: number;
+  qty: number;
+  clientPrice: number;
+  basePrice: number;
+  unitPrice: number;
+}
+
+export async function priceOrderItems(
+  pricelistId: number | null,
+  items: OrderItemIn[],
+): Promise<{ priced: PricedOrderItem[]; total: number; tampered: boolean }> {
+  const tmplIds = [
+    ...new Set(items.map((i) => Number(String(i.id).split("|")[0])).filter((n) => n > 0)),
+  ];
+  const [pricer, rows] = await Promise.all([
+    buildPricer(pricelistId),
+    tmplIds.length
+      ? searchRead<{ id: number; list_price: number; categ_id: [number, string] | false }>(
+          "product.template",
+          [["id", "in", tmplIds]],
+          ["id", "list_price", "categ_id"],
+          { limit: tmplIds.length },
+        )
+      : Promise.resolve([]),
+  ]);
+  const baseOf = new Map<number, number>();
+  for (const r of rows) baseOf.set(r.id, pricer(r.id, r.categ_id ? r.categ_id[0] : null, r.list_price ?? 0));
+
+  let tampered = false;
+  const priced = items.map((i) => {
+    const templateId = Number(String(i.id).split("|")[0]);
+    const basePrice = baseOf.get(templateId) ?? 0;
+    const hasOptions = String(i.id).includes("|") && !!String(i.id).split("|")[1];
+    let unitPrice: number;
+    if (hasOptions) {
+      // התוספות רק מוסיפות — מחיר נמוך מהבסיס = חשד לזיוף
+      if (i.price < basePrice - 0.01) {
+        tampered = true;
+        unitPrice = basePrice;
+      } else {
+        unitPrice = i.price;
+      }
+    } else {
+      unitPrice = basePrice;
+      if (Math.abs(i.price - basePrice) > 0.01) tampered = true;
+    }
+    return { templateId, qty: i.qty, clientPrice: i.price, basePrice, unitPrice };
+  });
+  const total = priced.reduce((s, p) => s + p.unitPrice * p.qty, 0);
+  return { priced, total, tampered };
+}

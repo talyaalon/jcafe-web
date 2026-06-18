@@ -150,7 +150,12 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
         const piRes = await fetch("/api/stripe/payment-intent", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: total }),
+          // הסכום מחושב בשרת מהפריטים + Pricelist הסניף; deliveryFee נוסף עליו
+          body: JSON.stringify({
+            items: items.map((i) => ({ id: i.product.id, qty: i.qty, price: i.product.price })),
+            companyId: orderCompany,
+            deliveryFee,
+          }),
         });
         const piData = await piRes.json();
         if (!piRes.ok || !piData.ok) throw new Error(piData.error || "Payment init failed");

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { findOrCreatePartner, createOrder, type OrderItem } from "@/lib/odoo/orders";
 import { getBranches, BRANCH_TAG } from "@/lib/odoo/branches";
+import { priceOrderItems } from "@/lib/odoo/pricelist";
 import { pushKitchenToPrep } from "@/lib/odoo/pos-prep";
 import { PHUKET_COMPANY_ID, PHUKET_PRICELIST_ID } from "@/lib/odoo/phuket";
 import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase/server";
@@ -54,10 +55,20 @@ export async function POST(req: Request) {
 
     const partnerId = await findOrCreatePartner(body.customer, branchName);
 
-    const items: OrderItem[] = body.items.map((i) => ({
+    // מחיר מהימן מצד-שרת (מ-ODOO + Pricelist הסניף) — מונע תרמית מחירים מהלקוח.
+    const { priced, tampered } = await priceOrderItems(pricelistId, body.items);
+    if (tampered) {
+      console.warn(
+        `[orders] price mismatch for company ${companyId} — using server prices`,
+        priced.filter((p) => Math.abs(p.clientPrice - p.unitPrice) > 0.01),
+      );
+    }
+    const unitPriceAt = (idx: number) => priced[idx]?.unitPrice ?? body.items[idx].price;
+
+    const items: OrderItem[] = body.items.map((i, idx) => ({
       templateId: Number(String(i.id).split("|")[0]),
       qty: i.qty,
-      unitPrice: i.price,
+      unitPrice: unitPriceAt(idx),
       name: i.name,
       storeName: i.storeName,
     }));
@@ -97,12 +108,12 @@ export async function POST(req: Request) {
             method: body.method,
             scheduled_for: body.scheduledFor || null,
             notes: body.notes || null,
-            total: body.items.reduce((s, i) => s + i.price * i.qty, 0),
+            total: priced.reduce((s, p) => s + p.unitPrice * p.qty, 0),
             prep_pos_order_ids: prepPosOrderIds,
-            items: body.items.map((i) => ({
+            items: body.items.map((i, idx) => ({
               name: i.name,
               qty: i.qty,
-              price: i.price,
+              price: unitPriceAt(idx),
               storeId: i.storeId || "",
               storeName: i.storeName,
               templateId: Number(String(i.id).split("|")[0]),
