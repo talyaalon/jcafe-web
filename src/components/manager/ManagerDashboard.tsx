@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   saveStoreHoursAction,
   toggleBannerAction,
@@ -194,7 +195,12 @@ export function ManagerDashboard({
 
                     <div className="flex justify-between items-start gap-3 flex-wrap">
                       <div>
-                        <span className="font-extrabold text-wine">{o.order_name || "—"}</span>
+                        <Link
+                          href={`/${locale}/manager/orders/${o.id}`}
+                          className="font-extrabold text-wine hover:underline"
+                        >
+                          {o.order_name || "—"}
+                        </Link>
                         <span className="text-xs text-ink/50 ms-2">{fmtDateTime(o.created_at)}</span>
                       </div>
                       <span className="font-extrabold text-ink">{formatTHB(o.total)}</span>

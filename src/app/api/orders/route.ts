@@ -74,6 +74,7 @@ export async function POST(req: Request) {
             items: body.items.map((i) => ({
               name: i.name,
               qty: i.qty,
+              price: i.price,
               storeId: i.storeId || "",
               storeName: i.storeName,
             })),

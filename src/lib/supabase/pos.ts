@@ -4,6 +4,7 @@ import { supabaseAdmin, supabaseConfigured } from "./server";
 export interface PosOrderItem {
   name: string;
   qty: number;
+  price?: number;
   storeId: string;
   storeName: string;
   status?: "pending" | "done" | "unavailable";
