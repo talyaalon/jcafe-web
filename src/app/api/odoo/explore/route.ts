@@ -20,6 +20,38 @@ export async function GET() {
     await safe("companies", () =>
       searchRead("res.company", [], ["id", "name", "parent_id"], { limit: 80 }),
     ),
+    await safe("recentPosOrder", () =>
+      searchRead(
+        "pos.order",
+        [["config_id", "in", [6, 34, 20]]],
+        ["id", "name", "pos_reference", "session_id", "config_id", "partner_id", "state", "amount_total", "amount_paid", "amount_tax", "company_id", "date_order", "lines"],
+        { limit: 2, order: "id desc" },
+      ),
+    ),
+    await safe("posOrderLineSample", () =>
+      searchRead(
+        "pos.order.line",
+        [],
+        ["id", "order_id", "product_id", "qty", "price_unit", "price_subtotal", "price_subtotal_incl", "full_product_name"],
+        { limit: 4, order: "id desc" },
+      ),
+    ),
+    await safe("prepModels", () =>
+      Promise.all([
+        executeKw<number>("pos_preparation_display.display", "search_count", [[]]).then((n) => ({ display: n })).catch((e) => ({ displayErr: String(e).slice(0, 60) })),
+        executeKw<number>("pos_preparation_display.order", "search_count", [[]]).then((n) => ({ order: n })).catch((e) => ({ orderErr: String(e).slice(0, 60) })),
+        executeKw<number>("pos_preparation_display.orderline", "search_count", [[]]).then((n) => ({ orderline: n })).catch((e) => ({ orderlineErr: String(e).slice(0, 60) })),
+        executeKw<number>("pos.prep.order", "search_count", [[]]).then((n) => ({ prepOrder: n })).catch((e) => ({ prepOrderErr: String(e).slice(0, 60) })),
+      ]),
+    ),
+    await safe("posConfigPrep", () =>
+      searchRead(
+        "pos.config",
+        [["id", "in", [6, 34, 20, 21]]],
+        ["id", "name", "company_id", "current_session_id", "pricelist_id"],
+        { limit: 10 },
+      ),
+    ),
     await safe("posCategories", () =>
       searchRead("pos.category", [], ["id", "name", "parent_id"], { limit: 200 }),
     ),

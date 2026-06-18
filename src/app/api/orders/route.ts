@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { findOrCreatePartner, createOrder, type OrderItem } from "@/lib/odoo/orders";
 import { getBranches, BRANCH_TAG } from "@/lib/odoo/branches";
+import { pushKitchenToPrep } from "@/lib/odoo/pos-prep";
 import { PHUKET_COMPANY_ID, PHUKET_PRICELIST_ID } from "@/lib/odoo/phuket";
 import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase/server";
 
@@ -34,15 +35,13 @@ export async function POST(req: Request) {
 
     // קביעת חברה + מחירון + תג סניף לפי companyId
     const companyId = Number(body.companyId) || PHUKET_COMPANY_ID;
-    // תג סניף נקי (Phuket / Bangkok / ...) + מחירון לפי הסניף
+    const branch = (await getBranches()).find((b) => b.companyId === companyId);
+    const branchConfigs = branch?.configs ?? [];
     let branchName = BRANCH_TAG[companyId] ?? "Phuket";
     let pricelistId = PHUKET_PRICELIST_ID;
-    if (companyId !== PHUKET_COMPANY_ID) {
-      const branch = (await getBranches()).find((b) => b.companyId === companyId);
-      if (branch) {
-        if (!BRANCH_TAG[companyId]) branchName = branch.name;
-        pricelistId = branch.configs.find((c) => c.pricelistId)?.pricelistId ?? PHUKET_PRICELIST_ID;
-      }
+    if (companyId !== PHUKET_COMPANY_ID && branch) {
+      if (!BRANCH_TAG[companyId]) branchName = branch.name;
+      pricelistId = branch.configs.find((c) => c.pricelistId)?.pricelistId ?? PHUKET_PRICELIST_ID;
     }
 
     const partnerId = await findOrCreatePartner(body.customer, branchName);
@@ -56,6 +55,24 @@ export async function POST(req: Request) {
     }));
 
     const order = await createOrder({ partnerId, items, notes: body.notes, companyId, pricelistId });
+
+    // דחיפת פריטי המטבח ל-Preparation Display של ODOO — best-effort, לא חוסם
+    try {
+      await pushKitchenToPrep({
+        items: body.items.map((i) => ({
+          templateId: Number(String(i.id).split("|")[0]),
+          qty: i.qty,
+          price: i.price,
+          name: i.name,
+          storeId: i.storeId || "",
+        })),
+        companyId,
+        configs: branchConfigs,
+        note: body.scheduledFor ? `Scheduled: ${body.scheduledFor}` : undefined,
+      });
+    } catch {
+      /* ignore — לא לשבור את ההזמנה */
+    }
 
     // שמירה למסכי הצוות (מלקט/מטבח) — best-effort, לא חוסם
     if (supabaseConfigured) {
