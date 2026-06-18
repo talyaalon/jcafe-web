@@ -193,6 +193,27 @@ export interface BranchBundle {
   products: Product[];
 }
 
+// רשימת מוצרי הסניף (לבחירת קישור באנר). מזהה בסיס (ללא וריאנט).
+export interface BranchProduct {
+  id: string;
+  nameHe: string;
+  nameEn: string;
+}
+export async function getBranchProducts(companyId: number): Promise<BranchProduct[]> {
+  const bundles = await getBranchData(companyId);
+  const seen = new Set<string>();
+  const out: BranchProduct[] = [];
+  for (const b of bundles) {
+    for (const p of b.products) {
+      const base = String(p.id).split("|")[0];
+      if (seen.has(base)) continue;
+      seen.add(base);
+      out.push({ id: base, nameHe: p.nameHe, nameEn: p.nameEn });
+    }
+  }
+  return out.sort((a, b) => a.nameEn.localeCompare(b.nameEn));
+}
+
 export async function getBranchData(companyId: number): Promise<BranchBundle[]> {
   const branch = (await getBranches()).find((b) => b.companyId === companyId);
   if (!branch) return [];

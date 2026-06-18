@@ -56,8 +56,7 @@ export async function addBannerAction(formData: FormData) {
     .insert({
       image_url,
       title: String(formData.get("title") ?? "").trim() || null,
-      link: String(formData.get("link") ?? "").trim() || null,
-      sort: Number(formData.get("sort") ?? 0) || 0,
+      product_id: String(formData.get("product_id") ?? "").trim() || null,
       active: true,
       branch: Number(formData.get("branch")) || 14,
     });
@@ -104,13 +103,12 @@ export async function saveDeliveryAction(formData: FormData) {
 export async function editBannerAction(formData: FormData) {
   const id = Number(formData.get("id"));
   if (!id) return;
-  await supabaseAdmin()
-    .from("banners")
-    .update({
-      title: String(formData.get("title") ?? "").trim() || null,
-      link: String(formData.get("link") ?? "").trim() || null,
-      sort: Number(formData.get("sort") ?? 0) || 0,
-    })
-    .eq("id", id);
+  const image_url = String(formData.get("image_url") ?? "").trim();
+  const patch: Record<string, unknown> = {
+    title: String(formData.get("title") ?? "").trim() || null,
+    product_id: String(formData.get("product_id") ?? "").trim() || null,
+  };
+  if (image_url) patch.image_url = image_url;
+  await supabaseAdmin().from("banners").update(patch).eq("id", id);
   revalidatePath("/", "layout");
 }

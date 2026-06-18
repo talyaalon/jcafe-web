@@ -5,12 +5,13 @@ import {
   saveStoreHoursAction,
   toggleBannerAction,
   deleteBannerAction,
-  editBannerAction,
   saveDeliveryAction,
 } from "@/app/[lang]/manager/actions";
 import type { DeliverySettings } from "@/lib/delivery";
 import { formatTHB } from "@/lib/format";
 import { BannerUploader } from "./BannerUploader";
+import { BannerEditor } from "./BannerEditor";
+import type { PickerProduct } from "./ProductPicker";
 import { SubmitButton } from "./SubmitButton";
 
 interface DayH {
@@ -31,6 +32,7 @@ export interface BannerRow {
   link: string | null;
   active: boolean;
   sort: number;
+  product_id?: string | null;
 }
 
 export interface OrderRow {
@@ -68,6 +70,7 @@ export function ManagerDashboard({
   delivery,
   orders,
   webCustomers,
+  products,
 }: {
   locale: "he" | "en";
   branch: number;
@@ -76,6 +79,7 @@ export function ManagerDashboard({
   delivery: DeliverySettings;
   orders: OrderRow[];
   webCustomers: WebCustomer[];
+  products: PickerProduct[];
 }) {
   const he = locale === "he";
   const [section, setSection] = useState<Section>("orders");
@@ -368,42 +372,12 @@ export function ManagerDashboard({
                   <img src={b.image_url} alt={b.title ?? ""} className="w-full h-28 object-cover" />
                   <div className="p-3">
                     {editId === b.id ? (
-                      <form action={editBannerAction} className="space-y-2">
-                        <input type="hidden" name="id" value={b.id} />
-                        <input
-                          name="title"
-                          defaultValue={b.title ?? ""}
-                          placeholder={he ? "כותרת" : "Title"}
-                          className="w-full border border-line rounded px-2 py-1 text-sm"
-                        />
-                        <input
-                          name="link"
-                          defaultValue={b.link ?? ""}
-                          placeholder={he ? "קישור" : "Link"}
-                          className="w-full border border-line rounded px-2 py-1 text-sm"
-                        />
-                        <input
-                          name="sort"
-                          type="number"
-                          defaultValue={b.sort}
-                          className="w-20 border border-line rounded px-2 py-1 text-sm"
-                        />
-                        <div className="flex gap-2 items-center">
-                          <SubmitButton
-                            className="bg-wine text-white text-xs font-bold rounded px-3 py-1.5"
-                            savedLabel={he ? "✓" : "✓"}
-                          >
-                            {he ? "שמור" : "Save"}
-                          </SubmitButton>
-                          <button
-                            type="button"
-                            onClick={() => setEditId(null)}
-                            className="text-xs text-ink/50"
-                          >
-                            {he ? "ביטול" : "Cancel"}
-                          </button>
-                        </div>
-                      </form>
+                      <BannerEditor
+                        banner={b}
+                        products={products}
+                        he={he}
+                        onDone={() => setEditId(null)}
+                      />
                     ) : (
                       <>
                         <div className="font-bold text-sm text-ink truncate">{b.title || "—"}</div>
@@ -441,7 +415,7 @@ export function ManagerDashboard({
             </div>
 
             <div className="max-w-lg">
-              <BannerUploader he={he} branch={branch} />
+              <BannerUploader he={he} branch={branch} products={products} />
             </div>
           </section>
         )}
