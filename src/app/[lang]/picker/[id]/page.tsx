@@ -7,7 +7,7 @@ import { syncActiveKitchenStatuses } from "@/lib/odoo/prep-sync";
 import { formatTHB } from "@/lib/format";
 import { ManagerLogin } from "@/components/manager/ManagerLogin";
 import { AutoRefresh } from "@/components/AutoRefresh";
-import { setItemStatus, scanNextGrocery, archiveOrder } from "@/lib/staff/actions";
+import { setItemStatus, scanNextGrocery, readyForPickupAction } from "@/lib/staff/actions";
 
 export default async function PickerDetail({
   params,
@@ -195,20 +195,40 @@ export default async function PickerDetail({
             </div>
           </div>
 
-          <form action={archiveOrder} className="mt-4">
-            <input type="hidden" name="id" value={order.id} />
-            <input type="hidden" name="board" value="pos" />
-            <button
-              disabled={!allReady}
-              className={`w-full font-extrabold rounded-xl py-3 ${
-                allReady
-                  ? "bg-wine text-white hover:bg-wine-hover"
-                  : "bg-ink/15 text-ink/40 cursor-not-allowed"
-              }`}
-            >
-              {allReady ? (he ? "מוכן לאיסוף ✓" : "Ready for pickup ✓") : `${he ? "נעול" : "Locked"} — ${done}/${total}`}
-            </button>
-          </form>
+          {order.pos_status === "done" || order.courier_status === "requested" ? (
+            <div className="mt-4 rounded-xl bg-green-50 border border-brand-green p-3 text-center">
+              <div className="font-extrabold text-brand-green">
+                {he ? "✅ נשלחה בקשת שליח" : "✅ Courier requested"}
+              </div>
+              <div className="text-[12px] text-ink/60 mt-1">
+                {order.method === "delivery"
+                  ? he
+                    ? "ההזמנה נכנסה למערכת ShipDay ונשלחה בקשת שליח."
+                    : "Order sent to ShipDay — courier requested."
+                  : he
+                    ? "ההזמנה מוכנה לאיסוף ע״י הלקוח (נרשמה ב-ShipDay)."
+                    : "Ready for customer pickup (logged in ShipDay)."}
+              </div>
+            </div>
+          ) : (
+            <form action={readyForPickupAction} className="mt-4">
+              <input type="hidden" name="id" value={order.id} />
+              <button
+                disabled={!allReady}
+                className={`w-full font-extrabold rounded-xl py-3 ${
+                  allReady
+                    ? "bg-wine text-white hover:bg-wine-hover"
+                    : "bg-ink/15 text-ink/40 cursor-not-allowed"
+                }`}
+              >
+                {allReady
+                  ? he
+                    ? "מוכן לאיסוף ✓"
+                    : "Ready for pickup ✓"
+                  : `${he ? "נעול" : "Locked"} — ${done}/${total}`}
+              </button>
+            </form>
+          )}
           {order.notes && <div className="text-[11px] text-ink/50 mt-3">📝 {order.notes}</div>}
         </aside>
       </div>

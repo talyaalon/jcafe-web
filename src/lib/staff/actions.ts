@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { requestCourier } from "@/lib/shipday";
 
 export async function setPosStatus(formData: FormData) {
   const id = String(formData.get("id"));
@@ -54,5 +55,23 @@ export async function archiveOrder(formData: FormData) {
   const board = String(formData.get("board"));
   const field = board === "kitchen" ? "kitchen_status" : "pos_status";
   await supabaseAdmin().from("pos_orders").update({ [field]: "done" }).eq("id", id);
+  revalidatePath("/", "layout");
+}
+
+// "מוכן לאיסוף" — מסיים את הליקוט + שולח בקשת שליח ל-ShipDay (placeholder).
+export async function readyForPickupAction(formData: FormData) {
+  const id = String(formData.get("id"));
+  const sb = supabaseAdmin();
+  const { data } = await sb
+    .from("pos_orders")
+    .select("order_name,customer_name,phone")
+    .eq("id", id)
+    .maybeSingle();
+  await requestCourier({
+    orderName: (data?.order_name as string) ?? null,
+    customer: (data?.customer_name as string) ?? null,
+    phone: (data?.phone as string) ?? null,
+  });
+  await sb.from("pos_orders").update({ pos_status: "done", courier_status: "requested" }).eq("id", id);
   revalidatePath("/", "layout");
 }

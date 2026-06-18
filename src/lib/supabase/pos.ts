@@ -23,6 +23,7 @@ export interface PosOrder {
   items: PosOrderItem[];
   pos_status: string;
   kitchen_status: string;
+  courier_status?: string | null;
   created_at: string;
 }
 
