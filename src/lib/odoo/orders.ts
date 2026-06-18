@@ -37,21 +37,23 @@ async function ensureTag(name: string): Promise<number> {
   return id;
 }
 
-// בדיקת קיום לקוח לפי טלפון → מייל; יצירה אם לא קיים.
+// בדיקת קיום לקוח לפי מייל → טלפון; יצירה אם לא קיים.
+// מייל קודם — מזהה ייחודי יותר ללקוח (טלפון עלול להיות משותף למשפחה),
+// כך נמנע מיזוג של שני לקוחות שונים בעלי אותו טלפון.
 // תמיד מתייג: "Website" (לכל לקוחות האתר) + תג הסניף שממנו הגיע (Phuket / Samui / ...).
 export async function findOrCreatePartner(c: OrderCustomer, branch = "Phuket"): Promise<number> {
   const [websiteTag, branchTag] = await Promise.all([ensureTag("Website"), ensureTag(branch)]);
   const tagIds = [websiteTag, branchTag];
 
   let existing: { id: number } | undefined;
-  if (c.phone) {
-    existing = (
-      await searchRead<{ id: number }>("res.partner", [["phone", "=", c.phone]], ["id"], { limit: 1 })
-    )[0];
-  }
-  if (!existing && c.email) {
+  if (c.email) {
     existing = (
       await searchRead<{ id: number }>("res.partner", [["email", "=", c.email]], ["id"], { limit: 1 })
+    )[0];
+  }
+  if (!existing && c.phone) {
+    existing = (
+      await searchRead<{ id: number }>("res.partner", [["phone", "=", c.phone]], ["id"], { limit: 1 })
     )[0];
   }
 

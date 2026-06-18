@@ -14,6 +14,10 @@ import {
 } from "@/lib/supabase/data";
 import { Storefront, type StoreBundle } from "@/components/Storefront";
 
+// ISR — קאש את הקטלוג ל-5 דקות (פוחת עומס על ODOO + TTFB מהיר).
+// שינויי מנהל (באנרים/מיתוג/שעות) קוראים revalidatePath ומרעננים מיד.
+export const revalidate = 300;
+
 export default async function Page({
   params,
 }: {

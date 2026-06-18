@@ -40,7 +40,8 @@ export async function getPosOrders(): Promise<PosOrder[]> {
       .order("created_at", { ascending: false })
       .limit(80);
     return (data as PosOrder[]) ?? [];
-  } catch {
+  } catch (e) {
+    console.error("[getPosOrders]", e);
     return [];
   }
 }
@@ -50,7 +51,8 @@ export async function getPosOrder(id: string): Promise<PosOrder | null> {
   try {
     const { data } = await supabaseAdmin().from("pos_orders").select("*").eq("id", id).maybeSingle();
     return (data as PosOrder) ?? null;
-  } catch {
+  } catch (e) {
+    console.error("[getPosOrder]", e);
     return null;
   }
 }

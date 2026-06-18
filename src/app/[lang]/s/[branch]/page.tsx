@@ -12,6 +12,9 @@ import {
 } from "@/lib/supabase/data";
 import { Storefront, type StoreBundle } from "@/components/Storefront";
 
+// ISR — קאש קטלוג הסניף ל-5 דקות; שינויי מנהל מרעננים דרך revalidatePath.
+export const revalidate = 300;
+
 export default async function BranchStore({
   params,
 }: {
