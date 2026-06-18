@@ -97,6 +97,7 @@ export async function POST(req: Request) {
               price: i.price,
               storeId: i.storeId || "",
               storeName: i.storeName,
+              templateId: Number(String(i.id).split("|")[0]),
             })),
           });
       } catch {
