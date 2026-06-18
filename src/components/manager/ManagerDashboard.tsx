@@ -11,6 +11,7 @@ import {
 import type { DeliverySettings } from "@/lib/delivery";
 import { formatTHB } from "@/lib/format";
 import { BannerUploader } from "./BannerUploader";
+import { SubmitButton } from "./SubmitButton";
 
 interface DayH {
   day_of_week: number;
@@ -337,9 +338,12 @@ export function ManagerDashboard({
                       );
                     })}
                   </div>
-                  <button className="mt-3 bg-wine text-white font-bold rounded-lg px-4 py-2 text-sm hover:bg-wine-hover">
+                  <SubmitButton
+                    className="mt-3 bg-wine text-white font-bold rounded-lg px-4 py-2 text-sm hover:bg-wine-hover"
+                    savedLabel={he ? "נשמר ✓" : "Saved ✓"}
+                  >
                     {he ? "שמירה" : "Save"}
-                  </button>
+                  </SubmitButton>
                 </form>
               ))}
             </div>
@@ -385,9 +389,12 @@ export function ManagerDashboard({
                           className="w-20 border border-line rounded px-2 py-1 text-sm"
                         />
                         <div className="flex gap-2 items-center">
-                          <button className="bg-wine text-white text-xs font-bold rounded px-3 py-1.5">
+                          <SubmitButton
+                            className="bg-wine text-white text-xs font-bold rounded px-3 py-1.5"
+                            savedLabel={he ? "✓" : "✓"}
+                          >
                             {he ? "שמור" : "Save"}
-                          </button>
+                          </SubmitButton>
                           <button
                             type="button"
                             onClick={() => setEditId(null)}
@@ -470,9 +477,12 @@ export function ManagerDashboard({
                   />
                 </div>
               ))}
-              <button className="bg-wine text-white font-bold rounded-lg px-4 py-2 text-sm hover:bg-wine-hover">
+              <SubmitButton
+                className="bg-wine text-white font-bold rounded-lg px-4 py-2 text-sm hover:bg-wine-hover"
+                savedLabel={he ? "נשמר ✓" : "Saved ✓"}
+              >
                 {he ? "שמירה" : "Save"}
-              </button>
+              </SubmitButton>
             </form>
           </section>
         )}
