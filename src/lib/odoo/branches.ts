@@ -187,17 +187,18 @@ async function loadProducts(
     ["company_id", "in", [companyId, false]],
     ["pos_categ_ids", "in", effective],
   ];
-  // חנות מטבח (מסעדה) — להחריג מוצרי קטלוג המכולת (eCommerce) כדי שלא יופיעו
-  // פריטי מדף (כמו במבה) בתפריט המטבח. הם שייכים לחנות "מכולת" בלבד.
+  // חנות מטבח (מסעדה) — רק מנות מתפריט (קטגוריות ציבוריות של תפריט).
+  // מוצרי חנות/מדף (כמו במבה, גזר, פמוטים) משויכים לקטגוריות POS משותפות אך
+  // אינם תחת שורש תפריט — לכן יוחרגו מהמטבח ויופיעו רק ב"מכולת".
   if (cfg.type === "kitchen") {
-    domain.push("!", ["public_categ_ids", "child_of", GROCERY_ROOT_IDS]);
+    domain.push(["public_categ_ids", "child_of", MENU_ROOT_IDS]);
   }
   const [rows, prices] = await Promise.all([
     searchRead<ProdRow>(
       "product.template",
       domain,
       ["id", "name", "list_price", "qty_available", "pos_categ_ids", "barcode", "description_sale"],
-      { limit: 200, order: "name asc" },
+      { limit: 500, order: "name asc" },
     ),
     pricelistMap(cfg.pricelistId),
   ]);
@@ -240,8 +241,11 @@ export interface BranchBundle {
   products: Product[];
 }
 
-// קטגוריות ציבוריות עליונות של המכולת (eCommerce) — ללא "J Cafe Menu".
+// קטגוריות ציבוריות עליונות של המכולת (eCommerce) — מוצרי חנות/מצרכים.
 export const GROCERY_ROOT_IDS = [28, 49, 60, 45, 41, 56, 81, 80];
+// שורשי קטגוריות התפריט (מנות מסעדה) — J Cafe / Jdeli / Catering / Habsarit / Jcafe Phuket.
+// כל מוצר תחת שורש כזה = מנת מסעדה (מטבח); כל השאר שמפורסם = מוצר חנות (מכולת).
+export const MENU_ROOT_IDS = [64, 233, 248, 299, 321];
 
 // חנות מכולת מבוססת eCommerce (website_published) לסניף — כל קטלוג המצרכים.
 export async function getGroceryBundle(
@@ -281,16 +285,18 @@ export async function getGroceryBundle(
   );
   const heCatName = new Map(heCats.map((c) => [c.id, c.name]));
 
+  // מכולת = כל מוצר מפורסם שאינו מנת תפריט (כולל מוצרי מדף ללא קטגוריית מכולת).
   const rows = await searchRead<ProdRow & { public_categ_ids: number[] }>(
     "product.template",
     [
       ["website_published", "=", true],
       ["sale_ok", "=", true],
       ["company_id", "in", [companyId, false]],
-      ["public_categ_ids", "child_of", GROCERY_ROOT_IDS],
+      "!",
+      ["public_categ_ids", "child_of", MENU_ROOT_IDS],
     ],
     ["id", "name", "list_price", "qty_available", "public_categ_ids", "barcode", "description_sale"],
-    { limit: 600, order: "name asc" },
+    { limit: 1500, order: "name asc" },
   );
   if (!rows.length) return null;
 
@@ -306,15 +312,15 @@ export async function getGroceryBundle(
   const heMap = new Map(heRows.map((r) => [r.id, { name: r.name, desc: stripHtml(r.description_sale) }]));
 
   const STORE_ID = "grocery";
+  const SHOP_CAT = "shop"; // קטגוריית ברירת מחדל למוצרי מדף ללא קטגוריית מכולת
   const products: Product[] = rows
     .filter((r) => !isTakeAway(r.name))
     .map((r) => {
-      const root =
-        (r.public_categ_ids ?? []).map(rootOf).find((x) => x != null) ?? GROCERY_ROOT_IDS[0];
+      const root = (r.public_categ_ids ?? []).map(rootOf).find((x) => x != null) ?? null;
       return {
         id: String(r.id),
         storeId: STORE_ID,
-        categoryId: String(root),
+        categoryId: root != null ? String(root) : SHOP_CAT,
         nameHe: heMap.get(r.id)?.name ?? r.name,
         nameEn: r.name,
         descHe: heMap.get(r.id)?.desc || undefined,
@@ -328,14 +334,21 @@ export async function getGroceryBundle(
       } satisfies Product;
     });
 
-  const usedRoots = [...new Set(products.map((p) => Number(p.categoryId)))];
-  const categories: Category[] = usedRoots.map((id) => ({
-    id: String(id),
-    slug: String(id),
-    nameHe: heCatName.get(id) ?? nameOf.get(id) ?? "",
-    nameEn: nameOf.get(id) ?? "",
-    storeId: STORE_ID,
-  }));
+  // קטגוריות בשימוש (שורשי מכולת + ברירת מחדל "מוצרי חנות"), עם "חנות" בסוף.
+  const usedIds = [...new Set(products.map((p) => p.categoryId))];
+  const categories: Category[] = usedIds
+    .map((id) =>
+      id === SHOP_CAT
+        ? { id: SHOP_CAT, slug: SHOP_CAT, nameHe: "מוצרי חנות", nameEn: "Shop Items", storeId: STORE_ID }
+        : {
+            id,
+            slug: id,
+            nameHe: heCatName.get(Number(id)) ?? nameOf.get(Number(id)) ?? "",
+            nameEn: nameOf.get(Number(id)) ?? "",
+            storeId: STORE_ID,
+          },
+    )
+    .sort((a, b) => (a.id === SHOP_CAT ? 1 : b.id === SHOP_CAT ? -1 : 0));
 
   const store: Store = {
     id: STORE_ID,

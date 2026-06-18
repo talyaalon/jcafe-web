@@ -241,7 +241,9 @@ export function Storefront({
         <Pill active={activeCat === null} onClick={() => setActiveCat(null)}>
           {dict.filters.all}
         </Pill>
-        {bundle?.categories.map((c) => (
+        {bundle?.categories
+          .filter((c) => bundle.products.some((p) => p.categoryId === c.id))
+          .map((c) => (
           <Pill key={c.id} active={activeCat === c.id} onClick={() => setActiveCat(c.id)}>
             {cName(c)}
           </Pill>

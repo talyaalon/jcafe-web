@@ -7,7 +7,7 @@ import {
   phuketStores,
   findPhuketStore,
 } from "./phuket";
-import { GROCERY_ROOT_IDS } from "./branches";
+import { MENU_ROOT_IDS } from "./branches";
 
 // ===== OdooApiAdapter — שואב נתונים אמיתיים מ-ODOO (JSON-RPC) =====
 // חנות = pos.config של פוקט. מוצרי החנות = available_in_pos + חברה [14,false]
@@ -163,9 +163,9 @@ export const odooApiAdapter: OdooAdapter = {
       ["company_id", "in", [PHUKET_COMPANY_ID, false]],
       ["pos_categ_ids", "in", catFilter],
     ];
-    // חנות מטבח — להחריג מוצרי קטלוג המכולת (כמו במבה) שלא שייכים לתפריט המסעדה.
+    // חנות מטבח — רק מנות מתפריט (קטגוריות ציבוריות של תפריט), ללא מוצרי חנות.
     if (store.type === "kitchen") {
-      domain.push("!", ["public_categ_ids", "child_of", GROCERY_ROOT_IDS]);
+      domain.push(["public_categ_ids", "child_of", MENU_ROOT_IDS]);
     }
     if (search?.trim()) {
       const q = search.trim();
