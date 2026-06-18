@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { findOrCreatePartner, createOrder, type OrderItem } from "@/lib/odoo/orders";
+import { getBranches } from "@/lib/odoo/branches";
+import { PHUKET_COMPANY_ID, PHUKET_PRICELIST_ID } from "@/lib/odoo/phuket";
 import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase/server";
 
 interface OrderBody {
@@ -16,6 +18,7 @@ interface OrderBody {
   notes?: string;
   scheduledFor?: string;
   branch?: string;
+  companyId?: number;
 }
 
 // POST /api/orders — יוצר לקוח + Sales Order ב-ODOO.
@@ -29,7 +32,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Missing customer details" }, { status: 400 });
     }
 
-    const partnerId = await findOrCreatePartner(body.customer, body.branch || "Phuket");
+    // קביעת חברה + מחירון + תג סניף לפי companyId
+    const companyId = Number(body.companyId) || PHUKET_COMPANY_ID;
+    let branchName = "Phuket";
+    let pricelistId = PHUKET_PRICELIST_ID;
+    if (companyId !== PHUKET_COMPANY_ID) {
+      const branch = (await getBranches()).find((b) => b.companyId === companyId);
+      if (branch) {
+        branchName = branch.name;
+        pricelistId = branch.configs.find((c) => c.pricelistId)?.pricelistId ?? PHUKET_PRICELIST_ID;
+      }
+    }
+
+    const partnerId = await findOrCreatePartner(body.customer, branchName);
 
     const items: OrderItem[] = body.items.map((i) => ({
       templateId: Number(String(i.id).split("|")[0]),
@@ -39,7 +54,7 @@ export async function POST(req: Request) {
       storeName: i.storeName,
     }));
 
-    const order = await createOrder({ partnerId, items, notes: body.notes });
+    const order = await createOrder({ partnerId, items, notes: body.notes, companyId, pricelistId });
 
     // שמירה למסכי הצוות (מלקט/מטבח) — best-effort, לא חוסם
     if (supabaseConfigured) {

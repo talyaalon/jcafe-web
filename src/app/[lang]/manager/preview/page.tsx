@@ -4,6 +4,7 @@ import { isLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
 import { isAdmin } from "@/lib/admin/session";
 import { getBranches, getBranchData } from "@/lib/odoo/branches";
+import { getActiveBanners, getStoreOpenStatus } from "@/lib/supabase/data";
 import { ManagerLogin } from "@/components/manager/ManagerLogin";
 import { BranchSelect } from "@/components/manager/BranchSelect";
 import { Storefront, type StoreBundle } from "@/components/Storefront";
@@ -38,7 +39,15 @@ export default async function ManagerPreview({
     branches[0]?.companyId ??
     0;
 
-  const bundles = (current ? await getBranchData(current) : []) as StoreBundle[];
+  const rawBundles = current ? await getBranchData(current) : [];
+  // הוספת סטטוס פתוח/סגור לכל חנות (לפי שעות הסניף)
+  const bundles = (await Promise.all(
+    rawBundles.map(async (b) => ({
+      ...b,
+      open: (await getStoreOpenStatus(b.store.id)).open,
+    })),
+  )) as StoreBundle[];
+  const banners = await getActiveBanners(current);
   const branchName = branches.find((b) => b.companyId === current)?.name ?? "";
 
   return (
@@ -68,7 +77,14 @@ export default async function ManagerPreview({
             {he ? "אין חנויות פעילות בסניף זה." : "No active stores for this branch."}
           </p>
         ) : (
-          <Storefront key={current} locale={locale} dict={dict} data={bundles} banners={[]} />
+          <Storefront
+            key={current}
+            locale={locale}
+            dict={dict}
+            data={bundles}
+            banners={banners}
+            branch={current}
+          />
         )}
       </div>
     </div>

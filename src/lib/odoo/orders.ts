@@ -154,8 +154,16 @@ export async function createOrder(opts: {
   partnerId: number;
   items: OrderItem[];
   notes?: string;
+  companyId?: number;
+  pricelistId?: number;
 }): Promise<CreatedOrder> {
-  const { partnerId, items, notes } = opts;
+  const {
+    partnerId,
+    items,
+    notes,
+    companyId = PHUKET_COMPANY_ID,
+    pricelistId = PHUKET_PRICELIST_ID,
+  } = opts;
   const tmplIds = [...new Set(items.map((i) => i.templateId))];
   const vmap = await variantMap(tmplIds);
 
@@ -181,8 +189,8 @@ export async function createOrder(opts: {
 
   const soVals: Record<string, unknown> = {
     partner_id: partnerId,
-    company_id: PHUKET_COMPANY_ID,
-    pricelist_id: PHUKET_PRICELIST_ID,
+    company_id: companyId,
+    pricelist_id: pricelistId,
     order_line: lines,
   };
   if (notes) soVals.note = notes;

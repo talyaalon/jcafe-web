@@ -22,7 +22,7 @@ type Payment = "card" | "qr" | "cod";
 const PHUKET_CITIES = ["Phuket Town", "Rawai", "Patong", "Kata", "Karon", "Chalong", "Kathu", "Thalang"];
 
 export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionary }) {
-  const { items, subtotal, remove, clear } = useCart();
+  const { items, subtotal, remove, clear, branchCompany } = useCart();
   const { user } = useAuth();
   const statuses = useStoreStatus();
   const storeHours = useStoreHours();
@@ -172,7 +172,7 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
           storeId: i.store.id,
         })),
         method,
-        branch: "Phuket",
+        companyId: branchCompany,
         scheduledFor: scheduledAt || undefined,
         notes:
           [

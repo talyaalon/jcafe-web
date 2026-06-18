@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
 import type { Store, Category, Product } from "@/lib/odoo/types";
@@ -36,11 +36,13 @@ export function Storefront({
   dict,
   data,
   banners = [],
+  branch = 14,
 }: {
   locale: Locale;
   dict: Dictionary;
   data: StoreBundle[];
   banners?: Banner[];
+  branch?: number;
 }) {
   const [activeStoreId, setActiveStoreId] = useState(data[0]?.store.id ?? "");
   const [activeCat, setActiveCat] = useState<string | null>(null);
@@ -60,7 +62,11 @@ export function Storefront({
   };
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const { addItem, count } = useCart();
+  const { addItem, count, setBranchCompany } = useCart();
+  // עדכון הסניף הפעיל בעגלה לפי הסטורפרונט שנצפה (לצורך הזמנה נכונה)
+  useEffect(() => {
+    setBranchCompany(branch);
+  }, [branch, setBranchCompany]);
   const stores = data.map((d) => d.store);
   const openMap = new Map(data.map((d) => [d.store.id, d.open ?? true]));
   const bundle = data.find((d) => d.store.id === activeStoreId) ?? data[0];
