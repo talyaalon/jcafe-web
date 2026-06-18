@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { FavoritesMenu } from "./FavoritesMenu";
 
 export function Header({
   locale,
@@ -31,7 +32,7 @@ export function Header({
       {/* logo */}
       <Link href={`/${locale}`} className="leading-none flex-none">
         <span className="block text-2xl font-extrabold text-ink">{dict.brand.name} Phuket</span>
-        <span className="block text-[8px] tracking-[3px] text-wine font-bold">
+        <span className="block text-[11px] tracking-[2px] text-wine font-bold">
           {dict.brand.tagline}
         </span>
       </Link>
@@ -44,7 +45,20 @@ export function Header({
           placeholder={dict.header.search}
           className="flex-1 px-3 py-2 text-sm outline-none bg-transparent"
         />
-        <span className="px-3 grid place-items-center bg-soft text-wine">🔍</span>
+        <span className="px-3 grid place-items-center bg-soft text-ink/40">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+        </span>
       </div>
 
       {/* nav */}
@@ -62,6 +76,7 @@ export function Header({
             {user ? displayName || (locale === "he" ? "החשבון שלי" : "Account") : dict.header.login}
           </span>
         </Link>
+        <FavoritesMenu locale={locale} />
         <button onClick={onCartClick} className="relative flex items-center gap-1.5 hover:text-wine">
           <span className="text-lg">🛒</span>
           <span className="hidden sm:inline">{locale === "he" ? "עגלה" : "Cart"}</span>
