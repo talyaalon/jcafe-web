@@ -1,11 +1,12 @@
 "use server";
 
 import crypto from "node:crypto";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { ADMIN_COOKIE, createAdminToken, SESSION_MAX_AGE } from "@/lib/admin/session";
+import { rateLimit } from "@/lib/rate-limit";
 
 // השוואת סיסמה בזמן-קבוע (מונע timing attack)
 function passwordOk(pw: string): boolean {
@@ -25,6 +26,11 @@ export async function loginAction(
   const pw = String(formData.get("password") ?? "");
   const lang = String(formData.get("lang") ?? "he");
   const next = String(formData.get("next") ?? "");
+  // הגבלת קצב נגד brute-force: עד 10 ניסיונות לכל IP ב-10 דקות
+  const ip = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  if (!rateLimit(`login:${ip}`, 10, 10 * 60 * 1000)) {
+    return { error: "rate" };
+  }
   if (passwordOk(pw)) {
     const c = await cookies();
     c.set(ADMIN_COOKIE, createAdminToken(), {

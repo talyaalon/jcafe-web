@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { searchRead } from "@/lib/odoo/client";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 // GET /api/products/options?tmplId=123
 // מחזיר את קבוצות התוספות (bread/toppings) של מוצר, מ-product attributes ב-ODOO.
@@ -12,9 +13,14 @@ interface Group {
 }
 
 export async function GET(req: Request) {
+  if (!rateLimit(`options:${clientIp(req)}`, 120, 60 * 1000)) {
+    return NextResponse.json({ ok: false, groups: [] }, { status: 429 });
+  }
   try {
     const tmplId = Number(new URL(req.url).searchParams.get("tmplId"));
-    if (!tmplId) return NextResponse.json({ ok: true, groups: [] });
+    if (!Number.isInteger(tmplId) || tmplId <= 0) {
+      return NextResponse.json({ ok: true, groups: [] });
+    }
 
     const lines = await searchRead<{ id: number; attribute_id: [number, string] }>(
       "product.template.attribute.line",
@@ -57,9 +63,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ ok: true, groups });
   } catch (e) {
-    return NextResponse.json(
-      { ok: false, error: e instanceof Error ? e.message : String(e), groups: [] },
-      { status: 200 },
-    );
+    console.error("[products/options]", e);
+    return NextResponse.json({ ok: false, groups: [] }, { status: 200 });
   }
 }

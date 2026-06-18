@@ -133,8 +133,9 @@ export async function POST(req: Request) {
       confirmed: order.confirmed,
     });
   } catch (e) {
+    console.error("[orders]", e);
     return NextResponse.json(
-      { ok: false, error: e instanceof Error ? e.message : String(e) },
+      { ok: false, error: "Order failed, please try again" },
       { status: 500 },
     );
   }

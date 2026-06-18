@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { searchRead } from "@/lib/odoo/client";
+import { isAdmin } from "@/lib/admin/session";
 
 // סקירה בסיסית של מבנה ה-POS (סניפים → חנויות) — לאבחון בלבד.
 // GET /api/odoo/explore
@@ -12,6 +13,10 @@ async function safe<T>(label: string, fn: () => Promise<T>) {
 }
 
 export async function GET() {
+  // אבחון בלבד — חושף מבנה חברות/חנויות, לכן מוגן למנהל בלבד.
+  if (!(await isAdmin())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   const results = Object.assign(
     {},
     await safe("posConfigs", () =>
