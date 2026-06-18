@@ -8,6 +8,7 @@ import {
   findPhuketStore,
 } from "./phuket";
 import { MENU_ROOT_IDS } from "./branches";
+import { buildPricer } from "./pricelist";
 
 // ===== OdooApiAdapter — שואב נתונים אמיתיים מ-ODOO (JSON-RPC) =====
 // חנות = pos.config של פוקט. מוצרי החנות = available_in_pos + חברה [14,false]
@@ -31,6 +32,7 @@ interface PosProductRow {
   list_price: number;
   qty_available: number;
   pos_categ_ids: number[];
+  categ_id: [number, string] | false;
   barcode: string | false;
   type: string;
   description_sale: string | false;
@@ -46,7 +48,6 @@ function stripHtml(v: string | false): string {
 
 // ===== קאשים בזיכרון התהליך =====
 const allowedCategsCache = new Map<number, number[]>();
-let pricelistMap: Map<number, number> | null = null;
 
 async function allowedCategs(posConfigId: number): Promise<number[]> {
   const cached = allowedCategsCache.get(posConfigId);
@@ -72,30 +73,6 @@ async function effectiveCategs(
   if (store.type === "grocery") return allowed;
   const shared = new Set(await allowedCategs(groceryConfigId()));
   return allowed.filter((id) => !shared.has(id));
-}
-
-// מפת מחירון פוקט: product_tmpl_id → fixed_price (כל הפריטים מסוג fixed per-product).
-async function getPricelistMap(): Promise<Map<number, number>> {
-  if (pricelistMap) return pricelistMap;
-  const items = await searchRead<{
-    product_tmpl_id: [number, string] | false;
-    fixed_price: number;
-  }>(
-    "product.pricelist.item",
-    [
-      ["pricelist_id", "=", PHUKET_PRICELIST_ID],
-      ["applied_on", "=", "1_product"],
-      ["compute_price", "=", "fixed"],
-    ],
-    ["product_tmpl_id", "fixed_price"],
-    { limit: 5000 },
-  );
-  const map = new Map<number, number>();
-  for (const it of items) {
-    if (it.product_tmpl_id) map.set(it.product_tmpl_id[0], it.fixed_price);
-  }
-  pricelistMap = map;
-  return map;
 }
 
 // סינון כפילויות Dine-in / TakeAway (משאירים את גרסת ה-Dine-in/בסיס).
@@ -172,14 +149,14 @@ export const odooApiAdapter: OdooAdapter = {
       domain.push("|", ["name", "ilike", q], ["barcode", "ilike", q]);
     }
 
-    const [rows, priceMap] = await Promise.all([
+    const [rows, pricer] = await Promise.all([
       searchRead<PosProductRow>(
         "product.template",
         domain,
-        ["id", "name", "list_price", "qty_available", "pos_categ_ids", "barcode", "type", "description_sale"],
+        ["id", "name", "list_price", "qty_available", "pos_categ_ids", "categ_id", "barcode", "type", "description_sale"],
         { limit: 120, order: "name asc" },
       ),
-      getPricelistMap(),
+      buildPricer(PHUKET_PRICELIST_ID),
     ]);
 
     const filtered = rows.filter((r) => !isTakeAway(r.name));
@@ -198,7 +175,7 @@ export const odooApiAdapter: OdooAdapter = {
         nameEn: r.name,
         descHe: heMap.get(r.id)?.desc || undefined,
         descEn: stripHtml(r.description_sale) || undefined,
-        price: priceMap.get(r.id) ?? r.list_price ?? 0,
+        price: pricer(r.id, r.categ_id ? r.categ_id[0] : null, r.list_price ?? 0),
         qtyAvailable: isKitchen
           ? null
           : typeof r.qty_available === "number"

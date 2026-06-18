@@ -1,6 +1,7 @@
 import "server-only";
 import type { Store, Category, Product } from "./types";
 import { searchRead } from "./client";
+import { buildPricer } from "./pricelist";
 
 // ===== טעינת נתוני סניף גנרית (כל חברה/סניף עם ה-POS שלה) =====
 // סניף = res.company; חנות = pos.config של אותה חברה (עם מחירון).
@@ -111,7 +112,6 @@ export async function getBranches(): Promise<Branch[]> {
 
 // ===== קאשים =====
 const allowedCache = new Map<number, number[]>();
-const pricelistCache = new Map<number, Map<number, number>>();
 
 async function allowedCategs(configId: number): Promise<number[]> {
   const c = allowedCache.get(configId);
@@ -124,26 +124,6 @@ async function allowedCategs(configId: number): Promise<number[]> {
   const ids = rows[0]?.iface_available_categ_ids ?? [];
   allowedCache.set(configId, ids);
   return ids;
-}
-
-async function pricelistMap(pricelistId: number | null): Promise<Map<number, number>> {
-  if (!pricelistId) return new Map();
-  const cached = pricelistCache.get(pricelistId);
-  if (cached) return cached;
-  const items = await searchRead<{ product_tmpl_id: [number, string] | false; fixed_price: number }>(
-    "product.pricelist.item",
-    [
-      ["pricelist_id", "=", pricelistId],
-      ["applied_on", "=", "1_product"],
-      ["compute_price", "=", "fixed"],
-    ],
-    ["product_tmpl_id", "fixed_price"],
-    { limit: 5000 },
-  );
-  const map = new Map<number, number>();
-  for (const it of items) if (it.product_tmpl_id) map.set(it.product_tmpl_id[0], it.fixed_price);
-  pricelistCache.set(pricelistId, map);
-  return map;
 }
 
 async function loadCategories(catIds: number[], storeId: string): Promise<Category[]> {
@@ -172,6 +152,7 @@ interface ProdRow {
   list_price: number;
   qty_available: number;
   pos_categ_ids: number[];
+  categ_id: [number, string] | false;
   barcode: string | false;
   description_sale: string | false;
 }
@@ -193,14 +174,14 @@ async function loadProducts(
   if (cfg.type === "kitchen") {
     domain.push(["public_categ_ids", "child_of", MENU_ROOT_IDS]);
   }
-  const [rows, prices] = await Promise.all([
+  const [rows, pricer] = await Promise.all([
     searchRead<ProdRow>(
       "product.template",
       domain,
-      ["id", "name", "list_price", "qty_available", "pos_categ_ids", "barcode", "description_sale"],
+      ["id", "name", "list_price", "qty_available", "pos_categ_ids", "categ_id", "barcode", "description_sale"],
       { limit: 500, order: "name asc" },
     ),
-    pricelistMap(cfg.pricelistId),
+    buildPricer(cfg.pricelistId),
   ]);
 
   const filtered = rows.filter((r) => !isTakeAway(r.name));
@@ -225,7 +206,7 @@ async function loadProducts(
       nameEn: r.name,
       descHe: heMap.get(r.id)?.desc || undefined,
       descEn: stripHtml(r.description_sale) || undefined,
-      price: prices.get(r.id) ?? r.list_price ?? 0,
+      price: pricer(r.id, r.categ_id ? r.categ_id[0] : null, r.list_price ?? 0),
       qtyAvailable: isKitchen ? null : typeof r.qty_available === "number" ? r.qty_available : null,
       isKitchen,
       isFeatured: false,
@@ -295,13 +276,13 @@ export async function getGroceryBundle(
       "!",
       ["public_categ_ids", "child_of", MENU_ROOT_IDS],
     ],
-    ["id", "name", "list_price", "qty_available", "public_categ_ids", "barcode", "description_sale"],
+    ["id", "name", "list_price", "qty_available", "public_categ_ids", "categ_id", "barcode", "description_sale"],
     { limit: 1500, order: "name asc" },
   );
   if (!rows.length) return null;
 
-  const [prices, heRows] = await Promise.all([
-    pricelistMap(pricelistId),
+  const [pricer, heRows] = await Promise.all([
+    buildPricer(pricelistId),
     searchRead<{ id: number; name: string; description_sale: string | false }>(
       "product.template",
       [["id", "in", rows.map((r) => r.id)]],
@@ -325,7 +306,7 @@ export async function getGroceryBundle(
         nameEn: r.name,
         descHe: heMap.get(r.id)?.desc || undefined,
         descEn: stripHtml(r.description_sale) || undefined,
-        price: prices.get(r.id) ?? r.list_price ?? 0,
+        price: pricer(r.id, r.categ_id ? r.categ_id[0] : null, r.list_price ?? 0),
         qtyAvailable: typeof r.qty_available === "number" ? r.qty_available : null,
         isKitchen: false,
         isFeatured: false,
