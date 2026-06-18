@@ -160,7 +160,8 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
           body: JSON.stringify({
             items: items.map((i) => ({ id: i.product.id, qty: i.qty, price: i.product.price })),
             companyId: orderCompany,
-            deliveryFee,
+            method,
+            city: method === "delivery" ? form.city : undefined,
             idempotencyKey,
           }),
         });

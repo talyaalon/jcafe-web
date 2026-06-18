@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { findOrCreatePartner, createOrder, type OrderItem } from "@/lib/odoo/orders";
 import { getBranches, BRANCH_TAG } from "@/lib/odoo/branches";
 import { priceOrderItems } from "@/lib/odoo/pricelist";
+import { serverDeliveryFee } from "@/lib/delivery-server";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "");
 import { pushKitchenToPrep } from "@/lib/odoo/pos-prep";
@@ -69,6 +70,13 @@ export async function POST(req: Request) {
     }
     const unitPriceAt = (idx: number) => priced[idx]?.unitPrice ?? body.items[idx].price;
     const productsTotal = priced.reduce((s, p) => s + p.unitPrice * p.qty, 0);
+    const { fee: deliveryFee } = await serverDeliveryFee(
+      companyId,
+      body.method,
+      String(body.customer.city ?? ""),
+      productsTotal,
+    );
+    const grandTotal = productsTotal + deliveryFee;
 
     // אימות תשלום בכרטיס מול Stripe (לפני יצירת לקוח/הזמנה) — מונע "לקוח שמשקר ששילם".
     if (body.payment === "card") {
@@ -171,7 +179,7 @@ export async function POST(req: Request) {
             method: body.method,
             scheduled_for: body.scheduledFor || null,
             notes: body.notes || null,
-            total: priced.reduce((s, p) => s + p.unitPrice * p.qty, 0),
+            total: grandTotal,
             prep_pos_order_ids: prepPosOrderIds,
             items: body.items.map((i, idx) => ({
               name: i.name,

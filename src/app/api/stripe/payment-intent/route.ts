@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getBranches } from "@/lib/odoo/branches";
 import { priceOrderItems, type OrderItemIn } from "@/lib/odoo/pricelist";
+import { serverDeliveryFee } from "@/lib/delivery-server";
 import { PHUKET_COMPANY_ID, PHUKET_PRICELIST_ID } from "@/lib/odoo/phuket";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "");
@@ -9,7 +10,8 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "");
 interface Body {
   items?: OrderItemIn[];
   companyId?: number;
-  deliveryFee?: number;
+  method?: "delivery" | "pickup";
+  city?: string;
   idempotencyKey?: string;
   amount?: number; // תאימות לאחור בלבד
 }
@@ -30,8 +32,16 @@ export async function POST(req: Request) {
         pricelistId = branch?.configs.find((c) => c.pricelistId)?.pricelistId ?? PHUKET_PRICELIST_ID;
       }
       const { total } = await priceOrderItems(pricelistId, body.items);
-      const delivery = Math.max(0, Number(body.deliveryFee) || 0);
-      baht = total + delivery;
+      const { fee, blocked } = await serverDeliveryFee(
+        companyId,
+        body.method,
+        String(body.city ?? ""),
+        total,
+      );
+      if (blocked) {
+        return NextResponse.json({ ok: false, error: "Delivery not available" }, { status: 400 });
+      }
+      baht = total + fee;
     } else {
       // נתיב ישן (ללא פריטים) — לא מאובטח; נשמר רק לתאימות.
       baht = Number(body.amount) || 0;
