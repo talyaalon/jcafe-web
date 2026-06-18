@@ -3,6 +3,7 @@ import Link from "next/link";
 import { isLocale, type Locale } from "@/i18n/config";
 import { isAdmin } from "@/lib/admin/session";
 import { getPosOrder, itemStatus, isGrocery } from "@/lib/supabase/pos";
+import { syncActiveKitchenStatuses } from "@/lib/odoo/prep-sync";
 import { formatTHB } from "@/lib/format";
 import { ManagerLogin } from "@/components/manager/ManagerLogin";
 import { AutoRefresh } from "@/components/AutoRefresh";
@@ -26,6 +27,7 @@ export default async function PickerDetail({
     );
   }
 
+  await syncActiveKitchenStatuses();
   const order = await getPosOrder(id);
   if (!order) {
     return (
@@ -132,9 +134,13 @@ export default async function PickerDetail({
                                 ? he
                                   ? "לא זמין"
                                   : "Unavailable"
-                                : he
-                                  ? "במטבח…"
-                                  : "In kitchen…"}
+                                : st === "preparing"
+                                  ? he
+                                    ? "בהכנה"
+                                    : "Preparing"
+                                  : he
+                                    ? "במטבח…"
+                                    : "In kitchen…"}
                           </span>
                         )}
                       </li>

@@ -7,7 +7,7 @@ export interface PosOrderItem {
   price?: number;
   storeId: string;
   storeName: string;
-  status?: "pending" | "done" | "unavailable";
+  status?: "pending" | "preparing" | "done" | "unavailable";
 }
 
 export interface PosOrder {

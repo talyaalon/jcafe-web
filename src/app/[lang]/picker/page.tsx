@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { isLocale, type Locale } from "@/i18n/config";
 import { isAdmin } from "@/lib/admin/session";
 import { getPosOrders, itemStatus } from "@/lib/supabase/pos";
+import { syncActiveKitchenStatuses } from "@/lib/odoo/prep-sync";
 import { ManagerLogin } from "@/components/manager/ManagerLogin";
 import { PosFloor, type FloorOrder } from "@/components/staff/PosFloor";
 import { AutoRefresh } from "@/components/AutoRefresh";
@@ -24,6 +25,8 @@ export default async function PickerPage({ params }: { params: Promise<{ lang: s
     );
   }
 
+  // סנכרון סטטוס המטבח מ-ODOO לפני הצגה (בהכנה / מוכן)
+  await syncActiveKitchenStatuses();
   const orders = (await getPosOrders()).filter((o) => o.pos_status !== "done");
   const summaries: FloorOrder[] = orders.map((o) => ({
     id: o.id,

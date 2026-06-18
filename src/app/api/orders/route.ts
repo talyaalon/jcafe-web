@@ -57,8 +57,9 @@ export async function POST(req: Request) {
     const order = await createOrder({ partnerId, items, notes: body.notes, companyId, pricelistId });
 
     // דחיפת פריטי המטבח ל-Preparation Display של ODOO — best-effort, לא חוסם
+    let prepPosOrderIds: number[] = [];
     try {
-      await pushKitchenToPrep({
+      const prepResults = await pushKitchenToPrep({
         items: body.items.map((i) => ({
           templateId: Number(String(i.id).split("|")[0]),
           qty: i.qty,
@@ -70,6 +71,7 @@ export async function POST(req: Request) {
         configs: branchConfigs,
         note: body.scheduledFor ? `Scheduled: ${body.scheduledFor}` : undefined,
       });
+      prepPosOrderIds = prepResults.map((r) => r.posOrderId);
     } catch {
       /* ignore — לא לשבור את ההזמנה */
     }
@@ -88,6 +90,7 @@ export async function POST(req: Request) {
             scheduled_for: body.scheduledFor || null,
             notes: body.notes || null,
             total: body.items.reduce((s, i) => s + i.price * i.qty, 0),
+            prep_pos_order_ids: prepPosOrderIds,
             items: body.items.map((i) => ({
               name: i.name,
               qty: i.qty,
