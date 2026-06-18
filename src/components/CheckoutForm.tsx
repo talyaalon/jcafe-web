@@ -89,6 +89,11 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
   }
   const total = subtotal + deliveryFee;
 
+  // חברת ההזמנה נגזרת מהפריטים עצמם (לא מהסניף הגלובלי) — מונע ערבוב סניפים ב-ODOO.
+  const itemBranches = [...new Set(items.map((i) => i.branch).filter((b): b is number => !!b))];
+  const mixedBranches = itemBranches.length > 1;
+  const orderCompany = itemBranches[0] ?? branchCompany;
+
   // חנויות סגורות שיש להן פריטים בעגלה → חוסם הזמנה רגילה, מחייב תזמון.
   const closedStoreIds = [...new Set(items.map((i) => i.store.id))].filter(
     (id) => statuses[id] === false,
@@ -118,6 +123,14 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
   }
 
   async function placeOrder() {
+    if (mixedBranches) {
+      setApiError(
+        he
+          ? "העגלה מכילה מוצרים מכמה סניפים. ניתן להזמין מסניף אחד בכל פעם — הסר/י מוצרים מהסניף השני."
+          : "Your cart has products from multiple branches. Please order from one branch at a time.",
+      );
+      return;
+    }
     const e: Record<string, boolean> = {};
     if (method === "delivery") {
       if (!form.city.trim()) e.city = true;
@@ -173,7 +186,7 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
           barcode: i.product.barcode,
         })),
         method,
-        companyId: branchCompany,
+        companyId: orderCompany,
         scheduledFor: scheduledAt || undefined,
         notes:
           [
@@ -460,6 +473,14 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
                 </p>
               )}
 
+              {mixedBranches && (
+                <div className="text-[13px] text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                  {he
+                    ? "העגלה מכילה מוצרים מכמה סניפים. ניתן להזמין מסניף אחד בכל פעם — הסר/י מוצרים מהסניף השני."
+                    : "Your cart has products from multiple branches. Please order from one branch at a time."}
+                </div>
+              )}
+
               {hasClosed ? (
                 <>
                   <div className="text-[13px] text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
@@ -497,7 +518,7 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
                       {scheduleError && <p className="text-red-600 text-xs">{scheduleError}</p>}
                       <button
                         onClick={placeOrder}
-                        disabled={submitting || !scheduledAt || !!scheduleError || deliveryBlocked}
+                        disabled={submitting || !scheduledAt || !!scheduleError || deliveryBlocked || mixedBranches}
                         className="w-full bg-wine text-white font-extrabold rounded-xl py-3 hover:bg-wine-hover disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {submitting ? "…" : he ? "אשר הזמנה מתוזמנת" : "Confirm scheduled order"}
@@ -508,7 +529,7 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
               ) : (
                 <button
                   onClick={placeOrder}
-                  disabled={submitting || deliveryBlocked}
+                  disabled={submitting || deliveryBlocked || mixedBranches}
                   className="w-full bg-wine text-white font-extrabold rounded-xl py-3.5 hover:bg-wine-hover disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {submitting ? "…" : t.placeOrder}

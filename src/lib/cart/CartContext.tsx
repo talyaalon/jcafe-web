@@ -21,6 +21,8 @@ export interface CartItem {
   product: Product;
   qty: number;
   store: CartStoreRef;
+  /** הסניף (company id) שממנו נוסף הפריט — קובע את חברת ההזמנה ב-ODOO */
+  branch: number;
 }
 
 interface CartContextValue {
@@ -43,7 +45,8 @@ interface CartContextValue {
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
-const STORAGE_KEY = "jcafe_cart";
+// v2 — פריטים מתויגים כעת בסניף (branch). עגלות ישנות (ללא תיוג) נזרקות.
+const STORAGE_KEY = "jcafe_cart_v2";
 
 const SCHED_KEY = "jcafe_schedules";
 const BRANCH_KEY = "jcafe_branch";
@@ -93,9 +96,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const ex = prev.find((i) => i.product.id === product.id);
       if (ex)
         return prev.map((i) =>
-          i.product.id === product.id ? { ...i, qty: i.qty + qty } : i,
+          i.product.id === product.id ? { ...i, qty: i.qty + qty, branch: branchCompany } : i,
         );
-      return [...prev, { product, qty, store }];
+      return [...prev, { product, qty, store, branch: branchCompany }];
     });
   };
 
