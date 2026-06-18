@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { getDictionary } from "@/i18n/dictionaries";
 import { isLocale, type Locale } from "@/i18n/config";
 import { getBranches, getBranchData, resolveBranch } from "@/lib/odoo/branches";
-import { getActiveBanners, getStoreOpenStatus } from "@/lib/supabase/data";
+import { getActiveBanners, getStoreOpenStatus, getBranchBranding } from "@/lib/supabase/data";
 import { Storefront, type StoreBundle } from "@/components/Storefront";
 
 export default async function BranchStore({
@@ -28,7 +28,23 @@ export default async function BranchStore({
     getActiveBanners(companyId),
   ]);
 
+  const bb = await getBranchBranding(companyId);
+  const branding = bb
+    ? {
+        name: locale === "he" ? bb.name_he : bb.name_en,
+        tagline: locale === "he" ? bb.tagline_he : bb.tagline_en,
+        logoUrl: bb.logo_url,
+      }
+    : null;
+
   return (
-    <Storefront locale={locale} dict={dict} data={data} banners={banners} branch={companyId} />
+    <Storefront
+      locale={locale}
+      dict={dict}
+      data={data}
+      banners={banners}
+      branch={companyId}
+      branding={branding}
+    />
   );
 }

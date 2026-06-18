@@ -4,7 +4,7 @@ import { isLocale, type Locale } from "@/i18n/config";
 import { odoo } from "@/lib/odoo/adapter";
 import { findPhuketStore, PHUKET_COMPANY_ID, PHUKET_PRICELIST_ID } from "@/lib/odoo/phuket";
 import { getGroceryBundle } from "@/lib/odoo/branches";
-import { getActiveBanners, getStoreOpenStatus } from "@/lib/supabase/data";
+import { getActiveBanners, getStoreOpenStatus, getBranchBranding } from "@/lib/supabase/data";
 import { Storefront, type StoreBundle } from "@/components/Storefront";
 
 export default async function Page({
@@ -46,5 +46,16 @@ export default async function Page({
     getActiveBanners(),
   ]);
 
-  return <Storefront locale={locale} dict={dict} data={data} banners={banners} />;
+  const b = await getBranchBranding(PHUKET_COMPANY_ID);
+  const branding = b
+    ? {
+        name: locale === "he" ? b.name_he : b.name_en,
+        tagline: locale === "he" ? b.tagline_he : b.tagline_en,
+        logoUrl: b.logo_url,
+      }
+    : null;
+
+  return (
+    <Storefront locale={locale} dict={dict} data={data} banners={banners} branding={branding} />
+  );
 }

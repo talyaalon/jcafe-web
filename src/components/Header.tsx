@@ -7,6 +7,13 @@ import { FavoritesMenu } from "./FavoritesMenu";
 import { LangMenu } from "./LangMenu";
 import { AccountMenu } from "./AccountMenu";
 
+export interface HeaderBrand {
+  name?: string | null;
+  tagline?: string | null;
+  logoUrl?: string | null;
+  href?: string;
+}
+
 export function Header({
   locale,
   dict,
@@ -14,6 +21,7 @@ export function Header({
   onSearch,
   cartCount,
   onCartClick,
+  brand,
 }: {
   locale: Locale;
   dict: Dictionary;
@@ -21,14 +29,27 @@ export function Header({
   onSearch: (value: string) => void;
   cartCount: number;
   onCartClick: () => void;
+  brand?: HeaderBrand;
 }) {
+  const brandName = brand?.name?.trim() || `${dict.brand.name} Phuket`;
+  const brandTagline = brand?.tagline?.trim() || dict.brand.tagline;
   return (
     <header className="flex items-center gap-4 px-4 sm:px-7 py-3 bg-white border-b border-line">
       {/* logo */}
-      <Link href={`/${locale}`} className="leading-none flex-none">
-        <span className="block text-2xl font-extrabold text-ink">{dict.brand.name} Phuket</span>
-        <span className="block text-[11px] tracking-[2px] text-wine font-bold">
-          {dict.brand.tagline}
+      <Link href={brand?.href ?? `/${locale}`} className="leading-none flex-none flex items-center gap-2.5">
+        {brand?.logoUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={brand.logoUrl}
+            alt={brandName}
+            className="h-11 w-11 rounded-lg object-cover flex-none"
+          />
+        )}
+        <span>
+          <span className="block text-2xl font-extrabold text-ink leading-none">{brandName}</span>
+          <span className="block text-[11px] tracking-[2px] text-wine font-bold mt-0.5">
+            {brandTagline}
+          </span>
         </span>
       </Link>
 

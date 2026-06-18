@@ -31,18 +31,26 @@ export interface Banner {
 
 type SortKey = "featured" | "newest" | "nameAsc" | "priceLow" | "priceHigh";
 
+export interface StoreBranding {
+  name?: string | null;
+  tagline?: string | null;
+  logoUrl?: string | null;
+}
+
 export function Storefront({
   locale,
   dict,
   data,
   banners = [],
   branch = 14,
+  branding,
 }: {
   locale: Locale;
   dict: Dictionary;
   data: StoreBundle[];
   banners?: Banner[];
   branch?: number;
+  branding?: StoreBranding | null;
 }) {
   const [activeStoreId, setActiveStoreId] = useState(data[0]?.store.id ?? "");
   const [activeCat, setActiveCat] = useState<string | null>(null);
@@ -135,6 +143,11 @@ export function Storefront({
         onSearch={setSearch}
         cartCount={count}
         onCartClick={() => setDrawerOpen(true)}
+        brand={
+          branding
+            ? { name: branding.name, tagline: branding.tagline, logoUrl: branding.logoUrl }
+            : undefined
+        }
       />
 
       {/* store tabs — centered, underline active (Figma style) */}

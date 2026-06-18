@@ -14,6 +14,7 @@ import type { DeliverySettings } from "@/lib/delivery";
 import { formatTHB } from "@/lib/format";
 import { BannerUploader } from "./BannerUploader";
 import { BannerEditor } from "./BannerEditor";
+import { BrandingEditor, type Branding } from "./BrandingEditor";
 import type { PickerProduct } from "./ProductPicker";
 import { SubmitButton } from "./SubmitButton";
 
@@ -71,13 +72,14 @@ export interface ZoneRow {
   fee: number;
 }
 
-type Section = "orders" | "customers" | "hours" | "banners" | "delivery";
+type Section = "orders" | "customers" | "hours" | "banners" | "branding" | "delivery";
 
 export function ManagerDashboard({
   locale,
   branch,
   stores,
   banners,
+  branding,
   delivery,
   orders,
   webCustomers,
@@ -88,6 +90,7 @@ export function ManagerDashboard({
   branch: number;
   stores: StoreHours[];
   banners: BannerRow[];
+  branding: Branding | null;
   delivery: DeliverySettings;
   orders: OrderRow[];
   webCustomers: WebCustomer[];
@@ -108,6 +111,7 @@ export function ManagerDashboard({
     { key: "customers" as const, icon: "🧑‍🤝‍🧑", label: he ? "לקוחות" : "Customers" },
     { key: "hours" as const, icon: "🕐", label: he ? "שעות פעילות" : "Store hours" },
     { key: "banners" as const, icon: "🖼️", label: he ? "באנרים ומבצעים" : "Banners & promos" },
+    { key: "branding" as const, icon: "🎨", label: he ? "שם ולוגו" : "Name & logo" },
     { key: "delivery" as const, icon: "🛵", label: he ? "משלוחים" : "Delivery" },
   ];
   const soon = he ? ["מוצרים", "הגדרות"] : ["Products", "Settings"];
@@ -458,6 +462,20 @@ export function ManagerDashboard({
             <div className="max-w-lg">
               <BannerUploader he={he} branch={branch} products={products} />
             </div>
+          </section>
+        )}
+
+        {section === "branding" && (
+          <section>
+            <h2 className="text-xl font-extrabold text-wine mb-1">
+              {he ? "שם ולוגו" : "Name & logo"}
+            </h2>
+            <p className="text-ink/55 text-sm mb-4">
+              {he
+                ? "שם החנות והלוגו שיופיעו בפינה העליונה של חזית הסניף (במקום THE KOSHER PLACE / J CAFE PHUKET). השאירו ריק לברירת המחדל."
+                : "Store name and logo shown in the top corner of this branch's storefront (instead of THE KOSHER PLACE / J CAFE PHUKET). Leave blank for the default."}
+            </p>
+            <BrandingEditor he={he} branch={branch} branding={branding} />
           </section>
         )}
 

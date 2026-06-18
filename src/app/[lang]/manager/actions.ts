@@ -120,6 +120,29 @@ export async function deleteZoneAction(formData: FormData) {
   revalidatePath("/", "layout");
 }
 
+export async function saveBrandingAction(formData: FormData) {
+  const branch = Number(formData.get("branch")) || 14;
+  const txt = (k: string) => {
+    const v = String(formData.get(k) ?? "").trim();
+    return v || null;
+  };
+  await supabaseAdmin()
+    .from("branch_branding")
+    .upsert(
+      {
+        branch,
+        name_he: txt("name_he"),
+        name_en: txt("name_en"),
+        tagline_he: txt("tagline_he"),
+        tagline_en: txt("tagline_en"),
+        logo_url: txt("logo_url"),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "branch" },
+    );
+  revalidatePath("/", "layout");
+}
+
 export async function editBannerAction(formData: FormData) {
   const id = Number(formData.get("id"));
   if (!id) return;

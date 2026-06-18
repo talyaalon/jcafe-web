@@ -70,6 +70,24 @@ export async function getAllBanners(branch = 14): Promise<BannerRow[]> {
   return (data as BannerRow[]) ?? [];
 }
 
+export interface BranchBranding {
+  name_he: string | null;
+  name_en: string | null;
+  tagline_he: string | null;
+  tagline_en: string | null;
+  logo_url: string | null;
+}
+
+export async function getBranchBranding(branch = 14): Promise<BranchBranding | null> {
+  if (!supabaseConfigured) return null;
+  const { data } = await supabasePublic
+    .from("branch_branding")
+    .select("name_he,name_en,tagline_he,tagline_en,logo_url")
+    .eq("branch", branch)
+    .maybeSingle();
+  return (data as BranchBranding) ?? null;
+}
+
 export interface DayHours {
   day_of_week: number;
   closed: boolean;

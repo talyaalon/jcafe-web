@@ -4,7 +4,7 @@ import { isLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
 import { isAdmin } from "@/lib/admin/session";
 import { getBranches, getBranchData } from "@/lib/odoo/branches";
-import { getActiveBanners, getStoreOpenStatus } from "@/lib/supabase/data";
+import { getActiveBanners, getStoreOpenStatus, getBranchBranding } from "@/lib/supabase/data";
 import { ManagerLogin } from "@/components/manager/ManagerLogin";
 import { BranchSelect } from "@/components/manager/BranchSelect";
 import { Storefront, type StoreBundle } from "@/components/Storefront";
@@ -48,6 +48,14 @@ export default async function ManagerPreview({
     })),
   )) as StoreBundle[];
   const banners = await getActiveBanners(current);
+  const bb = current ? await getBranchBranding(current) : null;
+  const branding = bb
+    ? {
+        name: he ? bb.name_he : bb.name_en,
+        tagline: he ? bb.tagline_he : bb.tagline_en,
+        logoUrl: bb.logo_url,
+      }
+    : null;
   const branchName = branches.find((b) => b.companyId === current)?.name ?? "";
 
   return (
@@ -84,6 +92,7 @@ export default async function ManagerPreview({
             data={bundles}
             banners={banners}
             branch={current}
+            branding={branding}
           />
         )}
       </div>
