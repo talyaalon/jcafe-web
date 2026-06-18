@@ -48,6 +48,15 @@ export interface OrderRow {
   created_at: string;
 }
 
+export interface WebCustomer {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  branches: string[];
+  created: string;
+}
+
 type Section = "orders" | "customers" | "hours" | "banners" | "delivery";
 
 export function ManagerDashboard({
@@ -56,16 +65,19 @@ export function ManagerDashboard({
   banners,
   delivery,
   orders,
+  webCustomers,
 }: {
   locale: "he" | "en";
   stores: StoreHours[];
   banners: BannerRow[];
   delivery: DeliverySettings;
   orders: OrderRow[];
+  webCustomers: WebCustomer[];
 }) {
   const he = locale === "he";
   const [section, setSection] = useState<Section>("orders");
   const [editId, setEditId] = useState<number | null>(null);
+  const [custBranch, setCustBranch] = useState("all");
   const days = he
     ? ["א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "שבת"]
     : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -84,29 +96,11 @@ export function ManagerDashboard({
   const todayKey = new Date().toDateString();
   const todayCount = orders.filter((o) => new Date(o.created_at).toDateString() === todayKey).length;
 
-  const custMap = new Map<
-    string,
-    { name: string; phone: string; email: string; count: number; total: number; last: string }
-  >();
-  for (const o of orders) {
-    const key = o.phone || o.email || o.customer_name || o.id;
-    const ex = custMap.get(key);
-    if (ex) {
-      ex.count++;
-      ex.total += Number(o.total || 0);
-      if (o.created_at > ex.last) ex.last = o.created_at;
-    } else {
-      custMap.set(key, {
-        name: o.customer_name ?? "—",
-        phone: o.phone ?? "",
-        email: o.email ?? "",
-        count: 1,
-        total: Number(o.total || 0),
-        last: o.created_at,
-      });
-    }
-  }
-  const customers = [...custMap.values()].sort((a, b) => b.last.localeCompare(a.last));
+  // לקוחות אתר מ-ODOO + סינון לפי סניף
+  const branchTags = [...new Set(webCustomers.flatMap((c) => c.branches))].sort();
+  const custFiltered = webCustomers.filter(
+    (c) => custBranch === "all" || c.branches.includes(custBranch),
+  );
 
   const fmtDateTime = (iso: string) => {
     const d = new Date(iso);
@@ -224,37 +218,64 @@ export function ManagerDashboard({
 
         {section === "customers" && (
           <section>
-            <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center justify-between mb-1 gap-3 flex-wrap">
               <h2 className="text-xl font-extrabold text-wine">{he ? "לקוחות" : "Customers"}</h2>
-              <span className="text-xs text-ink/45">
-                {customers.length} {he ? "לקוחות" : "customers"}
-              </span>
+              <div className="flex items-center gap-2">
+                <select
+                  value={custBranch}
+                  onChange={(e) => setCustBranch(e.target.value)}
+                  className="border border-line rounded-lg px-2 py-1 text-sm"
+                >
+                  <option value="all">{he ? "כל הסניפים" : "All branches"}</option>
+                  {branchTags.map((b) => (
+                    <option key={b} value={b}>
+                      {b}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs text-ink/45">{custFiltered.length}</span>
+              </div>
             </div>
             <p className="text-ink/55 text-sm mb-4">
-              {he ? "לקוחות שביצעו הזמנות (לפי טלפון/אימייל)." : "Customers who placed orders (by phone/email)."}
+              {he
+                ? "כל הלקוחות שנוצרו דרך האתר ב-ODOO (אנשי קשר), עם תג הסניף שממנו הגיעו."
+                : "All customers created via the site in ODOO contacts, tagged by origin branch."}
             </p>
-            {customers.length === 0 ? (
+            {custFiltered.length === 0 ? (
               <p className="text-ink/40 text-sm">{he ? "אין לקוחות עדיין." : "No customers yet."}</p>
             ) : (
-              <div className="bg-white border border-line rounded-xl overflow-x-auto">
+              <div className="bg-white border border-line rounded-xl overflow-x-auto shadow-sm">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-ink/60 bg-soft">
                       <th className="text-start font-bold p-3">{he ? "שם" : "Name"}</th>
                       <th className="text-start font-bold p-3">{he ? "טלפון" : "Phone"}</th>
                       <th className="text-start font-bold p-3">{he ? "אימייל" : "Email"}</th>
-                      <th className="text-start font-bold p-3">{he ? "הזמנות" : "Orders"}</th>
-                      <th className="text-start font-bold p-3">{he ? "סה״כ" : "Total"}</th>
+                      <th className="text-start font-bold p-3">{he ? "סניף" : "Branch"}</th>
+                      <th className="text-start font-bold p-3">{he ? "נוצר" : "Created"}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {customers.map((c, i) => (
-                      <tr key={i} className="border-t border-line">
+                    {custFiltered.map((c) => (
+                      <tr key={c.id} className="border-t border-line">
                         <td className="p-3 font-semibold text-ink">{c.name}</td>
                         <td className="p-3 text-ink/70">{c.phone || "—"}</td>
                         <td className="p-3 text-ink/70">{c.email || "—"}</td>
-                        <td className="p-3 text-ink/70">{c.count}</td>
-                        <td className="p-3 font-bold text-wine">{formatTHB(c.total)}</td>
+                        <td className="p-3">
+                          {c.branches.length ? (
+                            c.branches.map((b) => (
+                              <span
+                                key={b}
+                                className="inline-block text-[11px] font-bold bg-wine/10 text-wine rounded-full px-2 py-0.5 me-1"
+                              >
+                                {b}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-ink/40">—</span>
+                          )}
+                        </td>
+                        <td className="p-3 text-ink/55 text-[12px]">{c.created?.slice(0, 10)}</td>
                       </tr>
                     ))}
                   </tbody>

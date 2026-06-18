@@ -152,6 +152,7 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
           storeId: i.store.id,
         })),
         method,
+        branch: "Phuket",
         scheduledFor: scheduledAt || undefined,
         notes:
           [

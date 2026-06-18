@@ -15,6 +15,7 @@ interface OrderBody {
   method?: "delivery" | "pickup";
   notes?: string;
   scheduledFor?: string;
+  branch?: string;
 }
 
 // POST /api/orders — יוצר לקוח + Sales Order ב-ODOO.
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Missing customer details" }, { status: 400 });
     }
 
-    const partnerId = await findOrCreatePartner(body.customer);
+    const partnerId = await findOrCreatePartner(body.customer, body.branch || "Phuket");
 
     const items: OrderItem[] = body.items.map((i) => ({
       templateId: Number(String(i.id).split("|")[0]),
