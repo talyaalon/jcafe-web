@@ -9,6 +9,7 @@ import {
   saveDeliveryAction,
   addZoneAction,
   deleteZoneAction,
+  setBannerEnabledAction,
 } from "@/app/[lang]/manager/actions";
 import type { DeliverySettings } from "@/lib/delivery";
 import { formatTHB } from "@/lib/format";
@@ -84,6 +85,7 @@ export function ManagerDashboard({
   branch,
   stores,
   banners,
+  bannerSettings,
   branding,
   brandStores,
   storeBranding,
@@ -97,6 +99,7 @@ export function ManagerDashboard({
   branch: number;
   stores: StoreHours[];
   banners: BannerRow[];
+  bannerSettings: Record<string, boolean>;
   branding: Branding | null;
   brandStores: StoreBrandingInfo[];
   storeBranding: Record<string, StoreBrandingValue>;
@@ -419,6 +422,39 @@ export function ManagerDashboard({
                 : "Banners appear on the homepage above categories (on 'All')."}
             </p>
 
+            {/* תצוגת באנרים — הפעלה/כיבוי פר סניף ופר חנות */}
+            <div className="bg-white border border-line rounded-xl p-4 mb-5 max-w-lg">
+              <h3 className="font-bold text-ink mb-1">
+                {he ? "תצוגת באנרים" : "Banner visibility"}
+              </h3>
+              <p className="text-ink/55 text-[13px] mb-3">
+                {he
+                  ? "החליטו אם להציג באנרים — לכל הסניף, ולכל חנות בנפרד."
+                  : "Choose whether to show banners — for the whole branch, and per store."}
+              </p>
+              <BannerToggle
+                branch={branch}
+                storeId="*"
+                label={he ? "כל הסניף (ראשי)" : "Whole branch (master)"}
+                enabled={bannerSettings["*"] ?? true}
+                onLabel={he ? "מוצג" : "Shown"}
+                offLabel={he ? "מוסתר" : "Hidden"}
+                emphasize
+              />
+              {brandStores.map((s) => (
+                <BannerToggle
+                  key={s.id}
+                  branch={branch}
+                  storeId={s.id}
+                  label={`${s.type === "grocery" ? "🛒" : "🍳"} ${he ? s.nameHe : s.nameEn}`}
+                  enabled={bannerSettings[s.id] ?? true}
+                  onLabel={he ? "מוצג" : "Shown"}
+                  offLabel={he ? "מוסתר" : "Hidden"}
+                  dimmed={(bannerSettings["*"] ?? true) === false}
+                />
+              ))}
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
               {banners.map((b) => (
                 <div key={b.id} className="bg-white border border-line rounded-xl overflow-hidden">
@@ -628,5 +664,59 @@ export function ManagerDashboard({
         )}
       </main>
     </div>
+  );
+}
+
+function BannerToggle({
+  branch,
+  storeId,
+  label,
+  enabled,
+  onLabel,
+  offLabel,
+  emphasize,
+  dimmed,
+}: {
+  branch: number;
+  storeId: string;
+  label: string;
+  enabled: boolean;
+  onLabel: string;
+  offLabel: string;
+  emphasize?: boolean;
+  dimmed?: boolean;
+}) {
+  return (
+    <form
+      action={setBannerEnabledAction}
+      className={`flex items-center justify-between gap-3 py-2 ${
+        emphasize ? "border-b border-line mb-1" : "border-b border-line/40 last:border-0"
+      }`}
+    >
+      <span
+        className={`text-sm ${emphasize ? "font-bold text-ink" : "text-ink/80"} ${
+          dimmed ? "opacity-40" : ""
+        }`}
+      >
+        {label}
+      </span>
+      <input type="hidden" name="branch" value={branch} />
+      <input type="hidden" name="store_id" value={storeId} />
+      <input type="hidden" name="enabled" value={String(!enabled)} />
+      <button
+        type="submit"
+        title={dimmed ? "" : undefined}
+        className={`inline-flex items-center gap-1.5 h-7 rounded-full px-3 text-xs font-bold border transition ${
+          enabled
+            ? "bg-brand-green/15 text-brand-green border-brand-green/40 hover:bg-brand-green/25"
+            : "bg-ink/5 text-ink/50 border-line hover:bg-ink/10"
+        }`}
+      >
+        <span
+          className={`w-2 h-2 rounded-full ${enabled ? "bg-brand-green" : "bg-ink/30"}`}
+        />
+        {enabled ? onLabel : offLabel}
+      </button>
+    </form>
   );
 }

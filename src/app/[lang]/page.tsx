@@ -10,6 +10,7 @@ import {
   getStoreOpenStatus,
   getBranchBranding,
   getStoreBranding,
+  getBannerSettings,
 } from "@/lib/supabase/data";
 import { Storefront, type StoreBundle } from "@/components/Storefront";
 
@@ -58,6 +59,15 @@ export default async function Page({
     id === "grocery" ? "grocery" : String(findPhuketStore(id)?.posConfigId ?? id),
   );
 
+  // הגדרות באנרים — מנוהלות לפי מזהה pos.config; ב-/he החנויות הן slug, אז ממפים.
+  const rawBanner = await getBannerSettings(PHUKET_COMPANY_ID);
+  const bannerSettings: Record<string, boolean> = { "*": rawBanner["*"] ?? true };
+  for (const s of stores) {
+    const cfg = findPhuketStore(s.id)?.posConfigId;
+    const key = s.id === "grocery" ? "grocery" : cfg != null ? String(cfg) : s.id;
+    if (rawBanner[key] !== undefined) bannerSettings[s.id] = rawBanner[key];
+  }
+
   const b = await getBranchBranding(PHUKET_COMPANY_ID);
   const branding = b
     ? {
@@ -68,6 +78,13 @@ export default async function Page({
     : null;
 
   return (
-    <Storefront locale={locale} dict={dict} data={data} banners={banners} branding={branding} />
+    <Storefront
+      locale={locale}
+      dict={dict}
+      data={data}
+      banners={banners}
+      branding={branding}
+      bannerSettings={bannerSettings}
+    />
   );
 }

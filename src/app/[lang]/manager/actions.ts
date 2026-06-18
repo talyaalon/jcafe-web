@@ -120,6 +120,19 @@ export async function deleteZoneAction(formData: FormData) {
   revalidatePath("/", "layout");
 }
 
+export async function setBannerEnabledAction(formData: FormData) {
+  const branch = Number(formData.get("branch")) || 14;
+  const store_id = String(formData.get("store_id") ?? "").trim() || "*";
+  const enabled = String(formData.get("enabled")) === "true";
+  await supabaseAdmin()
+    .from("banner_settings")
+    .upsert(
+      { branch, store_id, enabled, updated_at: new Date().toISOString() },
+      { onConflict: "branch,store_id" },
+    );
+  revalidatePath("/", "layout");
+}
+
 export async function saveBrandingAction(formData: FormData) {
   const branch = Number(formData.get("branch")) || 14;
   const txt = (k: string) => {

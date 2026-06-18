@@ -10,6 +10,7 @@ import {
   getStoreOpenStatus,
   getBranchBranding,
   getStoreBranding,
+  getBannerSettings,
 } from "@/lib/supabase/data";
 import { ManagerLogin } from "@/components/manager/ManagerLogin";
 import { BranchSelect } from "@/components/manager/BranchSelect";
@@ -56,6 +57,7 @@ export default async function ManagerPreview({
   const storeBranding = current ? await getStoreBranding(current) : {};
   const bundles = applyStoreBranding(bundles0, storeBranding, locale);
   const banners = await getActiveBanners(current);
+  const bannerSettings = current ? await getBannerSettings(current) : {};
   const bb = current ? await getBranchBranding(current) : null;
   const branding = bb
     ? {
@@ -101,6 +103,7 @@ export default async function ManagerPreview({
             banners={banners}
             branch={current}
             branding={branding}
+            bannerSettings={bannerSettings}
           />
         )}
       </div>

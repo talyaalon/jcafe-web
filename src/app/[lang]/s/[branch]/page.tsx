@@ -8,6 +8,7 @@ import {
   getStoreOpenStatus,
   getBranchBranding,
   getStoreBranding,
+  getBannerSettings,
 } from "@/lib/supabase/data";
 import { Storefront, type StoreBundle } from "@/components/Storefront";
 
@@ -34,6 +35,7 @@ export default async function BranchStore({
     getActiveBanners(companyId),
     getStoreBranding(companyId),
   ]);
+  const bannerSettings = await getBannerSettings(companyId);
   const data = applyStoreBranding(data0, storeBranding, locale);
 
   const bb = await getBranchBranding(companyId);
@@ -53,6 +55,7 @@ export default async function BranchStore({
       banners={banners}
       branch={companyId}
       branding={branding}
+      bannerSettings={bannerSettings}
     />
   );
 }

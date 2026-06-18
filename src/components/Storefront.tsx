@@ -44,6 +44,7 @@ export function Storefront({
   banners = [],
   branch = 14,
   branding,
+  bannerSettings = {},
 }: {
   locale: Locale;
   dict: Dictionary;
@@ -51,6 +52,7 @@ export function Storefront({
   banners?: Banner[];
   branch?: number;
   branding?: StoreBranding | null;
+  bannerSettings?: Record<string, boolean>;
 }) {
   const [activeStoreId, setActiveStoreId] = useState(data[0]?.store.id ?? "");
   const [activeCat, setActiveCat] = useState<string | null>(null);
@@ -186,8 +188,10 @@ export function Storefront({
         </div>
       )}
 
-      {/* banners — visible when no category filter (All) */}
-      {activeCat === null && (
+      {/* banners — visible when no category filter (All), ומופעלים לסניף+לחנות */}
+      {activeCat === null &&
+        (bannerSettings["*"] ?? true) &&
+        (bannerSettings[activeStoreId] ?? true) && (
         <div className="shrink-0 px-4 sm:px-7 pt-4">
           {banners.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">

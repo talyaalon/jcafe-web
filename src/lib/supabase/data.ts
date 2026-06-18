@@ -60,6 +60,23 @@ export interface BannerRow extends Banner {
   sort: number;
 }
 
+// הגדרות תצוגת באנרים: '*' = כל הסניף; אחרת מזהה חנות. חסר = מופעל (ברירת מחדל).
+export async function getBannerSettings(branch = 14): Promise<Record<string, boolean>> {
+  if (!supabaseConfigured) return {};
+  const { data } = await supabasePublic
+    .from("banner_settings")
+    .select("store_id,enabled")
+    .eq("branch", branch);
+  const map: Record<string, boolean> = {};
+  for (const r of (data as { store_id: string; enabled: boolean }[]) ?? []) map[r.store_id] = r.enabled;
+  return map;
+}
+
+// האם להציג באנרים לחנות מסוימת בסניף (master של הסניף AND החנות).
+export function bannersVisible(settings: Record<string, boolean>, storeId: string): boolean {
+  return (settings["*"] ?? true) && (settings[storeId] ?? true);
+}
+
 export async function getAllBanners(branch = 14): Promise<BannerRow[]> {
   if (!supabaseConfigured) return [];
   const { data } = await supabasePublic
