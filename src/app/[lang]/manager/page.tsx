@@ -4,12 +4,19 @@ import { isAdmin } from "@/lib/admin/session";
 import { getStoreHours, getAllBanners, getDeliverySettings } from "@/lib/supabase/data";
 import { getPosOrders } from "@/lib/supabase/pos";
 import { getWebsiteCustomers } from "@/lib/odoo/orders";
-import { phuketStores } from "@/lib/odoo/phuket";
+import { getBranches } from "@/lib/odoo/branches";
 import { ManagerLogin } from "@/components/manager/ManagerLogin";
 import { ManagerDashboard, type StoreHours } from "@/components/manager/ManagerDashboard";
+import { BranchSelect } from "@/components/manager/BranchSelect";
 import { logoutAction } from "./actions";
 
-export default async function ManagerPage({ params }: { params: Promise<{ lang: string }> }) {
+export default async function ManagerPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ lang: string }>;
+  searchParams: Promise<{ company?: string }>;
+}) {
   const { lang } = await params;
   if (!isLocale(lang)) notFound();
   const locale = lang as Locale;
@@ -23,28 +30,53 @@ export default async function ManagerPage({ params }: { params: Promise<{ lang: 
     );
   }
 
-  const banners = await getAllBanners();
-  const delivery = await getDeliverySettings();
-  const orders = await getPosOrders();
-  const webCustomers = await getWebsiteCustomers().catch(() => []);
-  const stores: StoreHours[] = await Promise.all(
-    phuketStores.map(async (s) => ({
-      id: s.id,
-      name: he ? s.nameHe : s.nameEn,
-      hours: await getStoreHours(s.id),
-    })),
-  );
+  const branches = await getBranches();
+  const { company } = await searchParams;
+  const requested = Number(company);
+  const branch =
+    branches.find((b) => b.companyId === requested)?.companyId ??
+    branches.find((b) => b.companyId === 14)?.companyId ??
+    branches[0]?.companyId ??
+    14;
+  const branchName = branches.find((b) => b.companyId === branch)?.name ?? "";
+  const configs = branches.find((b) => b.companyId === branch)?.configs ?? [];
+
+  const [banners, delivery, orders, webCustomers, stores] = await Promise.all([
+    getAllBanners(branch),
+    getDeliverySettings(branch),
+    getPosOrders(),
+    getWebsiteCustomers().catch(() => []),
+    Promise.all(
+      configs.map(async (c) => ({
+        id: String(c.id),
+        name: c.name,
+        hours: await getStoreHours(String(c.id)),
+      })),
+    ) as Promise<StoreHours[]>,
+  ]);
 
   return (
     <div className="min-h-screen bg-[#f7f6f8]">
-      <header className="bg-wine text-white flex items-center justify-between px-6 py-3">
-        <div className="font-extrabold">J Cafe — {he ? "ניהול" : "Manager"}</div>
+      <header className="bg-wine text-white flex items-center justify-between gap-3 px-4 sm:px-6 py-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <span className="font-extrabold">J Cafe — {he ? "ניהול" : "Manager"}</span>
+          <BranchSelect
+            locale={locale}
+            path="manager"
+            current={branch}
+            branches={branches.map((b) => ({
+              companyId: b.companyId,
+              name: b.name,
+              count: b.configs.length,
+            }))}
+          />
+        </div>
         <div className="flex items-center gap-2">
           <a
-            href={`/${locale}/manager/preview`}
+            href={`/${locale}/manager/preview?company=${branch}`}
             className="text-sm border border-gold-soft rounded-lg px-3 py-1 hover:bg-white/10"
           >
-            🌐 {he ? "תצוגת אתר / סניפים" : "Site preview / Branches"}
+            🌐 {he ? "תצוגת אתר" : "Site preview"}
           </a>
           <form action={logoutAction}>
             <input type="hidden" name="lang" value={locale} />
@@ -54,8 +86,15 @@ export default async function ManagerPage({ params }: { params: Promise<{ lang: 
           </form>
         </div>
       </header>
+
+      <div className="bg-soft border-b border-line px-4 sm:px-6 py-2 text-sm text-ink/70">
+        {he ? "מנהל סניף:" : "Managing branch:"} <b className="text-wine">{branchName}</b> ·{" "}
+        {stores.length} {he ? "חנויות" : "stores"}
+      </div>
+
       <ManagerDashboard
         locale={locale}
+        branch={branch}
         stores={stores}
         banners={banners}
         delivery={delivery}

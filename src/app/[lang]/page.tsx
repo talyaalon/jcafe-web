@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getDictionary } from "@/i18n/dictionaries";
 import { isLocale, type Locale } from "@/i18n/config";
 import { odoo } from "@/lib/odoo/adapter";
+import { findPhuketStore } from "@/lib/odoo/phuket";
 import { getActiveBanners, getStoreOpenStatus } from "@/lib/supabase/data";
 import { Storefront, type StoreBundle } from "@/components/Storefront";
 
@@ -23,7 +24,9 @@ export default async function Page({
         store,
         categories: await odoo.getCategories(store.id),
         products: await odoo.getProducts({ storeId: store.id }),
-        open: (await getStoreOpenStatus(store.id)).open,
+        open: (
+          await getStoreOpenStatus(String(findPhuketStore(store.id)?.posConfigId ?? store.id))
+        ).open,
       })),
     ) as Promise<StoreBundle[]>,
     getActiveBanners(),

@@ -59,6 +59,7 @@ export async function addBannerAction(formData: FormData) {
       link: String(formData.get("link") ?? "").trim() || null,
       sort: Number(formData.get("sort") ?? 0) || 0,
       active: true,
+      branch: Number(formData.get("branch")) || 14,
     });
   revalidatePath("/", "layout");
 }
@@ -81,17 +82,22 @@ export async function saveDeliveryAction(formData: FormData) {
     const v = Number(formData.get(k));
     return Number.isFinite(v) ? v : d;
   };
+  const branch = Number(formData.get("branch")) || 14;
   await supabaseAdmin()
     .from("delivery_settings")
-    .update({
-      origin_lat: num("origin_lat", 7.8804),
-      origin_lng: num("origin_lng", 98.3923),
-      base_fee: num("base_fee", 40),
-      per_km: num("per_km", 10),
-      free_over: num("free_over", 0),
-      max_km: num("max_km", 25),
-    })
-    .eq("id", 1);
+    .upsert(
+      {
+        id: branch,
+        branch,
+        origin_lat: num("origin_lat", 7.8804),
+        origin_lng: num("origin_lng", 98.3923),
+        base_fee: num("base_fee", 40),
+        per_km: num("per_km", 10),
+        free_over: num("free_over", 0),
+        max_km: num("max_km", 25),
+      },
+      { onConflict: "branch" },
+    );
   revalidatePath("/", "layout");
 }
 

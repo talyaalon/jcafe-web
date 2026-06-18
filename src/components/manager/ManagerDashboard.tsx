@@ -61,6 +61,7 @@ type Section = "orders" | "customers" | "hours" | "banners" | "delivery";
 
 export function ManagerDashboard({
   locale,
+  branch,
   stores,
   banners,
   delivery,
@@ -68,6 +69,7 @@ export function ManagerDashboard({
   webCustomers,
 }: {
   locale: "he" | "en";
+  branch: number;
   stores: StoreHours[];
   banners: BannerRow[];
   delivery: DeliverySettings;
@@ -432,7 +434,7 @@ export function ManagerDashboard({
             </div>
 
             <div className="max-w-lg">
-              <BannerUploader he={he} />
+              <BannerUploader he={he} branch={branch} />
             </div>
           </section>
         )}
@@ -446,6 +448,7 @@ export function ManagerDashboard({
                 : "Delivery fee is distance-based (from the branch to the city). Beyond max radius — delivery is blocked."}
             </p>
             <form action={saveDeliveryAction} className="bg-white border border-line rounded-xl p-4 max-w-lg space-y-3">
+              <input type="hidden" name="branch" value={branch} />
               {(
                 [
                   ["base_fee", he ? "דמי בסיס (฿)" : "Base fee (฿)", delivery.base_fee],

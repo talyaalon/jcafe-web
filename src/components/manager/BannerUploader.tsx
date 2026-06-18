@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { addBannerAction } from "@/app/[lang]/manager/actions";
 
-export function BannerUploader({ he }: { he: boolean }) {
+export function BannerUploader({ he, branch }: { he: boolean; branch: number }) {
   const [url, setUrl] = useState("");
   const [uploading, setUploading] = useState(false);
   const [err, setErr] = useState("");
@@ -74,6 +74,7 @@ export function BannerUploader({ he }: { he: boolean }) {
       {err && <p className="text-red-500 text-xs">{err}</p>}
 
       <input type="hidden" name="image_url" value={url} />
+      <input type="hidden" name="branch" value={branch} />
       <input
         name="title"
         placeholder={he ? "כותרת (אופציונלי)" : "Title (optional)"}

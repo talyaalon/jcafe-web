@@ -2,12 +2,12 @@ import "server-only";
 import { supabasePublic, supabaseConfigured } from "./server";
 import { DEFAULT_DELIVERY, type DeliverySettings } from "@/lib/delivery";
 
-export async function getDeliverySettings(): Promise<DeliverySettings> {
+export async function getDeliverySettings(branch = 14): Promise<DeliverySettings> {
   if (!supabaseConfigured) return DEFAULT_DELIVERY;
   const { data } = await supabasePublic
     .from("delivery_settings")
     .select("origin_lat,origin_lng,base_fee,per_km,free_over,max_km")
-    .eq("id", 1)
+    .eq("branch", branch)
     .maybeSingle();
   if (!data) return DEFAULT_DELIVERY;
   return {
@@ -27,12 +27,13 @@ export interface Banner {
   link: string | null;
 }
 
-export async function getActiveBanners(): Promise<Banner[]> {
+export async function getActiveBanners(branch = 14): Promise<Banner[]> {
   if (!supabaseConfigured) return [];
   const { data } = await supabasePublic
     .from("banners")
     .select("id,title,image_url,link")
     .eq("active", true)
+    .eq("branch", branch)
     .order("sort", { ascending: true });
   return data ?? [];
 }
@@ -42,11 +43,12 @@ export interface BannerRow extends Banner {
   sort: number;
 }
 
-export async function getAllBanners(): Promise<BannerRow[]> {
+export async function getAllBanners(branch = 14): Promise<BannerRow[]> {
   if (!supabaseConfigured) return [];
   const { data } = await supabasePublic
     .from("banners")
     .select("id,title,image_url,link,active,sort")
+    .eq("branch", branch)
     .order("sort", { ascending: true });
   return (data as BannerRow[]) ?? [];
 }
