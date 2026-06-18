@@ -10,6 +10,7 @@ interface Body {
   items?: OrderItemIn[];
   companyId?: number;
   deliveryFee?: number;
+  idempotencyKey?: string;
   amount?: number; // תאימות לאחור בלבד
 }
 
@@ -41,12 +42,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Invalid amount" }, { status: 400 });
     }
 
-    const intent = await stripe.paymentIntents.create({
-      amount: satang,
-      currency: "thb",
-      payment_method_types: ["card"],
-      description: "J-Cafe order",
-    });
+    const intent = await stripe.paymentIntents.create(
+      {
+        amount: satang,
+        currency: "thb",
+        payment_method_types: ["card"],
+        description: "J-Cafe order",
+      },
+      // מפתח idempotency: retry עם אותו מפתח מחזיר את אותו PI (ללא חיוב כפול)
+      body.idempotencyKey ? { idempotencyKey: `pi_${body.idempotencyKey}` } : undefined,
+    );
 
     return NextResponse.json({ ok: true, clientSecret: intent.client_secret, amount: baht });
   } catch (e) {

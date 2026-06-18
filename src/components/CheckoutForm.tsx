@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
@@ -25,6 +25,8 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
   const { items, subtotal, remove, clear, branchCompany } = useCart();
   const { user } = useAuth();
   const statuses = useStoreStatus();
+  // מפתח idempotency יציב לניסיון ההזמנה הנוכחי — מונע כפל הזמנה/חיוב ב-retry
+  const idemRef = useRef<string>("");
   const storeHours = useStoreHours();
   const [deliverySettings, setDeliverySettings] = useState<DeliverySettings>(DEFAULT_DELIVERY);
   const [zones, setZones] = useState<{ id: number; name: string; zip: string | null; fee: number }[]>([]);
@@ -143,6 +145,9 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
     setApiError(null);
     setSubmitting(true);
     try {
+      // מפתח יציב לכל ניסיונות ההזמנה (כולל retry אחרי שגיאת רשת)
+      if (!idemRef.current) idemRef.current = crypto.randomUUID();
+      const idempotencyKey = idemRef.current;
       // ===== תשלום Stripe (כרטיס) לפני יצירת ההזמנה =====
       let paymentRef = "";
       let paymentIntentId = "";
@@ -156,6 +161,7 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
             items: items.map((i) => ({ id: i.product.id, qty: i.qty, price: i.product.price })),
             companyId: orderCompany,
             deliveryFee,
+            idempotencyKey,
           }),
         });
         const piData = await piRes.json();
@@ -195,6 +201,7 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
         method,
         payment,
         paymentIntentId: paymentIntentId || undefined,
+        idempotencyKey,
         companyId: orderCompany,
         scheduledFor: scheduledAt || undefined,
         notes:

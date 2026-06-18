@@ -30,6 +30,7 @@ interface OrderBody {
   method?: "delivery" | "pickup";
   payment?: "card" | "cod" | "qr";
   paymentIntentId?: string;
+  idempotencyKey?: string;
   notes?: string;
   scheduledFor?: string;
   branch?: string;
@@ -86,6 +87,33 @@ export async function POST(req: Request) {
       }
     }
 
+    // Idempotency — מונע יצירת הזמנה כפולה ב-retry (תוקף את המפתח לפני היצירה).
+    const idem = body.idempotencyKey;
+    if (idem && supabaseConfigured) {
+      const sb = supabaseAdmin();
+      const { error: claimErr } = await sb.from("order_idempotency").insert({ key: idem });
+      if (claimErr) {
+        const { data } = await sb
+          .from("order_idempotency")
+          .select("order_no,so_id")
+          .eq("key", idem)
+          .maybeSingle();
+        if (data?.order_no) {
+          return NextResponse.json({
+            ok: true,
+            orderNo: data.order_no,
+            soId: data.so_id,
+            confirmed: true,
+            duplicate: true,
+          });
+        }
+        return NextResponse.json(
+          { ok: false, error: "Order already being processed" },
+          { status: 409 },
+        );
+      }
+    }
+
     const partnerId = await findOrCreatePartner(body.customer, branchName);
 
     const items: OrderItem[] = body.items.map((i, idx) => ({
@@ -97,6 +125,18 @@ export async function POST(req: Request) {
     }));
 
     const order = await createOrder({ partnerId, items, notes: body.notes, companyId, pricelistId });
+
+    // שמירת תוצאת ההזמנה למפתח ה-idempotency (retry יחזיר אותה במקום ליצור שוב)
+    if (idem && supabaseConfigured) {
+      try {
+        await supabaseAdmin()
+          .from("order_idempotency")
+          .update({ order_no: order.name, so_id: order.id })
+          .eq("key", idem);
+      } catch {
+        /* ignore */
+      }
+    }
 
     // דחיפת פריטי המטבח ל-Preparation Display של ODOO — best-effort, לא חוסם
     let prepPosOrderIds: number[] = [];
