@@ -6,6 +6,8 @@ import {
   toggleBannerAction,
   deleteBannerAction,
   saveDeliveryAction,
+  addZoneAction,
+  deleteZoneAction,
 } from "@/app/[lang]/manager/actions";
 import type { DeliverySettings } from "@/lib/delivery";
 import { formatTHB } from "@/lib/format";
@@ -58,6 +60,14 @@ export interface WebCustomer {
   phone: string;
   branches: string[];
   created: string;
+  source: "site" | "odoo";
+}
+
+export interface ZoneRow {
+  id: number;
+  name: string;
+  zip: string | null;
+  fee: number;
 }
 
 type Section = "orders" | "customers" | "hours" | "banners" | "delivery";
@@ -71,6 +81,7 @@ export function ManagerDashboard({
   orders,
   webCustomers,
   products,
+  zones,
 }: {
   locale: "he" | "en";
   branch: number;
@@ -80,11 +91,13 @@ export function ManagerDashboard({
   orders: OrderRow[];
   webCustomers: WebCustomer[];
   products: PickerProduct[];
+  zones: ZoneRow[];
 }) {
   const he = locale === "he";
   const [section, setSection] = useState<Section>("orders");
   const [editId, setEditId] = useState<number | null>(null);
   const [custBranch, setCustBranch] = useState("all");
+  const [custSource, setCustSource] = useState<"all" | "site" | "odoo">("all");
   const days = he
     ? ["א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "שבת"]
     : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -106,7 +119,9 @@ export function ManagerDashboard({
   // לקוחות אתר מ-ODOO + סינון לפי סניף
   const branchTags = [...new Set(webCustomers.flatMap((c) => c.branches))].sort();
   const custFiltered = webCustomers.filter(
-    (c) => custBranch === "all" || c.branches.includes(custBranch),
+    (c) =>
+      (custBranch === "all" || c.branches.includes(custBranch)) &&
+      (custSource === "all" || c.source === custSource),
   );
 
   const fmtDateTime = (iso: string) => {
@@ -227,7 +242,16 @@ export function ManagerDashboard({
           <section>
             <div className="flex items-center justify-between mb-1 gap-3 flex-wrap">
               <h2 className="text-xl font-extrabold text-wine">{he ? "לקוחות" : "Customers"}</h2>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <select
+                  value={custSource}
+                  onChange={(e) => setCustSource(e.target.value as "all" | "site" | "odoo")}
+                  className="border border-line rounded-lg px-2 py-1 text-sm"
+                >
+                  <option value="all">{he ? "כל המקורות" : "All sources"}</option>
+                  <option value="site">{he ? "נוצרו דרך האתר" : "Created via site"}</option>
+                  <option value="odoo">{he ? "נמשכו מ-ODOO" : "From ODOO"}</option>
+                </select>
                 <select
                   value={custBranch}
                   onChange={(e) => setCustBranch(e.target.value)}
@@ -265,7 +289,18 @@ export function ManagerDashboard({
                   <tbody>
                     {custFiltered.map((c) => (
                       <tr key={c.id} className="border-t border-line">
-                        <td className="p-3 font-semibold text-ink">{c.name}</td>
+                        <td className="p-3 font-semibold text-ink">
+                          {c.name}
+                          <span
+                            className={`inline-block ms-2 text-[10px] font-bold rounded-full px-1.5 py-0.5 ${
+                              c.source === "site"
+                                ? "bg-brand-green/15 text-brand-green"
+                                : "bg-ink/10 text-ink/60"
+                            }`}
+                          >
+                            {c.source === "site" ? (he ? "אתר" : "Site") : "ODOO"}
+                          </span>
+                        </td>
                         <td className="p-3 text-ink/70">{c.phone || "—"}</td>
                         <td className="p-3 text-ink/70">{c.email || "—"}</td>
                         <td className="p-3">
@@ -425,19 +460,15 @@ export function ManagerDashboard({
             <h2 className="text-xl font-extrabold text-wine mb-1">{he ? "משלוחים" : "Delivery"}</h2>
             <p className="text-ink/55 text-sm mb-4">
               {he
-                ? "דמי משלוח מחושבים לפי מרחק (קו אווירי מהסניף לעיר). מעבר לרדיוס המקסימלי — משלוח נחסם."
-                : "Delivery fee is distance-based (from the branch to the city). Beyond max radius — delivery is blocked."}
+                ? "הגדירו אזורי משלוח לסניף (אזור/מיקוד + דמי משלוח). לקוח מחוץ לאזורים — משלוח נחסם."
+                : "Define delivery zones for the branch (area/zip + fee). Customers outside zones are blocked."}
             </p>
             <form action={saveDeliveryAction} className="bg-white border border-line rounded-xl p-4 max-w-lg space-y-3">
               <input type="hidden" name="branch" value={branch} />
               {(
                 [
-                  ["base_fee", he ? "דמי בסיס (฿)" : "Base fee (฿)", delivery.base_fee],
-                  ["per_km", he ? "מחיר לק״מ (฿)" : "Per km (฿)", delivery.per_km],
+                  ["base_fee", he ? "דמי משלוח ברירת מחדל (฿)" : "Default fee (฿)", delivery.base_fee],
                   ["free_over", he ? "משלוח חינם מעל (฿, 0=כבוי)" : "Free over (฿, 0=off)", delivery.free_over],
-                  ["max_km", he ? "רדיוס מקסימלי (ק״מ)" : "Max radius (km)", delivery.max_km],
-                  ["origin_lat", he ? "קו רוחב הסניף" : "Branch latitude", delivery.origin_lat],
-                  ["origin_lng", he ? "קו אורך הסניף" : "Branch longitude", delivery.origin_lng],
                 ] as const
               ).map(([name, label, val]) => (
                 <div key={name} className="flex items-center justify-between gap-3">
@@ -458,6 +489,78 @@ export function ManagerDashboard({
                 {he ? "שמירה" : "Save"}
               </SubmitButton>
             </form>
+
+            {/* delivery zones */}
+            <h3 className="text-lg font-extrabold text-wine mt-6 mb-1">
+              {he ? "אזורי משלוח" : "Delivery zones"}
+            </h3>
+            <p className="text-ink/55 text-sm mb-3">
+              {he
+                ? "האזורים שבהם המשלוח פעיל לסניף (שם אזור / מיקוד + דמי משלוח)."
+                : "Areas where delivery is active for this branch (area / zip + fee)."}
+            </p>
+            <div className="bg-white border border-line rounded-xl p-4 max-w-lg space-y-2">
+              {zones.length === 0 ? (
+                <p className="text-ink/40 text-sm">
+                  {he
+                    ? "לא הוגדרו אזורים — המשלוח לסניף זה מושבת עד שיוגדר אזור."
+                    : "No zones — delivery for this branch is disabled until a zone is added."}
+                </p>
+              ) : (
+                zones.map((z) => (
+                  <div key={z.id} className="flex items-center justify-between gap-2 border-b border-line/60 pb-2">
+                    <div>
+                      <span className="font-bold text-sm">{z.name}</span>
+                      {z.zip && <span className="text-ink/45 text-xs ms-2">{z.zip}</span>}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-wine font-bold text-sm">{formatTHB(z.fee)}</span>
+                      <form action={deleteZoneAction}>
+                        <input type="hidden" name="id" value={z.id} />
+                        <button className="text-xs text-red-500 font-bold">{he ? "מחק" : "Delete"}</button>
+                      </form>
+                    </div>
+                  </div>
+                ))
+              )}
+              <form action={addZoneAction} className="flex gap-2 items-end pt-2 flex-wrap">
+                <input type="hidden" name="branch" value={branch} />
+                <div>
+                  <label className="block text-[11px] text-ink/55">{he ? "אזור" : "Area"}</label>
+                  <input
+                    name="name"
+                    required
+                    placeholder={he ? "למשל Sukhumvit" : "e.g. Sukhumvit"}
+                    className="border border-line rounded-lg px-2 py-1.5 text-sm w-36"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-ink/55">{he ? "מיקוד" : "Zip"}</label>
+                  <input
+                    name="zip"
+                    placeholder="10110"
+                    className="border border-line rounded-lg px-2 py-1.5 text-sm w-24"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-ink/55">{he ? "דמי משלוח (฿)" : "Fee (฿)"}</label>
+                  <input
+                    name="fee"
+                    type="number"
+                    defaultValue={0}
+                    className="border border-line rounded-lg px-2 py-1.5 text-sm w-20"
+                  />
+                </div>
+                <button className="bg-wine text-white font-bold rounded-lg px-3 py-1.5 text-sm">
+                  {he ? "הוסף אזור" : "Add zone"}
+                </button>
+              </form>
+            </div>
+            <p className="text-[11px] text-ink/45 mt-2">
+              {he
+                ? "💡 הזנת אזור ידנית. אינטגרציית Google Maps Places (השלמה אוטומטית) דורשת מפתח API."
+                : "💡 Manual entry. Google Maps Places autocomplete needs an API key."}
+            </p>
           </section>
         )}
       </main>

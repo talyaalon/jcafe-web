@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { isLocale, type Locale } from "@/i18n/config";
 import { isAdmin } from "@/lib/admin/session";
-import { getStoreHours, getAllBanners, getDeliverySettings } from "@/lib/supabase/data";
+import { getStoreHours, getAllBanners, getDeliverySettings, getDeliveryZones } from "@/lib/supabase/data";
 import { getPosOrders } from "@/lib/supabase/pos";
 import { getWebsiteCustomers } from "@/lib/odoo/orders";
 import { getBranches, getBranchProducts } from "@/lib/odoo/branches";
@@ -41,7 +41,7 @@ export default async function ManagerPage({
   const branchName = branches.find((b) => b.companyId === branch)?.name ?? "";
   const configs = branches.find((b) => b.companyId === branch)?.configs ?? [];
 
-  const [banners, delivery, orders, webCustomers, stores, products] = await Promise.all([
+  const [banners, delivery, orders, webCustomers, stores, products, zones] = await Promise.all([
     getAllBanners(branch),
     getDeliverySettings(branch),
     getPosOrders(),
@@ -54,6 +54,7 @@ export default async function ManagerPage({
       })),
     ) as Promise<StoreHours[]>,
     getBranchProducts(branch).catch(() => []),
+    getDeliveryZones(branch),
   ]);
 
   return (
@@ -102,6 +103,7 @@ export default async function ManagerPage({
         orders={orders}
         webCustomers={webCustomers}
         products={products}
+        zones={zones}
       />
     </div>
   );

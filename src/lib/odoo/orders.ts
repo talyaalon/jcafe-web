@@ -85,6 +85,7 @@ export interface WebsiteCustomer {
   phone: string;
   branches: string[]; // תגי סניף (ללא "Website")
   created: string;
+  source: "site" | "odoo"; // "site" = נוצר דרך האתר (תג Website); "odoo" = נמשך מ-ODOO
 }
 
 export async function getWebsiteCustomers(): Promise<WebsiteCustomer[]> {
@@ -122,6 +123,7 @@ export async function getWebsiteCustomers(): Promise<WebsiteCustomer[]> {
       .map((id) => catName.get(id))
       .filter((n): n is string => !!n && n !== "Website"),
     created: r.create_date,
+    source: r.category_id.includes(websiteTag) ? ("site" as const) : ("odoo" as const),
   }));
 }
 

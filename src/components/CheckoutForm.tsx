@@ -27,10 +27,15 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
   const statuses = useStoreStatus();
   const storeHours = useStoreHours();
   const [deliverySettings, setDeliverySettings] = useState<DeliverySettings>(DEFAULT_DELIVERY);
+  const [zones, setZones] = useState<{ id: number; name: string; zip: string | null; fee: number }[]>([]);
   useEffect(() => {
     fetch("/api/delivery/settings")
       .then((r) => r.json())
       .then((d) => d?.settings && setDeliverySettings(d.settings))
+      .catch(() => {});
+    fetch("/api/delivery/zones?branch=14")
+      .then((r) => r.json())
+      .then((d) => setZones(d?.zones ?? []))
       .catch(() => {});
   }, []);
   const [step, setStep] = useState<Step>("contact");
@@ -62,12 +67,27 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
   const pName = (p: { nameHe: string; nameEn: string }) => (he ? p.nameHe : p.nameEn);
   const t = dict.checkout;
 
-  // חישוב דמי משלוח לפי מרחק (עיר → קו אווירי מהסניף → מדרגות)
+  // דמי משלוח: אם הוגדרו אזורים — לפי האזור שנבחר; אחרת חישוב מרחק (fallback).
+  const usingZones = zones.length > 0;
+  const zoneMatch = usingZones ? zones.find((z) => z.name === form.city) : undefined;
   const quote =
-    method === "delivery" && form.city ? quoteDelivery(deliverySettings, form.city, subtotal) : null;
-  const deliveryFee = quote && !quote.outOfRange ? quote.fee : 0;
+    !usingZones && method === "delivery" && form.city
+      ? quoteDelivery(deliverySettings, form.city, subtotal)
+      : null;
+
+  let deliveryFee = 0;
+  let deliveryBlocked = false;
+  if (method === "delivery") {
+    const freeNow = deliverySettings.free_over > 0 && subtotal >= deliverySettings.free_over;
+    if (usingZones) {
+      if (form.city && zoneMatch) deliveryFee = freeNow ? 0 : Number(zoneMatch.fee);
+      else if (form.city && !zoneMatch) deliveryBlocked = true; // אזור לא נתמך
+    } else if (quote) {
+      if (quote.outOfRange) deliveryBlocked = true;
+      else deliveryFee = quote.fee;
+    }
+  }
   const total = subtotal + deliveryFee;
-  const deliveryBlocked = method === "delivery" && !!quote?.outOfRange;
 
   // חנויות סגורות שיש להן פריטים בעגלה → חוסם הזמנה רגילה, מחייב תזמון.
   const closedStoreIds = [...new Set(items.map((i) => i.store.id))].filter(
@@ -334,10 +354,10 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
                   <h2 className="font-bold text-ink">{t.addressTitle}</h2>
                   <p className="text-ink/55 text-xs mb-3">{t.addressSub}</p>
 
-                  <Label>{t.city}*</Label>
+                  <Label>{usingZones ? (he ? "אזור משלוח" : "Delivery area") : t.city}*</Label>
                   <select value={form.city} onChange={(e) => set("city", e.target.value)} className={inputCls("city")}>
                     <option value="">—</option>
-                    {PHUKET_CITIES.map((c) => (
+                    {(usingZones ? zones.map((z) => z.name) : PHUKET_CITIES).map((c) => (
                       <option key={c} value={c}>
                         {c}
                       </option>
@@ -434,8 +454,8 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
               {deliveryBlocked && (
                 <p className="text-red-700 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2">
                   {he
-                    ? "הכתובת מחוץ לטווח המשלוח. בחר/י איסוף עצמי או עיר קרובה יותר."
-                    : "Address is out of delivery range. Choose pickup or a closer city."}
+                    ? "האזור שנבחר אינו באזורי המשלוח של הסניף. בחר/י איסוף עצמי או אזור אחר."
+                    : "The selected area is not in the branch's delivery zones. Choose pickup or another area."}
                 </p>
               )}
 
@@ -550,16 +570,18 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
                     ? "איסוף עצמי"
                     : "Pickup"
                   : !form.city
-                    ? t.enterPostcode
-                    : quote?.outOfRange
+                    ? he
+                      ? "בחר/י אזור"
+                      : "Select area"
+                    : deliveryBlocked
                       ? he
-                        ? "מחוץ לטווח"
-                        : "Out of range"
-                      : quote?.free
+                        ? "מחוץ לאזור"
+                        : "Out of area"
+                      : deliveryFee === 0
                         ? he
                           ? "חינם"
                           : "Free"
-                        : `${formatTHB(deliveryFee)} · ~${quote ? quote.km.toFixed(1) : ""}km`}
+                        : formatTHB(deliveryFee)}
               </span>
             </div>
             <div className="flex justify-between pt-2 mt-1 border-t border-line font-extrabold text-wine text-[15px]">

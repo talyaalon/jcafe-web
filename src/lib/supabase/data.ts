@@ -20,6 +20,22 @@ export async function getDeliverySettings(branch = 14): Promise<DeliverySettings
   };
 }
 
+export interface DeliveryZone {
+  id: number;
+  name: string;
+  zip: string | null;
+  fee: number;
+}
+export async function getDeliveryZones(branch = 14): Promise<DeliveryZone[]> {
+  if (!supabaseConfigured) return [];
+  const { data } = await supabasePublic
+    .from("delivery_zones")
+    .select("id,name,zip,fee")
+    .eq("branch", branch)
+    .order("name", { ascending: true });
+  return (data as DeliveryZone[]) ?? [];
+}
+
 export interface Banner {
   id: number;
   title: string | null;

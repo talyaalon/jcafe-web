@@ -100,6 +100,26 @@ export async function saveDeliveryAction(formData: FormData) {
   revalidatePath("/", "layout");
 }
 
+export async function addZoneAction(formData: FormData) {
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) return;
+  await supabaseAdmin()
+    .from("delivery_zones")
+    .insert({
+      branch: Number(formData.get("branch")) || 14,
+      name,
+      zip: String(formData.get("zip") ?? "").trim() || null,
+      fee: Number(formData.get("fee")) || 0,
+    });
+  revalidatePath("/", "layout");
+}
+
+export async function deleteZoneAction(formData: FormData) {
+  const id = Number(formData.get("id"));
+  if (id) await supabaseAdmin().from("delivery_zones").delete().eq("id", id);
+  revalidatePath("/", "layout");
+}
+
 export async function editBannerAction(formData: FormData) {
   const id = Number(formData.get("id"));
   if (!id) return;
