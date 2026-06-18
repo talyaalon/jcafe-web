@@ -4,7 +4,8 @@ import { isAdmin } from "@/lib/admin/session";
 import { getStoreHours, getAllBanners, getDeliverySettings, getDeliveryZones } from "@/lib/supabase/data";
 import { getPosOrders } from "@/lib/supabase/pos";
 import { getWebsiteCustomers } from "@/lib/odoo/orders";
-import { getBranches, getBranchProducts } from "@/lib/odoo/branches";
+import { getBranches, getBranchProducts, COMPANY_SLUG } from "@/lib/odoo/branches";
+import { CopyLink } from "@/components/manager/CopyLink";
 import { ManagerLogin } from "@/components/manager/ManagerLogin";
 import { ManagerDashboard, type StoreHours } from "@/components/manager/ManagerDashboard";
 import { BranchSelect } from "@/components/manager/BranchSelect";
@@ -89,9 +90,16 @@ export default async function ManagerPage({
         </div>
       </header>
 
-      <div className="bg-soft border-b border-line px-4 sm:px-6 py-2 text-sm text-ink/70">
-        {he ? "מנהל סניף:" : "Managing branch:"} <b className="text-wine">{branchName}</b> ·{" "}
-        {stores.length} {he ? "חנויות" : "stores"}
+      <div className="bg-soft border-b border-line px-4 sm:px-6 py-2 text-sm text-ink/70 flex items-center gap-3 flex-wrap">
+        <span>
+          {he ? "מנהל סניף:" : "Managing branch:"} <b className="text-wine">{branchName}</b> ·{" "}
+          {stores.length} {he ? "חנויות" : "stores"}
+        </span>
+        <span className="text-ink/40">·</span>
+        <span className="flex items-center gap-1">
+          {he ? "קישור ללקוחות:" : "Customer link:"}{" "}
+          <CopyLink locale={locale} slug={COMPANY_SLUG[branch] ?? branch} />
+        </span>
       </div>
 
       <ManagerDashboard

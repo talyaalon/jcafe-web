@@ -74,7 +74,10 @@ export async function findOrCreatePartner(c: OrderCustomer, branch = "Phuket"): 
   if (c.street) vals.street = c.street;
   if (c.city) vals.city = c.city;
   if (c.zip) vals.zip = c.zip;
-  return executeKw<number>("res.partner", "create", [vals]);
+  const newId = await executeKw<number>("res.partner", "create", [vals]);
+  // אכיפה מחדש של company_id=false (flush) — מונע "Incompatible companies" בהזמנה הראשונה.
+  await executeKw("res.partner", "write", [[newId], { company_id: false }]);
+  return newId;
 }
 
 // ===== שליפת כל לקוחות האתר מ-ODOO (לתצוגת מנהל) =====
