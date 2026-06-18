@@ -8,18 +8,17 @@ import { formatTHB } from "@/lib/format";
 import { useCart } from "@/lib/cart/CartContext";
 import { HeartButton } from "./HeartButton";
 
-// כרטיס אופקי לחנויות מטבח: לחיצה על השם/תמונה → Pop-up; "Add to cart" → הוספה מיידית + stepper.
+// כרטיס אופקי לחנויות מטבח (מנות מסעדה): "הוספה לסל" פותח את חלון פרטי המנה
+// (סוג לחם, תוספות וכו') לפני ההוספה — לא מוסיף ישירות.
 export function ProductRowCard({
   product,
   locale,
   dict,
-  onAdd,
   onOpen,
 }: {
   product: Product;
   locale: Locale;
   dict: Dictionary;
-  onAdd: (p: Product) => void;
   onOpen: (p: Product) => void;
 }) {
   const name = locale === "he" ? product.nameHe : product.nameEn;
@@ -75,7 +74,7 @@ export function ProductRowCard({
             </div>
           ) : (
             <button
-              onClick={() => onAdd(product)}
+              onClick={() => onOpen(product)}
               className="border border-wine text-wine rounded-lg px-3.5 py-1.5 text-xs font-bold transition hover:bg-wine hover:text-white"
             >
               {dict.product.add}
