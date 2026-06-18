@@ -4,6 +4,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -50,7 +51,13 @@ const BRANCH_KEY = "jcafe_branch";
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [schedules, setSchedules] = useState<Record<string, string>>({});
-  const [branchCompany, setBranchCompany] = useState(14);
+  const [branchCompany, setBranchCompanyState] = useState(14);
+  const branchExplicit = useRef(false);
+  // הסטורפרונט קובע את הסניף במפורש — מנצח את הערך הנטען מ-localStorage.
+  const setBranchCompany = (n: number) => {
+    branchExplicit.current = true;
+    setBranchCompanyState(n);
+  };
   const [hydrated, setHydrated] = useState(false);
 
   // טעינה מ-localStorage אחרי mount (מונע אי-התאמת hydration).
@@ -61,7 +68,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const s = localStorage.getItem(SCHED_KEY);
       if (s) setSchedules(JSON.parse(s) as Record<string, string>);
       const b = localStorage.getItem(BRANCH_KEY);
-      if (b) setBranchCompany(Number(b) || 14);
+      // לא לדרוס אם סטורפרונט כבר קבע את הסניף במפורש (effect של child רץ קודם).
+      if (b && !branchExplicit.current) setBranchCompanyState(Number(b) || 14);
     } catch {
       /* ignore */
     }

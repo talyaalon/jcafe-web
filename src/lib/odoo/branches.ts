@@ -67,6 +67,16 @@ export const COMPANY_SLUG: Record<number, string> = {
   18: "chiangmai",
 };
 
+// תג הלקוח (res.partner.category) לכל סניף — נקי ועקבי.
+export const BRANCH_TAG: Record<number, string> = {
+  14: "Phuket",
+  15: "Bangkok",
+  16: "Banglumpoo",
+  13: "Koh Phangan",
+  19: "Samui",
+  18: "Chiang Mai",
+};
+
 // קבלת מזהה חברה מפרמטר ה-route (מספר או slug).
 export function resolveBranch(param: string): number | null {
   const n = Number(param);

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { findOrCreatePartner, createOrder, type OrderItem } from "@/lib/odoo/orders";
-import { getBranches } from "@/lib/odoo/branches";
+import { getBranches, BRANCH_TAG } from "@/lib/odoo/branches";
 import { PHUKET_COMPANY_ID, PHUKET_PRICELIST_ID } from "@/lib/odoo/phuket";
 import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase/server";
 
@@ -34,12 +34,13 @@ export async function POST(req: Request) {
 
     // קביעת חברה + מחירון + תג סניף לפי companyId
     const companyId = Number(body.companyId) || PHUKET_COMPANY_ID;
-    let branchName = "Phuket";
+    // תג סניף נקי (Phuket / Bangkok / ...) + מחירון לפי הסניף
+    let branchName = BRANCH_TAG[companyId] ?? "Phuket";
     let pricelistId = PHUKET_PRICELIST_ID;
     if (companyId !== PHUKET_COMPANY_ID) {
       const branch = (await getBranches()).find((b) => b.companyId === companyId);
       if (branch) {
-        branchName = branch.name;
+        if (!BRANCH_TAG[companyId]) branchName = branch.name;
         pricelistId = branch.configs.find((c) => c.pricelistId)?.pricelistId ?? PHUKET_PRICELIST_ID;
       }
     }
