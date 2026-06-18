@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
-import { useAuth } from "@/lib/auth/AuthContext";
 import { FavoritesMenu } from "./FavoritesMenu";
+import { LangMenu } from "./LangMenu";
+import { AccountMenu } from "./AccountMenu";
 
 export function Header({
   locale,
@@ -22,11 +22,6 @@ export function Header({
   cartCount: number;
   onCartClick: () => void;
 }) {
-  const pathname = usePathname();
-  const { user, displayName } = useAuth();
-  const other: Locale = locale === "he" ? "en" : "he";
-  const otherHref = pathname.replace(/^\/(he|en)/, `/${other}`) || `/${other}`;
-
   return (
     <header className="flex items-center gap-4 px-4 sm:px-7 py-3 bg-white border-b border-line">
       {/* logo */}
@@ -63,19 +58,8 @@ export function Header({
 
       {/* nav */}
       <nav className="ms-auto flex items-center gap-4 sm:gap-5 text-sm text-ink/80">
-        <span className="hidden sm:inline cursor-pointer hover:text-wine">{dict.header.about} ▾</span>
-        <Link href={otherHref} className="hover:text-wine font-medium">
-          {other === "en" ? "EN" : "עב"} ▾
-        </Link>
-        <Link
-          href={`/${locale}/${user ? "account" : "login"}`}
-          className="flex items-center gap-1.5 hover:text-wine"
-        >
-          <span className="text-lg">👤</span>
-          <span className="hidden sm:inline">
-            {user ? displayName || (locale === "he" ? "החשבון שלי" : "Account") : dict.header.login}
-          </span>
-        </Link>
+        <LangMenu locale={locale} />
+        <AccountMenu locale={locale} loginLabel={dict.header.login} />
         <FavoritesMenu locale={locale} />
         <button onClick={onCartClick} className="relative flex items-center gap-1.5 hover:text-wine">
           <span className="text-lg">🛒</span>
