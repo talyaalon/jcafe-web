@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
+import Stripe from "stripe";
 import { findOrCreatePartner, createOrder, type OrderItem } from "@/lib/odoo/orders";
 import { getBranches, BRANCH_TAG } from "@/lib/odoo/branches";
 import { priceOrderItems } from "@/lib/odoo/pricelist";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "");
 import { pushKitchenToPrep } from "@/lib/odoo/pos-prep";
 import { PHUKET_COMPANY_ID, PHUKET_PRICELIST_ID } from "@/lib/odoo/phuket";
 import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase/server";
@@ -25,6 +28,8 @@ interface OrderBody {
     barcode?: string;
   }[];
   method?: "delivery" | "pickup";
+  payment?: "card" | "cod" | "qr";
+  paymentIntentId?: string;
   notes?: string;
   scheduledFor?: string;
   branch?: string;
@@ -53,8 +58,6 @@ export async function POST(req: Request) {
       pricelistId = branch.configs.find((c) => c.pricelistId)?.pricelistId ?? PHUKET_PRICELIST_ID;
     }
 
-    const partnerId = await findOrCreatePartner(body.customer, branchName);
-
     // מחיר מהימן מצד-שרת (מ-ODOO + Pricelist הסניף) — מונע תרמית מחירים מהלקוח.
     const { priced, tampered } = await priceOrderItems(pricelistId, body.items);
     if (tampered) {
@@ -64,6 +67,26 @@ export async function POST(req: Request) {
       );
     }
     const unitPriceAt = (idx: number) => priced[idx]?.unitPrice ?? body.items[idx].price;
+    const productsTotal = priced.reduce((s, p) => s + p.unitPrice * p.qty, 0);
+
+    // אימות תשלום בכרטיס מול Stripe (לפני יצירת לקוח/הזמנה) — מונע "לקוח שמשקר ששילם".
+    if (body.payment === "card") {
+      const piId = body.paymentIntentId;
+      if (!piId) {
+        return NextResponse.json({ ok: false, error: "Missing payment" }, { status: 402 });
+      }
+      try {
+        const pi = await stripe.paymentIntents.retrieve(piId);
+        const paidBaht = (pi.amount_received || 0) / 100;
+        if (pi.status !== "succeeded" || paidBaht + 0.01 < productsTotal) {
+          return NextResponse.json({ ok: false, error: "Payment not verified" }, { status: 402 });
+        }
+      } catch {
+        return NextResponse.json({ ok: false, error: "Payment not verified" }, { status: 402 });
+      }
+    }
+
+    const partnerId = await findOrCreatePartner(body.customer, branchName);
 
     const items: OrderItem[] = body.items.map((i, idx) => ({
       templateId: Number(String(i.id).split("|")[0]),

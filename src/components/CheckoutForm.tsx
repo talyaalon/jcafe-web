@@ -145,6 +145,7 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
     try {
       // ===== תשלום Stripe (כרטיס) לפני יצירת ההזמנה =====
       let paymentRef = "";
+      let paymentIntentId = "";
       if (payment === "card") {
         if (!stripe || !elements) throw new Error("Payment is not ready, please retry");
         const piRes = await fetch("/api/stripe/payment-intent", {
@@ -165,7 +166,8 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
           payment_method: { card },
         });
         if (error) throw new Error(error.message || "Payment failed");
-        paymentRef = `Paid via Stripe: ${paymentIntent?.id ?? ""}`;
+        paymentIntentId = paymentIntent?.id ?? "";
+        paymentRef = `Paid via Stripe: ${paymentIntentId}`;
       } else if (payment === "cod") {
         paymentRef = "Cash on Delivery";
       } else if (payment === "qr") {
@@ -191,6 +193,8 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
           barcode: i.product.barcode,
         })),
         method,
+        payment,
+        paymentIntentId: paymentIntentId || undefined,
         companyId: orderCompany,
         scheduledFor: scheduledAt || undefined,
         notes:
