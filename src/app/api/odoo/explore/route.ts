@@ -15,7 +15,10 @@ export async function GET() {
   const results = Object.assign(
     {},
     await safe("posConfigs", () =>
-      searchRead("pos.config", [], ["id", "name", "company_id", "pricelist_id"], { limit: 50 }),
+      searchRead("pos.config", [], ["id", "name", "company_id", "pricelist_id"], { limit: 100 }),
+    ),
+    await safe("companies", () =>
+      searchRead("res.company", [], ["id", "name", "parent_id"], { limit: 80 }),
     ),
     await safe("posCategories", () =>
       searchRead("pos.category", [], ["id", "name", "parent_id"], { limit: 200 }),

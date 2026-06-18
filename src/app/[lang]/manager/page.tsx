@@ -36,13 +36,21 @@ export default async function ManagerPage({ params }: { params: Promise<{ lang: 
   return (
     <div className="min-h-screen bg-[#f7f6f8]">
       <header className="bg-wine text-white flex items-center justify-between px-6 py-3">
-        <div className="font-extrabold">J Cafe Phuket — {he ? "ניהול" : "Manager"}</div>
-        <form action={logoutAction}>
-          <input type="hidden" name="lang" value={locale} />
-          <button className="text-sm border border-gold-soft rounded-lg px-3 py-1 hover:bg-white/10">
-            {he ? "התנתקות" : "Logout"}
-          </button>
-        </form>
+        <div className="font-extrabold">J Cafe — {he ? "ניהול" : "Manager"}</div>
+        <div className="flex items-center gap-2">
+          <a
+            href={`/${locale}/manager/preview`}
+            className="text-sm border border-gold-soft rounded-lg px-3 py-1 hover:bg-white/10"
+          >
+            🌐 {he ? "תצוגת אתר / סניפים" : "Site preview / Branches"}
+          </a>
+          <form action={logoutAction}>
+            <input type="hidden" name="lang" value={locale} />
+            <button className="text-sm border border-gold-soft rounded-lg px-3 py-1 hover:bg-white/10">
+              {he ? "התנתקות" : "Logout"}
+            </button>
+          </form>
+        </div>
       </header>
       <ManagerDashboard
         locale={locale}
