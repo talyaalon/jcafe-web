@@ -182,14 +182,20 @@ async function loadProducts(
   effective: number[],
 ): Promise<Product[]> {
   if (!effective.length) return [];
+  const domain: unknown[] = [
+    ["available_in_pos", "=", true],
+    ["company_id", "in", [companyId, false]],
+    ["pos_categ_ids", "in", effective],
+  ];
+  // חנות מטבח (מסעדה) — להחריג מוצרי קטלוג המכולת (eCommerce) כדי שלא יופיעו
+  // פריטי מדף (כמו במבה) בתפריט המטבח. הם שייכים לחנות "מכולת" בלבד.
+  if (cfg.type === "kitchen") {
+    domain.push("!", ["public_categ_ids", "child_of", GROCERY_ROOT_IDS]);
+  }
   const [rows, prices] = await Promise.all([
     searchRead<ProdRow>(
       "product.template",
-      [
-        ["available_in_pos", "=", true],
-        ["company_id", "in", [companyId, false]],
-        ["pos_categ_ids", "in", effective],
-      ],
+      domain,
       ["id", "name", "list_price", "qty_available", "pos_categ_ids", "barcode", "description_sale"],
       { limit: 200, order: "name asc" },
     ),
@@ -235,7 +241,7 @@ export interface BranchBundle {
 }
 
 // קטגוריות ציבוריות עליונות של המכולת (eCommerce) — ללא "J Cafe Menu".
-const GROCERY_ROOT_IDS = [28, 49, 60, 45, 41, 56, 81, 80];
+export const GROCERY_ROOT_IDS = [28, 49, 60, 45, 41, 56, 81, 80];
 
 // חנות מכולת מבוססת eCommerce (website_published) לסניף — כל קטלוג המצרכים.
 export async function getGroceryBundle(
