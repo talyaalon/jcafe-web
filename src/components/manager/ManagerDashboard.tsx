@@ -163,7 +163,7 @@ export function ManagerDashboard({
                 { label: he ? "הזמנות היום" : "Orders today", val: String(todayCount) },
                 { label: he ? "הכנסות" : "Revenue", val: formatTHB(totalRevenue) },
               ].map((s) => (
-                <div key={s.label} className="bg-white border border-line rounded-xl p-3 text-center">
+                <div key={s.label} className="bg-white border border-line rounded-xl p-3 text-center shadow-sm">
                   <div className="text-xl font-extrabold text-wine">{s.val}</div>
                   <div className="text-[11px] text-ink/55 mt-0.5">{s.label}</div>
                 </div>
@@ -174,7 +174,8 @@ export function ManagerDashboard({
             ) : (
               <div className="space-y-3">
                 {orders.map((o) => (
-                  <div key={o.id} className="bg-white border border-line rounded-xl p-4">
+                  <div key={o.id} className="bg-white border border-line rounded-xl p-4 shadow-sm">
+
                     <div className="flex justify-between items-start gap-3 flex-wrap">
                       <div>
                         <span className="font-extrabold text-wine">{o.order_name || "—"}</span>

@@ -29,7 +29,7 @@ export function ProductRowCard({
   const qty = items.find((i) => i.product.id === product.id)?.qty ?? 0;
 
   return (
-    <div className="relative flex gap-3 border border-line rounded-xl p-3 bg-white transition hover:shadow-md">
+    <div className="relative flex gap-3 border border-line rounded-xl p-3 bg-white transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_28px_rgba(110,26,56,0.10)] hover:border-wine/30">
       <HeartButton product={product} className="absolute top-2 end-2 z-10" />
       <button
         onClick={() => onOpen(product)}

@@ -504,21 +504,37 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
             </h2>
           </div>
           <div className="max-h-[46vh] overflow-y-auto divide-y divide-line">
-            {items.map(({ product, qty, store }) => (
-              <div key={product.id} className="flex items-center gap-3 px-4 py-3 text-[12.5px]">
-                <CartThumb src={product.image} alt={pName(product)} />
-                <div className="flex-1">
-                  <div className="leading-tight line-clamp-2">{pName(product)}</div>
-                  <div className="text-ink/45">
-                    {storeName(store)} · ×{qty}
+            {items.map(({ product, qty, store }) => {
+              const closed = statuses[store.id] === false;
+              return (
+                <div key={product.id} className="px-4 py-3 text-[12.5px]">
+                  <div className="flex items-center gap-3">
+                    <CartThumb src={product.image} alt={pName(product)} />
+                    <div className="flex-1 min-w-0">
+                      <div className="leading-tight line-clamp-2">{pName(product)}</div>
+                      <div className="text-ink/45">
+                        {storeName(store)}
+                        {closed && (
+                          <span className="text-red-500 font-bold"> · {he ? "סגור כעת" : "Closed"}</span>
+                        )}{" "}
+                        · ×{qty}
+                      </div>
+                    </div>
+                    <span className="font-bold">{formatTHB(product.price * qty)}</span>
+                    <button onClick={() => remove(product.id)} className="text-ink/40 hover:text-red-500">
+                      ✕
+                    </button>
                   </div>
+                  {closed && (
+                    <div className="mt-2 rounded-lg bg-red-50 border border-red-200 p-2 text-[11px] text-red-700">
+                      {he
+                        ? "החנות סגורה כעת — הסירו את הפריט (✕) או בצעו הזמנה מתוזמנת למטה."
+                        : "Store closed — remove the item (✕) or schedule the order below."}
+                    </div>
+                  )}
                 </div>
-                <span className="font-bold">{formatTHB(product.price * qty)}</span>
-                <button onClick={() => remove(product.id)} className="text-ink/40 hover:text-red-500">
-                  ✕
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
           <div className="px-4 py-3 border-t border-line text-[13px] bg-soft">
             <div className="flex justify-between py-0.5">

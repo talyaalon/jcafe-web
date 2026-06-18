@@ -28,7 +28,7 @@ export function ProductCard({
   const qty = items.find((i) => i.product.id === product.id)?.qty ?? 0;
 
   return (
-    <div className="relative border border-line rounded-lg bg-white overflow-hidden flex flex-col transition hover:shadow-[0_8px_22px_rgba(0,0,0,0.08)]">
+    <div className="relative border border-line rounded-xl bg-white overflow-hidden flex flex-col transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_28px_rgba(110,26,56,0.10)] hover:border-wine/30">
       <HeartButton product={product} className="absolute top-2 end-2 z-10" />
       {/* image — fixed height, opens modal */}
       <button
