@@ -34,7 +34,7 @@ export function ProductCard({
       <button
         onClick={() => onOpen(product)}
         aria-label={name}
-        className="relative h-40 bg-white grid place-items-center p-3 border-b border-line/70"
+        className="relative h-40 bg-white flex items-center justify-center p-4 overflow-hidden border-b border-line"
       >
         {product.image && imgOk ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -43,7 +43,7 @@ export function ProductCard({
             alt={name}
             loading="lazy"
             onError={() => setImgOk(false)}
-            className="max-h-full max-w-full object-contain mix-blend-multiply"
+            className="max-h-full max-w-full w-auto object-contain mix-blend-multiply"
           />
         ) : (
           <div className="w-14 h-16 rounded-lg bg-gradient-to-b from-cream to-gold-soft/40 grid place-items-center text-2xl text-wine/50">
