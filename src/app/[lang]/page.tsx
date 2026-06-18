@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import { getDictionary } from "@/i18n/dictionaries";
 import { isLocale, type Locale } from "@/i18n/config";
 import { odoo } from "@/lib/odoo/adapter";
-import { findPhuketStore } from "@/lib/odoo/phuket";
+import { findPhuketStore, PHUKET_COMPANY_ID, PHUKET_PRICELIST_ID } from "@/lib/odoo/phuket";
+import { getGroceryBundle } from "@/lib/odoo/branches";
 import { getActiveBanners, getStoreOpenStatus } from "@/lib/supabase/data";
 import { Storefront, type StoreBundle } from "@/components/Storefront";
 
@@ -20,14 +21,27 @@ export default async function Page({
 
   const [data, banners] = await Promise.all([
     Promise.all(
-      stores.map(async (store) => ({
-        store,
-        categories: await odoo.getCategories(store.id),
-        products: await odoo.getProducts({ storeId: store.id }),
-        open: (
+      stores.map(async (store) => {
+        const open = (
           await getStoreOpenStatus(String(findPhuketStore(store.id)?.posConfigId ?? store.id))
-        ).open,
-      })),
+        ).open;
+        // המכולת — קטלוג eCommerce מלא (כל מוצרי המצרכים)
+        if (store.id === "grocery") {
+          const g = await getGroceryBundle(PHUKET_COMPANY_ID, PHUKET_PRICELIST_ID);
+          return {
+            store,
+            categories: g?.categories ?? [],
+            products: g?.products ?? [],
+            open,
+          };
+        }
+        return {
+          store,
+          categories: await odoo.getCategories(store.id),
+          products: await odoo.getProducts({ storeId: store.id }),
+          open,
+        };
+      }),
     ) as Promise<StoreBundle[]>,
     getActiveBanners(),
   ]);

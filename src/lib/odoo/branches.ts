@@ -234,6 +234,115 @@ export interface BranchBundle {
   products: Product[];
 }
 
+// קטגוריות ציבוריות עליונות של המכולת (eCommerce) — ללא "J Cafe Menu".
+const GROCERY_ROOT_IDS = [28, 49, 60, 45, 41, 56, 81, 80];
+
+// חנות מכולת מבוססת eCommerce (website_published) לסניף — כל קטלוג המצרכים.
+export async function getGroceryBundle(
+  companyId: number,
+  pricelistId: number | null,
+): Promise<BranchBundle | null> {
+  // מפת קטגוריה→שורש (לסיווג המוצר לקטגוריה עליונה)
+  const cats = await searchRead<{ id: number; name: string; parent_id: [number, string] | false }>(
+    "product.public.category",
+    [],
+    ["id", "name", "parent_id"],
+    { limit: 400 },
+  );
+  const parentOf = new Map<number, number | null>();
+  const nameOf = new Map<number, string>();
+  for (const c of cats) {
+    parentOf.set(c.id, c.parent_id ? c.parent_id[0] : null);
+    nameOf.set(c.id, c.name);
+  }
+  const rootSet = new Set(GROCERY_ROOT_IDS);
+  const rootOf = (id: number): number | null => {
+    let cur: number | null = id;
+    const seen = new Set<number>();
+    while (cur != null && !seen.has(cur)) {
+      seen.add(cur);
+      if (rootSet.has(cur)) return cur;
+      cur = parentOf.get(cur) ?? null;
+    }
+    return null;
+  };
+
+  const heCats = await searchRead<{ id: number; name: string }>(
+    "product.public.category",
+    [["id", "in", GROCERY_ROOT_IDS]],
+    ["id", "name"],
+    { context: { lang: HE } },
+  );
+  const heCatName = new Map(heCats.map((c) => [c.id, c.name]));
+
+  const rows = await searchRead<ProdRow & { public_categ_ids: number[] }>(
+    "product.template",
+    [
+      ["website_published", "=", true],
+      ["sale_ok", "=", true],
+      ["company_id", "in", [companyId, false]],
+      ["public_categ_ids", "child_of", GROCERY_ROOT_IDS],
+    ],
+    ["id", "name", "list_price", "qty_available", "public_categ_ids", "barcode", "description_sale"],
+    { limit: 600, order: "name asc" },
+  );
+  if (!rows.length) return null;
+
+  const [prices, heRows] = await Promise.all([
+    pricelistMap(pricelistId),
+    searchRead<{ id: number; name: string; description_sale: string | false }>(
+      "product.template",
+      [["id", "in", rows.map((r) => r.id)]],
+      ["id", "name", "description_sale"],
+      { context: { lang: HE }, limit: rows.length },
+    ),
+  ]);
+  const heMap = new Map(heRows.map((r) => [r.id, { name: r.name, desc: stripHtml(r.description_sale) }]));
+
+  const STORE_ID = "grocery";
+  const products: Product[] = rows
+    .filter((r) => !isTakeAway(r.name))
+    .map((r) => {
+      const root =
+        (r.public_categ_ids ?? []).map(rootOf).find((x) => x != null) ?? GROCERY_ROOT_IDS[0];
+      return {
+        id: String(r.id),
+        storeId: STORE_ID,
+        categoryId: String(root),
+        nameHe: heMap.get(r.id)?.name ?? r.name,
+        nameEn: r.name,
+        descHe: heMap.get(r.id)?.desc || undefined,
+        descEn: stripHtml(r.description_sale) || undefined,
+        price: prices.get(r.id) ?? r.list_price ?? 0,
+        qtyAvailable: typeof r.qty_available === "number" ? r.qty_available : null,
+        isKitchen: false,
+        isFeatured: false,
+        barcode: r.barcode || undefined,
+        image: imageUrl(r.id),
+      } satisfies Product;
+    });
+
+  const usedRoots = [...new Set(products.map((p) => Number(p.categoryId)))];
+  const categories: Category[] = usedRoots.map((id) => ({
+    id: String(id),
+    slug: String(id),
+    nameHe: heCatName.get(id) ?? nameOf.get(id) ?? "",
+    nameEn: nameOf.get(id) ?? "",
+    storeId: STORE_ID,
+  }));
+
+  const store: Store = {
+    id: STORE_ID,
+    slug: STORE_ID,
+    nameHe: "מכולת",
+    nameEn: "Kosher Store",
+    type: "grocery",
+    emoji: "",
+    order: 99,
+  };
+  return { store, categories, products };
+}
+
 // רשימת מוצרי הסניף (לבחירת קישור באנר). מזהה בסיס (ללא וריאנט).
 export interface BranchProduct {
   id: string;
@@ -259,13 +368,16 @@ export async function getBranchData(companyId: number): Promise<BranchBundle[]> 
   const branch = (await getBranches()).find((b) => b.companyId === companyId);
   if (!branch) return [];
 
-  const grocery = branch.configs.find((c) => c.type === "grocery");
-  const shared = grocery ? new Set(await allowedCategs(grocery.id)) : new Set<number>();
+  // קטגוריות מכולת (POS) — מוחסרות מחנויות המטבח כדי לא לערבב.
+  const groceryCfg = branch.configs.find((c) => c.type === "grocery");
+  const shared = groceryCfg ? new Set(await allowedCategs(groceryCfg.id)) : new Set<number>();
 
-  return Promise.all(
-    branch.configs.map(async (cfg, idx) => {
+  // חנויות מטבח (מסעדה) מ-pos.config בלבד
+  const kitchenConfigs = branch.configs.filter((c) => c.type === "kitchen");
+  const kitchenBundles = await Promise.all(
+    kitchenConfigs.map(async (cfg, idx) => {
       const allowed = await allowedCategs(cfg.id);
-      const effective = cfg.type === "grocery" ? allowed : allowed.filter((id) => !shared.has(id));
+      const effective = allowed.filter((id) => !shared.has(id));
       const [categories, products] = await Promise.all([
         loadCategories(effective, String(cfg.id)),
         loadProducts(companyId, cfg, effective),
@@ -282,4 +394,10 @@ export async function getBranchData(companyId: number): Promise<BranchBundle[]> 
       return { store, categories, products };
     }),
   );
+
+  // חנות מכולת מבוססת eCommerce (כל קטלוג המצרכים) — מחליפה את מכולת ה-POS
+  const pricelistId = branch.configs.find((c) => c.pricelistId)?.pricelistId ?? null;
+  const grocery = await getGroceryBundle(companyId, pricelistId);
+
+  return grocery ? [...kitchenBundles, grocery] : kitchenBundles;
 }
