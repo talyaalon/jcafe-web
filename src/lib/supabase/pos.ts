@@ -8,6 +8,9 @@ export interface PosOrderItem {
   storeId: string;
   storeName: string;
   templateId?: number;
+  barcode?: string | null;
+  /** כמה יחידות נסרקו (במכולת) — done כש-scanned >= qty */
+  scanned?: number;
   status?: "pending" | "preparing" | "done" | "unavailable";
 }
 

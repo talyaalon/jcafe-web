@@ -14,7 +14,15 @@ interface OrderBody {
     city?: string;
     zip?: string;
   };
-  items: { id: string; qty: number; price: number; name: string; storeName: string; storeId?: string }[];
+  items: {
+    id: string;
+    qty: number;
+    price: number;
+    name: string;
+    storeName: string;
+    storeId?: string;
+    barcode?: string;
+  }[];
   method?: "delivery" | "pickup";
   notes?: string;
   scheduledFor?: string;
@@ -98,6 +106,8 @@ export async function POST(req: Request) {
               storeId: i.storeId || "",
               storeName: i.storeName,
               templateId: Number(String(i.id).split("|")[0]),
+              barcode: i.barcode || null,
+              scanned: 0,
             })),
           });
       } catch {

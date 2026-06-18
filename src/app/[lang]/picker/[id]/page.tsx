@@ -2,12 +2,14 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { isLocale, type Locale } from "@/i18n/config";
 import { isAdmin } from "@/lib/admin/session";
-import { getPosOrder, itemStatus, isGrocery } from "@/lib/supabase/pos";
+import { getPosOrder, itemStatus } from "@/lib/supabase/pos";
 import { syncActiveKitchenStatuses } from "@/lib/odoo/prep-sync";
+import { productImageUrl } from "@/lib/odoo/image";
 import { formatTHB } from "@/lib/format";
 import { ManagerLogin } from "@/components/manager/ManagerLogin";
 import { AutoRefresh } from "@/components/AutoRefresh";
-import { setItemStatus, scanNextGrocery, readyForPickupAction } from "@/lib/staff/actions";
+import { readyForPickupAction } from "@/lib/staff/actions";
+import { GroceryScanner, type ScanItem } from "@/components/picker/GroceryScanner";
 
 export default async function PickerDetail({
   params,
@@ -80,16 +82,47 @@ export default async function PickerDetail({
           {storeNames.map((sn) => {
             const rows = indexed.filter((x) => x.it.storeName === sn);
             const grocery = rows[0]?.it.storeId === "grocery";
+
+            // מכולת — סריקת ברקוד עם ספירה פר-יחידה
+            if (grocery) {
+              const scanItems: ScanItem[] = rows.map(({ it, index }) => {
+                const scanned =
+                  typeof it.scanned === "number"
+                    ? it.scanned
+                    : itemStatus(it) === "done"
+                      ? it.qty
+                      : 0;
+                return {
+                  index,
+                  name: it.name,
+                  qty: it.qty,
+                  scanned,
+                  done: scanned >= it.qty,
+                  hasBarcode: !!(it.barcode && String(it.barcode).trim()),
+                  image: productImageUrl(it.templateId),
+                };
+              });
+              return (
+                <GroceryScanner
+                  key={sn}
+                  orderId={order.id}
+                  storeName={sn}
+                  initial={scanItems}
+                  he={he}
+                />
+              );
+            }
+
+            // מטבח — סטטוס לכל פריט (מסונכרן מ-ODOO)
             const gDone = rows.filter((x) => itemStatus(x.it) === "done").length;
             return (
               <div key={sn} className="bg-white border border-line rounded-xl overflow-hidden">
                 <div className="flex justify-between items-center bg-wine text-white px-4 py-2 text-sm font-bold">
                   <span>
-                    {grocery ? "🛒 " : "🍳 "}
-                    {sn} {grocery ? `(${he ? "ליקוט" : "Picking"})` : `(${he ? "מטבח" : "Kitchen"})`}
+                    🍳 {sn} ({he ? "מטבח" : "Kitchen"})
                   </span>
                   <span>
-                    {grocery ? (he ? "נסרקו" : "Scanned") : he ? "מוכן" : "Ready"} {gDone}/{rows.length}
+                    {he ? "מוכן" : "Ready"} {gDone}/{rows.length}
                   </span>
                 </div>
                 <ul>
@@ -97,69 +130,39 @@ export default async function PickerDetail({
                     const st = itemStatus(it);
                     return (
                       <li key={index} className="flex items-center gap-3 px-4 py-2.5 border-t border-line/60">
-                        <span className={`w-3 h-3 rounded-full flex-none ${dot(st, grocery)}`} />
+                        <span className={`w-3 h-3 rounded-full flex-none ${dot(st, false)}`} />
                         <span className="flex-1 text-sm">
                           {it.name} <span className="text-ink/45">×{it.qty}</span>
                         </span>
-                        {grocery ? (
-                          <form action={setItemStatus}>
-                            <input type="hidden" name="id" value={order.id} />
-                            <input type="hidden" name="index" value={index} />
-                            <input type="hidden" name="status" value={st === "done" ? "pending" : "done"} />
-                            <button
-                              className={`text-xs font-bold rounded-lg px-2.5 py-1 border ${
-                                st === "done"
-                                  ? "border-brand-green text-brand-green"
-                                  : "border-line text-ink/60 hover:border-wine"
-                              }`}
-                            >
-                              {st === "done" ? (he ? "נסרק ✓" : "Scanned ✓") : he ? "סרוק" : "Scan"}
-                            </button>
-                          </form>
-                        ) : (
-                          <span
-                            className={`text-xs font-bold rounded-lg px-2.5 py-1 ${
-                              st === "done"
-                                ? "text-brand-green"
-                                : st === "unavailable"
-                                  ? "text-red-500"
-                                  : "text-amber-600"
-                            }`}
-                          >
-                            {st === "done"
-                              ? he
-                                ? "מוכן"
-                                : "Ready"
+                        <span
+                          className={`text-xs font-bold rounded-lg px-2.5 py-1 ${
+                            st === "done"
+                              ? "text-brand-green"
                               : st === "unavailable"
+                                ? "text-red-500"
+                                : "text-amber-600"
+                          }`}
+                        >
+                          {st === "done"
+                            ? he
+                              ? "מוכן"
+                              : "Ready"
+                            : st === "unavailable"
+                              ? he
+                                ? "לא זמין"
+                                : "Unavailable"
+                              : st === "preparing"
                                 ? he
-                                  ? "לא זמין"
-                                  : "Unavailable"
-                                : st === "preparing"
-                                  ? he
-                                    ? "בהכנה"
-                                    : "Preparing"
-                                  : he
-                                    ? "במטבח…"
-                                    : "In kitchen…"}
-                          </span>
-                        )}
+                                  ? "בהכנה"
+                                  : "Preparing"
+                                : he
+                                  ? "במטבח…"
+                                  : "In kitchen…"}
+                        </span>
                       </li>
                     );
                   })}
                 </ul>
-                {grocery && gDone < rows.length && (
-                  <form action={scanNextGrocery} className="flex gap-2 p-3 border-t border-line bg-soft">
-                    <input type="hidden" name="id" value={order.id} />
-                    <input
-                      name="barcode"
-                      placeholder={he ? "📷 סרוק ברקוד מוצר הבא…" : "📷 Scan next barcode…"}
-                      className="flex-1 border border-line rounded-lg px-3 py-2 text-sm"
-                    />
-                    <button className="bg-wine text-white font-bold rounded-lg px-4 text-sm">
-                      {he ? "סרוק ✓" : "Scan ✓"}
-                    </button>
-                  </form>
-                )}
               </div>
             );
           })}

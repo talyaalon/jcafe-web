@@ -3,6 +3,7 @@ import Link from "next/link";
 import { isLocale, type Locale } from "@/i18n/config";
 import { isAdmin } from "@/lib/admin/session";
 import { getPosOrder } from "@/lib/supabase/pos";
+import { productImageUrl } from "@/lib/odoo/image";
 import { formatTHB } from "@/lib/format";
 import { ManagerLogin } from "@/components/manager/ManagerLogin";
 
@@ -70,6 +71,7 @@ export default async function OrderDetail({
           <table className="w-full text-sm">
             <thead>
               <tr className="text-ink/55 bg-soft text-[12px]">
+                <th className="font-bold p-3 w-12"></th>
                 <th className="text-start font-bold p-3">{he ? "מוצר" : "Product"}</th>
                 <th className="text-start font-bold p-3">{he ? "חנות" : "Store"}</th>
                 <th className="text-center font-bold p-3">{he ? "כמות" : "Qty"}</th>
@@ -78,8 +80,20 @@ export default async function OrderDetail({
               </tr>
             </thead>
             <tbody>
-              {o.items.map((it, idx) => (
+              {o.items.map((it, idx) => {
+                const img = productImageUrl(it.templateId);
+                return (
                 <tr key={idx} className="border-t border-line">
+                  <td className="p-2">
+                    <div className="w-10 h-10 rounded-lg bg-soft border border-line overflow-hidden grid place-items-center">
+                      {img ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={img} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-ink/25 text-base">🛍️</span>
+                      )}
+                    </div>
+                  </td>
                   <td className="p-3 font-semibold text-ink">{it.name}</td>
                   <td className="p-3 text-ink/60 text-[12px]">{it.storeName}</td>
                   <td className="p-3 text-center text-ink/70">{it.qty}</td>
@@ -90,7 +104,8 @@ export default async function OrderDetail({
                     {it.price != null ? formatTHB(it.price * it.qty) : "—"}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
           <div className="px-4 py-3 border-t border-line bg-soft text-sm space-y-1">

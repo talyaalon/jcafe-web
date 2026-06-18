@@ -170,6 +170,7 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
           name: i.product.nameEn || i.product.nameHe,
           storeName: i.store.nameEn || i.store.nameHe,
           storeId: i.store.id,
+          barcode: i.product.barcode,
         })),
         method,
         companyId: branchCompany,
