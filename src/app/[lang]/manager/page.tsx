@@ -7,10 +7,11 @@ import {
   getDeliverySettings,
   getDeliveryZones,
   getBranchBranding,
+  getStoreBranding,
 } from "@/lib/supabase/data";
 import { getPosOrders } from "@/lib/supabase/pos";
 import { getWebsiteCustomers } from "@/lib/odoo/orders";
-import { getBranches, getBranchProducts, COMPANY_SLUG } from "@/lib/odoo/branches";
+import { getBranches, getBranchProducts, getBranchStores, COMPANY_SLUG } from "@/lib/odoo/branches";
 import { CopyLink } from "@/components/manager/CopyLink";
 import { ManagerLogin } from "@/components/manager/ManagerLogin";
 import { ManagerDashboard, type StoreHours } from "@/components/manager/ManagerDashboard";
@@ -48,23 +49,35 @@ export default async function ManagerPage({
   const branchName = branches.find((b) => b.companyId === branch)?.name ?? "";
   const configs = branches.find((b) => b.companyId === branch)?.configs ?? [];
 
-  const [banners, branding, delivery, orders, webCustomers, stores, products, zones] =
-    await Promise.all([
-      getAllBanners(branch),
-      getBranchBranding(branch),
-      getDeliverySettings(branch),
-      getPosOrders(),
-      getWebsiteCustomers().catch(() => []),
-      Promise.all(
-        configs.map(async (c) => ({
-          id: String(c.id),
-          name: c.name,
-          hours: await getStoreHours(String(c.id)),
-        })),
-      ) as Promise<StoreHours[]>,
-      getBranchProducts(branch).catch(() => []),
-      getDeliveryZones(branch),
-    ]);
+  const [
+    banners,
+    branding,
+    storeBranding,
+    brandStores,
+    delivery,
+    orders,
+    webCustomers,
+    stores,
+    products,
+    zones,
+  ] = await Promise.all([
+    getAllBanners(branch),
+    getBranchBranding(branch),
+    getStoreBranding(branch),
+    getBranchStores(branch).catch(() => []),
+    getDeliverySettings(branch),
+    getPosOrders(),
+    getWebsiteCustomers().catch(() => []),
+    Promise.all(
+      configs.map(async (c) => ({
+        id: String(c.id),
+        name: c.name,
+        hours: await getStoreHours(String(c.id)),
+      })),
+    ) as Promise<StoreHours[]>,
+    getBranchProducts(branch).catch(() => []),
+    getDeliveryZones(branch),
+  ]);
 
   return (
     <div className="min-h-screen bg-[#f7f6f8]">
@@ -116,6 +129,8 @@ export default async function ManagerPage({
         stores={stores}
         banners={banners}
         branding={branding}
+        brandStores={brandStores}
+        storeBranding={storeBranding}
         delivery={delivery}
         orders={orders}
         webCustomers={webCustomers}

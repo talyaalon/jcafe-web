@@ -88,6 +88,25 @@ export async function getBranchBranding(branch = 14): Promise<BranchBranding | n
   return (data as BranchBranding) ?? null;
 }
 
+export interface StoreBrandingRow {
+  store_id: string;
+  name_he: string | null;
+  name_en: string | null;
+  logo_url: string | null;
+}
+
+// מיתוג פר-חנות לסניף — מפתח store_id → {שם, לוגו}
+export async function getStoreBranding(branch = 14): Promise<Record<string, StoreBrandingRow>> {
+  if (!supabaseConfigured) return {};
+  const { data } = await supabasePublic
+    .from("store_branding")
+    .select("store_id,name_he,name_en,logo_url")
+    .eq("branch", branch);
+  const map: Record<string, StoreBrandingRow> = {};
+  for (const r of (data as StoreBrandingRow[]) ?? []) map[r.store_id] = r;
+  return map;
+}
+
 export interface DayHours {
   day_of_week: number;
   closed: boolean;

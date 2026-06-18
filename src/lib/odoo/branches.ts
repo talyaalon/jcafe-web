@@ -364,6 +364,25 @@ export async function getBranchProducts(companyId: number): Promise<BranchProduc
   return out.sort((a, b) => a.nameEn.localeCompare(b.nameEn));
 }
 
+// רשימת חנויות הסניף כפי שמופיעות בחזית (מזהה זהה ל-getBranchData) — קליל, ללא טעינת מוצרים.
+// משמש את צד-המנהל לקביעת שם+לוגו לכל חנות.
+export interface BranchStore {
+  id: string;
+  nameHe: string;
+  nameEn: string;
+  type: "kitchen" | "grocery";
+}
+export async function getBranchStores(companyId: number): Promise<BranchStore[]> {
+  const branch = (await getBranches()).find((b) => b.companyId === companyId);
+  if (!branch) return [];
+  const stores: BranchStore[] = branch.configs
+    .filter((c) => c.type === "kitchen")
+    .map((c) => ({ id: String(c.id), nameHe: c.name, nameEn: c.name, type: "kitchen" as const }));
+  // חנות המכולת (eCommerce) — מזהה קבוע "grocery", כמו ב-getBranchData
+  stores.push({ id: "grocery", nameHe: "מכולת", nameEn: "Kosher Store", type: "grocery" });
+  return stores;
+}
+
 export async function getBranchData(companyId: number): Promise<BranchBundle[]> {
   const branch = (await getBranches()).find((b) => b.companyId === companyId);
   if (!branch) return [];

@@ -4,7 +4,13 @@ import { isLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
 import { isAdmin } from "@/lib/admin/session";
 import { getBranches, getBranchData } from "@/lib/odoo/branches";
-import { getActiveBanners, getStoreOpenStatus, getBranchBranding } from "@/lib/supabase/data";
+import { applyStoreBranding } from "@/lib/odoo/branding";
+import {
+  getActiveBanners,
+  getStoreOpenStatus,
+  getBranchBranding,
+  getStoreBranding,
+} from "@/lib/supabase/data";
 import { ManagerLogin } from "@/components/manager/ManagerLogin";
 import { BranchSelect } from "@/components/manager/BranchSelect";
 import { Storefront, type StoreBundle } from "@/components/Storefront";
@@ -41,12 +47,14 @@ export default async function ManagerPreview({
 
   const rawBundles = current ? await getBranchData(current) : [];
   // הוספת סטטוס פתוח/סגור לכל חנות (לפי שעות הסניף)
-  const bundles = (await Promise.all(
+  const bundles0 = (await Promise.all(
     rawBundles.map(async (b) => ({
       ...b,
       open: (await getStoreOpenStatus(b.store.id)).open,
     })),
   )) as StoreBundle[];
+  const storeBranding = current ? await getStoreBranding(current) : {};
+  const bundles = applyStoreBranding(bundles0, storeBranding, locale);
   const banners = await getActiveBanners(current);
   const bb = current ? await getBranchBranding(current) : null;
   const branding = bb

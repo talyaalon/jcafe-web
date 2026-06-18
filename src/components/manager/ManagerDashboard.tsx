@@ -15,6 +15,11 @@ import { formatTHB } from "@/lib/format";
 import { BannerUploader } from "./BannerUploader";
 import { BannerEditor } from "./BannerEditor";
 import { BrandingEditor, type Branding } from "./BrandingEditor";
+import {
+  StoreBrandingEditor,
+  type StoreBrandingInfo,
+  type StoreBrandingValue,
+} from "./StoreBrandingEditor";
 import type { PickerProduct } from "./ProductPicker";
 import { SubmitButton } from "./SubmitButton";
 
@@ -80,6 +85,8 @@ export function ManagerDashboard({
   stores,
   banners,
   branding,
+  brandStores,
+  storeBranding,
   delivery,
   orders,
   webCustomers,
@@ -91,6 +98,8 @@ export function ManagerDashboard({
   stores: StoreHours[];
   banners: BannerRow[];
   branding: Branding | null;
+  brandStores: StoreBrandingInfo[];
+  storeBranding: Record<string, StoreBrandingValue>;
   delivery: DeliverySettings;
   orders: OrderRow[];
   webCustomers: WebCustomer[];
@@ -470,12 +479,42 @@ export function ManagerDashboard({
             <h2 className="text-xl font-extrabold text-wine mb-1">
               {he ? "שם ולוגו" : "Name & logo"}
             </h2>
-            <p className="text-ink/55 text-sm mb-4">
+
+            {/* מיתוג הסניף — הפינה העליונה */}
+            <h3 className="font-bold text-ink mt-3 mb-1">
+              {he ? "לוגו הסניף (פינה עליונה)" : "Branch logo (top corner)"}
+            </h3>
+            <p className="text-ink/55 text-sm mb-3">
               {he
-                ? "שם החנות והלוגו שיופיעו בפינה העליונה של חזית הסניף (במקום THE KOSHER PLACE / J CAFE PHUKET). השאירו ריק לברירת המחדל."
-                : "Store name and logo shown in the top corner of this branch's storefront (instead of THE KOSHER PLACE / J CAFE PHUKET). Leave blank for the default."}
+                ? "שם ולוגו הסניף שיופיעו בפינה העליונה של חזית הסניף (במקום THE KOSHER PLACE / J CAFE PHUKET). השאירו ריק לברירת המחדל."
+                : "Branch name and logo shown in the top corner of the storefront (instead of THE KOSHER PLACE / J CAFE PHUKET). Leave blank for the default."}
             </p>
             <BrandingEditor he={he} branch={branch} branding={branding} />
+
+            {/* מיתוג לכל חנות — לשוניות החנויות */}
+            <h3 className="font-bold text-ink mt-7 mb-1">
+              {he ? "לוגו לכל חנות (לשוניות)" : "Per-store logo (tabs)"}
+            </h3>
+            <p className="text-ink/55 text-sm mb-3">
+              {he
+                ? "שם ולוגו לכל חנות בסניף — מוצגים בלשונית החנות בחזית. השאירו ריק לשם המקורי."
+                : "Name and logo per store — shown on the store's tab in the storefront. Leave blank to keep the original name."}
+            </p>
+            {brandStores.length === 0 ? (
+              <p className="text-ink/40 text-sm">{he ? "אין חנויות." : "No stores."}</p>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 max-w-3xl">
+                {brandStores.map((s) => (
+                  <StoreBrandingEditor
+                    key={s.id}
+                    he={he}
+                    branch={branch}
+                    store={s}
+                    value={storeBranding[s.id] ?? null}
+                  />
+                ))}
+              </div>
+            )}
           </section>
         )}
 

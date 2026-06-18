@@ -4,7 +4,13 @@ import { isLocale, type Locale } from "@/i18n/config";
 import { odoo } from "@/lib/odoo/adapter";
 import { findPhuketStore, PHUKET_COMPANY_ID, PHUKET_PRICELIST_ID } from "@/lib/odoo/phuket";
 import { getGroceryBundle } from "@/lib/odoo/branches";
-import { getActiveBanners, getStoreOpenStatus, getBranchBranding } from "@/lib/supabase/data";
+import { applyStoreBranding } from "@/lib/odoo/branding";
+import {
+  getActiveBanners,
+  getStoreOpenStatus,
+  getBranchBranding,
+  getStoreBranding,
+} from "@/lib/supabase/data";
 import { Storefront, type StoreBundle } from "@/components/Storefront";
 
 export default async function Page({
@@ -19,7 +25,7 @@ export default async function Page({
   const dict = await getDictionary(locale);
   const stores = await odoo.getStores();
 
-  const [data, banners] = await Promise.all([
+  const [data0, banners] = await Promise.all([
     Promise.all(
       stores.map(async (store) => {
         const open = (
@@ -45,6 +51,12 @@ export default async function Page({
     ) as Promise<StoreBundle[]>,
     getActiveBanners(),
   ]);
+
+  // מיתוג פר-חנות — /he משתמש ב-slug, ממופה ל-pos.config (מלבד "grocery")
+  const storeBranding = await getStoreBranding(PHUKET_COMPANY_ID);
+  const data = applyStoreBranding(data0, storeBranding, locale, (id) =>
+    id === "grocery" ? "grocery" : String(findPhuketStore(id)?.posConfigId ?? id),
+  );
 
   const b = await getBranchBranding(PHUKET_COMPANY_ID);
   const branding = b

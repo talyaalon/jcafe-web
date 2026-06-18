@@ -2,7 +2,13 @@ import { notFound } from "next/navigation";
 import { getDictionary } from "@/i18n/dictionaries";
 import { isLocale, type Locale } from "@/i18n/config";
 import { getBranches, getBranchData, resolveBranch } from "@/lib/odoo/branches";
-import { getActiveBanners, getStoreOpenStatus, getBranchBranding } from "@/lib/supabase/data";
+import { applyStoreBranding } from "@/lib/odoo/branding";
+import {
+  getActiveBanners,
+  getStoreOpenStatus,
+  getBranchBranding,
+  getStoreBranding,
+} from "@/lib/supabase/data";
 import { Storefront, type StoreBundle } from "@/components/Storefront";
 
 export default async function BranchStore({
@@ -21,12 +27,14 @@ export default async function BranchStore({
 
   const dict = await getDictionary(locale);
   const raw = await getBranchData(companyId);
-  const [data, banners] = await Promise.all([
+  const [data0, banners, storeBranding] = await Promise.all([
     Promise.all(
       raw.map(async (b) => ({ ...b, open: (await getStoreOpenStatus(b.store.id)).open })),
     ) as Promise<StoreBundle[]>,
     getActiveBanners(companyId),
+    getStoreBranding(companyId),
   ]);
+  const data = applyStoreBranding(data0, storeBranding, locale);
 
   const bb = await getBranchBranding(companyId);
   const branding = bb

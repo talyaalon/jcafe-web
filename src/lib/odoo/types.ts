@@ -10,6 +10,8 @@ export interface Store {
   type: StoreType; // grocery = ליקוט בסריקה · kitchen = KDS
   emoji: string;
   order: number;
+  /** לוגו מותאם לחנות (מצד מנהל) — מוצג בלשונית החנות */
+  logo?: string | null;
   /** kitchen tag ב-ODOO לניתוב ל-KDS (רק לחנויות מטבח) */
   kitchenTag?: string;
 }

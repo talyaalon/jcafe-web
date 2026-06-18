@@ -156,12 +156,16 @@ export function Storefront({
           <button
             key={s.id}
             onClick={() => switchStore(s.id)}
-            className={`shrink-0 font-tabs font-extrabold text-[14px] tracking-[0.15px] uppercase py-3.5 whitespace-nowrap border-b-[3px] -mb-px transition ${
+            className={`shrink-0 inline-flex items-center gap-2 font-tabs font-extrabold text-[14px] tracking-[0.15px] uppercase py-3.5 whitespace-nowrap border-b-[3px] -mb-px transition ${
               s.id === activeStoreId
                 ? "text-wine border-wine"
                 : "text-label/60 border-transparent hover:text-label"
             }`}
           >
+            {s.logo && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={s.logo} alt="" className="h-6 w-6 rounded object-cover" />
+            )}
             {sName(s)}
             {openMap.get(s.id) === false && (
               <span className="ms-1 text-[10px] font-bold text-red-500">

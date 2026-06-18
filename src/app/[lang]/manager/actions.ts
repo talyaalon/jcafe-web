@@ -143,6 +143,30 @@ export async function saveBrandingAction(formData: FormData) {
   revalidatePath("/", "layout");
 }
 
+export async function saveStoreBrandingAction(formData: FormData) {
+  const branch = Number(formData.get("branch")) || 14;
+  const store_id = String(formData.get("store_id") ?? "").trim();
+  if (!store_id) return;
+  const txt = (k: string) => {
+    const v = String(formData.get(k) ?? "").trim();
+    return v || null;
+  };
+  await supabaseAdmin()
+    .from("store_branding")
+    .upsert(
+      {
+        branch,
+        store_id,
+        name_he: txt("name_he"),
+        name_en: txt("name_en"),
+        logo_url: txt("logo_url"),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "branch,store_id" },
+    );
+  revalidatePath("/", "layout");
+}
+
 export async function editBannerAction(formData: FormData) {
   const id = Number(formData.get("id"));
   if (!id) return;
