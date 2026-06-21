@@ -230,7 +230,19 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
         fetch("/api/notify/order", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ to: form.email, orderNo: data.orderNo, total, name: form.name }),
+          body: JSON.stringify({
+            to: form.email,
+            orderNo: data.orderNo,
+            total,
+            name: form.name,
+            method,
+            deliveryFee,
+            items: items.map((i) => ({
+              name: i.product.nameEn || i.product.nameHe,
+              qty: i.qty,
+              price: i.product.price,
+            })),
+          }),
         }).catch(() => {});
       }
       // שמירת ההזמנה בהיסטוריית המשתמש (אם מחובר)

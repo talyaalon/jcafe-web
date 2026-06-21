@@ -34,9 +34,22 @@ interface PosProductRow {
   pos_categ_ids: number[];
   categ_id: [number, string] | false;
   attribute_line_ids: number[];
+  is_storable: boolean;
+  allow_out_of_stock_order: boolean;
   barcode: string | false;
   type: string;
   description_sale: string | false;
+}
+
+// מוצר מוצג אם: אינו מנוהל-מלאי, או יש מלאי, או "המשך מכירה גם כשאזל" מסומן.
+function inStockOrSellable(r: {
+  is_storable: boolean;
+  qty_available: number;
+  allow_out_of_stock_order: boolean;
+}): boolean {
+  if (!r.is_storable) return true;
+  if ((r.qty_available ?? 0) > 0) return true;
+  return !!r.allow_out_of_stock_order;
 }
 
 function stripHtml(v: string | false): string {
@@ -158,13 +171,13 @@ export const odooApiAdapter: OdooAdapter = {
       searchRead<PosProductRow>(
         "product.template",
         domain,
-        ["id", "name", "list_price", "qty_available", "pos_categ_ids", "categ_id", "attribute_line_ids", "barcode", "type", "description_sale"],
+        ["id", "name", "list_price", "qty_available", "pos_categ_ids", "categ_id", "attribute_line_ids", "is_storable", "allow_out_of_stock_order", "barcode", "type", "description_sale"],
         { limit: 120, order: "name asc" },
       ),
       buildPricer(PHUKET_PRICELIST_ID),
     ]);
 
-    const filtered = rows.filter((r) => !isTakeAway(r.name));
+    const filtered = rows.filter((r) => !isTakeAway(r.name) && inStockOrSellable(r));
     const heMap = await heProductMap(filtered.map((r) => r.id));
 
     return filtered.map((r) => {
@@ -181,11 +194,8 @@ export const odooApiAdapter: OdooAdapter = {
         descHe: heMap.get(r.id)?.desc || undefined,
         descEn: stripHtml(r.description_sale) || undefined,
         price: pricer(r.id, r.categ_id ? r.categ_id[0] : null, r.list_price ?? 0),
-        qtyAvailable: isKitchen
-          ? null
-          : typeof r.qty_available === "number"
-            ? r.qty_available
-            : null,
+        // מוצר שמוצג ניתן להזמנה (אזל אך "המשך מכירה" → לא חוסמים)
+        qtyAvailable: null,
         isKitchen,
         isFeatured: false,
         hasOptions: (r.attribute_line_ids?.length ?? 0) > 0,

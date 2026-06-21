@@ -155,8 +155,21 @@ interface ProdRow {
   pos_categ_ids: number[];
   categ_id: [number, string] | false;
   attribute_line_ids: number[];
+  is_storable: boolean;
+  allow_out_of_stock_order: boolean;
   barcode: string | false;
   description_sale: string | false;
+}
+
+// מוצר מוצג אם: אינו מנוהל-מלאי, או יש מלאי, או "המשך מכירה גם כשאזל" מסומן ב-ODOO.
+function inStockOrSellable(r: {
+  is_storable: boolean;
+  qty_available: number;
+  allow_out_of_stock_order: boolean;
+}): boolean {
+  if (!r.is_storable) return true;
+  if ((r.qty_available ?? 0) > 0) return true;
+  return !!r.allow_out_of_stock_order;
 }
 
 async function loadProducts(
@@ -181,13 +194,13 @@ async function loadProducts(
     searchRead<ProdRow>(
       "product.template",
       domain,
-      ["id", "name", "list_price", "qty_available", "pos_categ_ids", "categ_id", "attribute_line_ids", "barcode", "description_sale"],
+      ["id", "name", "list_price", "qty_available", "pos_categ_ids", "categ_id", "attribute_line_ids", "is_storable", "allow_out_of_stock_order", "barcode", "description_sale"],
       { limit: 500, order: "name asc" },
     ),
     buildPricer(cfg.pricelistId),
   ]);
 
-  const filtered = rows.filter((r) => !isTakeAway(r.name));
+  const filtered = rows.filter((r) => !isTakeAway(r.name) && inStockOrSellable(r));
   const heRows = filtered.length
     ? await searchRead<{ id: number; name: string; description_sale: string | false }>(
         "product.template",
@@ -309,7 +322,7 @@ export async function getGroceryBundle(
         ? ["!", ["public_categ_ids", "child_of", MENU_ROOT_IDS]]
         : [["public_categ_ids", "child_of", GROCERY_ROOT_IDS]]),
     ],
-    ["id", "name", "list_price", "qty_available", "public_categ_ids", "categ_id", "attribute_line_ids", "barcode", "description_sale"],
+    ["id", "name", "list_price", "qty_available", "public_categ_ids", "categ_id", "attribute_line_ids", "is_storable", "allow_out_of_stock_order", "barcode", "description_sale"],
     { limit: 1500, order: "name asc" },
   );
   if (!rows.length) return null;
@@ -328,7 +341,7 @@ export async function getGroceryBundle(
   const STORE_ID = "grocery";
   const SHOP_CAT = "shop"; // קטגוריית ברירת מחדל למוצרי מדף ללא קטגוריית מכולת
   const products: Product[] = rows
-    .filter((r) => !isTakeAway(r.name))
+    .filter((r) => !isTakeAway(r.name) && inStockOrSellable(r))
     .map((r) => {
       const root = (r.public_categ_ids ?? []).map(rootOf).find((x) => x != null) ?? null;
       return {
@@ -340,7 +353,8 @@ export async function getGroceryBundle(
         descHe: heMap.get(r.id)?.desc || undefined,
         descEn: stripHtml(r.description_sale) || undefined,
         price: pricer(r.id, r.categ_id ? r.categ_id[0] : null, r.list_price ?? 0),
-        qtyAvailable: typeof r.qty_available === "number" ? r.qty_available : null,
+        // מוצר שמוצג ניתן להזמנה (אם אזל אבל "המשך מכירה" — לא חוסמים)
+        qtyAvailable: null,
         isKitchen: false,
         isFeatured: false,
         hasOptions: (r.attribute_line_ids?.length ?? 0) > 0,
