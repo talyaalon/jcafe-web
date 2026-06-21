@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { FavoritesMenu } from "./FavoritesMenu";
@@ -33,10 +34,13 @@ export function Header({
 }) {
   const brandName = brand?.name?.trim() || `${dict.brand.name} Phuket`;
   const brandTagline = brand?.tagline?.trim() || dict.brand.tagline;
+  const pathname = usePathname();
+  // הלוגו מוביל לעמוד הסניף הנוכחי (לא לדף הבית של פוקט), כדי לא לצאת מהסניף.
+  const homeHref = brand?.href ?? pathname ?? `/${locale}`;
   return (
     <header className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 sm:px-7 py-3 bg-white border-b border-line">
       {/* logo */}
-      <Link href={brand?.href ?? `/${locale}`} className="order-1 leading-none flex-none flex items-center gap-2.5">
+      <Link href={homeHref} className="order-1 leading-none flex-none flex items-center gap-2.5">
         {brand?.logoUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
