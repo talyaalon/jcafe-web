@@ -17,6 +17,7 @@ export interface PosOrderItem {
 export interface PosOrder {
   id: string;
   order_name: string | null;
+  company?: number | null;
   customer_name: string | null;
   phone: string | null;
   email: string | null;
@@ -31,14 +32,16 @@ export interface PosOrder {
   created_at: string;
 }
 
-export async function getPosOrders(): Promise<PosOrder[]> {
+export async function getPosOrders(company?: number): Promise<PosOrder[]> {
   if (!supabaseConfigured) return [];
   try {
-    const { data } = await supabaseAdmin()
+    let q = supabaseAdmin()
       .from("pos_orders")
       .select("*")
       .order("created_at", { ascending: false })
       .limit(80);
+    if (company) q = q.eq("company", company);
+    const { data } = await q;
     return (data as PosOrder[]) ?? [];
   } catch (e) {
     console.error("[getPosOrders]", e);

@@ -173,6 +173,7 @@ export async function POST(req: Request) {
           .from("pos_orders")
           .insert({
             order_name: order.name,
+            company: companyId,
             customer_name: body.customer.name,
             phone: body.customer.phone,
             email: body.customer.email || null,

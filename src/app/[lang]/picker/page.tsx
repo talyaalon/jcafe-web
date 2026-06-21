@@ -3,11 +3,19 @@ import { isLocale, type Locale } from "@/i18n/config";
 import { isAdmin } from "@/lib/admin/session";
 import { getPosOrders, itemStatus } from "@/lib/supabase/pos";
 import { syncActiveKitchenStatuses } from "@/lib/odoo/prep-sync";
+import { getBranches } from "@/lib/odoo/branches";
 import { ManagerLogin } from "@/components/manager/ManagerLogin";
+import { BranchSelect } from "@/components/manager/BranchSelect";
 import { PosFloor, type FloorOrder } from "@/components/staff/PosFloor";
 import { AutoRefresh } from "@/components/AutoRefresh";
 
-export default async function PickerPage({ params }: { params: Promise<{ lang: string }> }) {
+export default async function PickerPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ lang: string }>;
+  searchParams: Promise<{ company?: string }>;
+}) {
   const { lang } = await params;
   if (!isLocale(lang)) notFound();
   const locale = lang as Locale;
@@ -25,9 +33,12 @@ export default async function PickerPage({ params }: { params: Promise<{ lang: s
     );
   }
 
+  const company = Number((await searchParams).company) || 0;
+  const branches = (await getBranches()).map((b) => ({ companyId: b.companyId, name: b.name }));
+
   // סנכרון סטטוס המטבח מ-ODOO לפני הצגה (בהכנה / מוכן)
   await syncActiveKitchenStatuses();
-  const orders = (await getPosOrders()).filter((o) => o.pos_status !== "done");
+  const orders = (await getPosOrders(company || undefined)).filter((o) => o.pos_status !== "done");
   const summaries: FloorOrder[] = orders.map((o) => ({
     id: o.id,
     order_name: o.order_name,
@@ -43,11 +54,20 @@ export default async function PickerPage({ params }: { params: Promise<{ lang: s
   return (
     <div className="min-h-screen bg-[#f7f6f8]">
       <AutoRefresh seconds={15} />
-      <header className="bg-wine text-white px-6 py-3 flex items-center justify-between">
+      <header className="bg-wine text-white px-6 py-3 flex items-center justify-between gap-3 flex-wrap">
         <span className="font-extrabold">🧺 J-Cafe POS — {he ? "ליקוט" : "Picking"}</span>
-        <span className="text-sm opacity-85">
-          {he ? "שולחנות פעילים" : "Active"}: {summaries.length}
-        </span>
+        <div className="flex items-center gap-3">
+          <BranchSelect
+            locale={locale}
+            path="picker"
+            current={company}
+            branches={branches}
+            allLabel={he ? "כל הסניפים" : "All branches"}
+          />
+          <span className="text-sm opacity-85">
+            {he ? "שולחנות פעילים" : "Active"}: {summaries.length}
+          </span>
+        </div>
       </header>
       <PosFloor locale={locale} orders={summaries} />
     </div>
