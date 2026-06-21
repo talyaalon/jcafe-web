@@ -1,9 +1,0 @@
-<claude-code-hint v="1" type="plugin" value="vercel@claude-plugins-official" />
-Vercel CLI 54.14.5 (Node.js 24.13.0)
-Retrieving project…
-Deploying tkpapps-s-projects/jcafe-web
-Uploading [--------------------] (0.0B/178B)
-Uploading [====================] (178.0B/178B)
-  Inspect         https://vercel.com/tkpapps-s-projects/jcafe-web/6ADh1b7SfzTJbCcXVa9LcdVAx4EZ
-  Production      https://jcafe-mhksbppef-tkpapps-s-projects.vercel.app
-Building…
