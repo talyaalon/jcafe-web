@@ -34,9 +34,9 @@ export function Header({
   const brandName = brand?.name?.trim() || `${dict.brand.name} Phuket`;
   const brandTagline = brand?.tagline?.trim() || dict.brand.tagline;
   return (
-    <header className="flex items-center gap-4 px-4 sm:px-7 py-3 bg-white border-b border-line">
+    <header className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 sm:px-7 py-3 bg-white border-b border-line">
       {/* logo */}
-      <Link href={brand?.href ?? `/${locale}`} className="leading-none flex-none flex items-center gap-2.5">
+      <Link href={brand?.href ?? `/${locale}`} className="order-1 leading-none flex-none flex items-center gap-2.5">
         {brand?.logoUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -53,8 +53,8 @@ export function Header({
         </span>
       </Link>
 
-      {/* search */}
-      <div className="flex-1 max-w-xl flex items-stretch border border-line rounded-lg overflow-hidden focus-within:border-wine">
+      {/* search — מובייל: שורה נפרדת ברוחב מלא מתחת ללוגו/ניווט; דסקטופ: בשורה */}
+      <div className="order-3 w-full sm:order-2 sm:w-auto sm:flex-1 sm:max-w-xl flex items-stretch border border-line rounded-lg overflow-hidden focus-within:border-wine">
         <input
           value={search}
           onChange={(e) => onSearch(e.target.value)}
@@ -78,7 +78,7 @@ export function Header({
       </div>
 
       {/* nav */}
-      <nav className="ms-auto flex items-center gap-4 sm:gap-5 text-sm text-ink/80">
+      <nav className="order-2 sm:order-3 ms-auto flex items-center gap-4 sm:gap-5 text-sm text-ink/80">
         <LangMenu locale={locale} />
         <AccountMenu locale={locale} loginLabel={dict.header.login} />
         <FavoritesMenu locale={locale} />
