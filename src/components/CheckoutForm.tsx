@@ -8,9 +8,9 @@ import { formatTHB } from "@/lib/format";
 import { useCart, type CartStoreRef } from "@/lib/cart/CartContext";
 import { CheckoutFooter } from "./CheckoutFooter";
 import { CartThumb } from "./CartThumb";
+import { AddressAutocomplete } from "./AddressAutocomplete";
 import { useStoreStatus, useStoreHours } from "@/lib/store-status";
 import { isOpenAt, minDateTime } from "@/lib/schedule";
-import { quoteDelivery, DEFAULT_DELIVERY, type DeliverySettings } from "@/lib/delivery";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
@@ -19,7 +19,6 @@ type Method = "delivery" | "pickup";
 type Step = "contact" | "review" | "done";
 type Payment = "card" | "qr" | "cod";
 
-const PHUKET_CITIES = ["Phuket Town", "Rawai", "Patong", "Kata", "Karon", "Chalong", "Kathu", "Thalang"];
 
 export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionary }) {
   const { items, subtotal, remove, clear, branchCompany } = useCart();
@@ -28,20 +27,8 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
   // מפתח idempotency יציב לניסיון ההזמנה הנוכחי — מונע כפל הזמנה/חיוב ב-retry
   const idemRef = useRef<string>("");
   const storeHours = useStoreHours();
-  const [deliverySettings, setDeliverySettings] = useState<DeliverySettings>(DEFAULT_DELIVERY);
-  const [zones, setZones] = useState<{ id: number; name: string; zip: string | null; fee: number }[]>([]);
-  // סניף ההזמנה נגזר מהפריטים בעגלה (לא מקובע לפוקט) — לטעינת הגדרות/אזורי המשלוח הנכונים
+  // סניף ההזמנה נגזר מהפריטים בעגלה (לא מקובע לפוקט) — לחישוב המשלוח הנכון
   const cartBranch = items.find((i) => i.branch)?.branch ?? branchCompany;
-  useEffect(() => {
-    fetch(`/api/delivery/settings?branch=${cartBranch}`)
-      .then((r) => r.json())
-      .then((d) => d?.settings && setDeliverySettings(d.settings))
-      .catch(() => {});
-    fetch(`/api/delivery/zones?branch=${cartBranch}`)
-      .then((r) => r.json())
-      .then((d) => setZones(d?.zones ?? []))
-      .catch(() => {});
-  }, [cartBranch]);
   const [step, setStep] = useState<Step>("contact");
   const [method, setMethod] = useState<Method>("delivery");
   const [payment, setPayment] = useState<Payment>("card");
@@ -71,26 +58,37 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
   const pName = (p: { nameHe: string; nameEn: string }) => (he ? p.nameHe : p.nameEn);
   const t = dict.checkout;
 
-  // דמי משלוח: אם הוגדרו אזורים — לפי האזור שנבחר; אחרת חישוב מרחק (fallback).
-  const usingZones = zones.length > 0;
-  const zoneMatch = usingZones ? zones.find((z) => z.name === form.city) : undefined;
-  const quote =
-    !usingZones && method === "delivery" && form.city
-      ? quoteDelivery(deliverySettings, form.city, subtotal)
-      : null;
-
-  let deliveryFee = 0;
-  let deliveryBlocked = false;
-  if (method === "delivery") {
-    const freeNow = deliverySettings.free_over > 0 && subtotal >= deliverySettings.free_over;
-    if (usingZones) {
-      if (form.city && zoneMatch) deliveryFee = freeNow ? 0 : Number(zoneMatch.fee);
-      else if (form.city && !zoneMatch) deliveryBlocked = true; // אזור לא נתמך
-    } else if (quote) {
-      if (quote.outOfRange) deliveryBlocked = true;
-      else deliveryFee = quote.fee;
+  // דמי משלוח לפי הכתובת שנבחרה — מחושב בשרת (Geocoding + מרחק מהסניף).
+  const [deliveryQuote, setDeliveryQuote] = useState<{ fee: number; blocked: boolean } | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  useEffect(() => {
+    if (method !== "delivery" || form.addr1.trim().length < 6) {
+      setDeliveryQuote(null);
+      return;
     }
-  }
+    setQuoteLoading(true);
+    const t = setTimeout(async () => {
+      try {
+        const r = await fetch(
+          `/api/delivery/quote?branch=${cartBranch}&address=${encodeURIComponent(
+            form.addr1,
+          )}&subtotal=${subtotal}`,
+        );
+        const d = (await r.json()) as { fee?: number; blocked?: boolean };
+        setDeliveryQuote({ fee: Number(d.fee) || 0, blocked: !!d.blocked });
+      } catch {
+        setDeliveryQuote(null);
+      } finally {
+        setQuoteLoading(false);
+      }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [method, form.addr1, cartBranch, subtotal]);
+
+  const deliveryFee = method === "delivery" ? (deliveryQuote?.fee ?? 0) : 0;
+  // חוסם הזמנת משלוח עד שיש הצעת מחיר תקפה (כתובת בטווח)
+  const deliveryBlocked =
+    method === "delivery" && (deliveryQuote === null || deliveryQuote.blocked);
   const total = subtotal + deliveryFee;
 
   // חברת ההזמנה נגזרת מהפריטים עצמם (לא מהסניף הגלובלי) — מונע ערבוב סניפים ב-ODOO.
@@ -137,9 +135,7 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
     }
     const e: Record<string, boolean> = {};
     if (method === "delivery") {
-      if (!form.city.trim()) e.city = true;
       if (!form.addr1.trim()) e.addr1 = true;
-      if (!form.postcode.trim()) e.postcode = true;
     }
     setErrors(e);
     if (Object.keys(e).length) return;
@@ -164,6 +160,7 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
             companyId: orderCompany,
             method,
             city: method === "delivery" ? form.city : undefined,
+            address: method === "delivery" ? form.addr1 : undefined,
             idempotencyKey,
           }),
         });
@@ -399,27 +396,39 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
                   <h2 className="font-bold text-ink">{t.addressTitle}</h2>
                   <p className="text-ink/55 text-xs mb-3">{t.addressSub}</p>
 
-                  <Label>{usingZones ? (he ? "אזור משלוח" : "Delivery area") : t.city}*</Label>
-                  <select value={form.city} onChange={(e) => set("city", e.target.value)} className={inputCls("city")}>
-                    <option value="">—</option>
-                    {(usingZones ? zones.map((z) => z.name) : PHUKET_CITIES).map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.city && <Err>{t.required}</Err>}
-
-                  <Label className="mt-3">{t.addrLine1}*</Label>
-                  <input value={form.addr1} onChange={(e) => set("addr1", e.target.value)} className={inputCls("addr1")} />
+                  <Label>{he ? "כתובת מלאה" : "Full address"}*</Label>
+                  <AddressAutocomplete
+                    value={form.addr1}
+                    onChange={(v) => set("addr1", v)}
+                    placeholder={he ? "התחילי להקליד כתובת…" : "Start typing an address…"}
+                    className={inputCls("addr1")}
+                  />
                   {errors.addr1 && <Err>{t.required}</Err>}
 
-                  <Label className="mt-3">{t.addrLine2}</Label>
+                  <Label className="mt-3">{he ? "דירה / קומה / הערות (אופציונלי)" : t.addrLine2}</Label>
                   <input value={form.addr2} onChange={(e) => set("addr2", e.target.value)} className={inputCls("addr2")} />
 
-                  <Label className="mt-3">{t.postcode}*</Label>
-                  <input value={form.postcode} onChange={(e) => set("postcode", e.target.value)} className={inputCls("postcode")} />
-                  {errors.postcode && <Err>{t.required}</Err>}
+                  {/* סטטוס דמי משלוח לפי הכתובת */}
+                  {form.addr1.trim().length >= 6 && (
+                    <div className="mt-3 text-sm">
+                      {quoteLoading ? (
+                        <span className="text-ink/50">
+                          {he ? "מחשב דמי משלוח…" : "Calculating delivery…"}
+                        </span>
+                      ) : deliveryQuote?.blocked ? (
+                        <span className="text-red-600 font-semibold">
+                          {he
+                            ? "הכתובת מחוץ לטווח המשלוח של הסניף."
+                            : "Address is outside the branch's delivery range."}
+                        </span>
+                      ) : deliveryQuote ? (
+                        <span className="text-brand-green font-semibold">
+                          {he ? "דמי משלוח" : "Delivery"}:{" "}
+                          {deliveryQuote.fee ? formatTHB(deliveryQuote.fee) : he ? "חינם" : "Free"}
+                        </span>
+                      ) : null}
+                    </div>
+                  )}
                 </section>
               ) : (
                 <section className="bg-white border border-line rounded-2xl p-5">
@@ -622,15 +631,17 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
                   ? he
                     ? "איסוף עצמי"
                     : "Pickup"
-                  : !form.city
+                  : form.addr1.trim().length < 6
                     ? he
-                      ? "בחר/י אזור"
-                      : "Select area"
-                    : deliveryBlocked
-                      ? he
-                        ? "מחוץ לאזור"
-                        : "Out of area"
-                      : deliveryFee === 0
+                      ? "הזיני כתובת"
+                      : "Enter address"
+                    : quoteLoading
+                      ? "…"
+                      : deliveryBlocked
+                        ? he
+                          ? "מחוץ לאזור"
+                          : "Out of area"
+                        : deliveryFee === 0
                         ? he
                           ? "חינם"
                           : "Free"

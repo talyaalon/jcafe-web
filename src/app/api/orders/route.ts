@@ -70,10 +70,13 @@ export async function POST(req: Request) {
     }
     const unitPriceAt = (idx: number) => priced[idx]?.unitPrice ?? body.items[idx].price;
     const productsTotal = priced.reduce((s, p) => s + p.unitPrice * p.qty, 0);
+    const fullAddr = [body.customer.street, body.customer.city, body.customer.zip]
+      .filter(Boolean)
+      .join(", ");
     const { fee: deliveryFee } = await serverDeliveryFee(
       companyId,
       body.method,
-      String(body.customer.city ?? ""),
+      { city: body.customer.city, address: fullAddr },
       productsTotal,
     );
     const grandTotal = productsTotal + deliveryFee;

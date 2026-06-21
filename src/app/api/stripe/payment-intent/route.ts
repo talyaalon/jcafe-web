@@ -12,6 +12,7 @@ interface Body {
   companyId?: number;
   method?: "delivery" | "pickup";
   city?: string;
+  address?: string;
   idempotencyKey?: string;
   amount?: number; // תאימות לאחור בלבד
 }
@@ -35,7 +36,7 @@ export async function POST(req: Request) {
       const { fee, blocked } = await serverDeliveryFee(
         companyId,
         body.method,
-        String(body.city ?? ""),
+        { city: body.city, address: body.address },
         total,
       );
       if (blocked) {
