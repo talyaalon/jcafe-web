@@ -57,7 +57,8 @@ export function Storefront({
   const [activeStoreId, setActiveStoreId] = useState(data[0]?.store.id ?? "");
   const [activeCat, setActiveCat] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<SortKey>("featured");
+  // ברירת מחדל: מיון אלפביתי א→ת (לפי השם המוצג), כך שב"הכל" המוצרים מסודרים.
+  const [sort, setSort] = useState<SortKey>("nameAsc");
   const [selected, setSelected] = useState<Product | null>(null);
 
   // פתיחת חלון המוצר המקושר לבאנר (לפי מזהה בסיס)
