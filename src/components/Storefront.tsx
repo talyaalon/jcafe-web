@@ -9,6 +9,7 @@ import { ProductCard } from "./ProductCard";
 import { ProductRowCard } from "./ProductRowCard";
 import { ProductModal } from "./ProductModal";
 import { CartPanel } from "./CartPanel";
+import { BannerCarousel } from "./BannerCarousel";
 import { SiteFooter } from "./SiteFooter";
 import { StickyCartBar } from "./StickyCartBar";
 import { CartDrawer } from "./CartDrawer";
@@ -225,36 +226,7 @@ export function Storefront({
         (bannerSettings[activeStoreId] ?? true) && (
         <div className="shrink-0 px-4 sm:px-7 pt-4">
           {banners.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-              {banners.slice(0, 3).map((b) => {
-                const inner = (
-                  <>
-                    {/* object-contain — מציג את התמונה המלאה בלי חיתוך (בכל הגדלים) */}
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={b.image_url} alt={b.title ?? ""} className="w-full h-full object-contain" />
-                    {b.title && (
-                      <span className="absolute bottom-2 start-3 bg-black/45 text-white text-xs font-bold px-2.5 py-1 rounded-md">
-                        {b.title}
-                      </span>
-                    )}
-                  </>
-                );
-                const cls =
-                  "relative block w-full text-start h-28 sm:h-44 rounded-2xl overflow-hidden border border-line bg-soft";
-                if (b.product_id) {
-                  return (
-                    <button key={b.id} onClick={() => openBannerProduct(b.product_id!)} className={cls}>
-                      {inner}
-                    </button>
-                  );
-                }
-                return (
-                  <a key={b.id} href={b.link ?? undefined} className={cls}>
-                    {inner}
-                  </a>
-                );
-              })}
-            </div>
+            <BannerCarousel banners={banners} onProductClick={openBannerProduct} />
           ) : (
             <div className="grid grid-cols-3 gap-3 sm:gap-4">
               {[0, 1, 2].map((i) => (
