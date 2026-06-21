@@ -38,6 +38,8 @@ export interface Product {
   qtyAvailable: number | null;
   isKitchen: boolean;
   isFeatured: boolean;
+  /** למוצר יש אפשרויות בחירה (סוג לחם / תוספות) — נפתח חלון בחירה לפני הוספה לסל */
+  hasOptions?: boolean;
   barcode?: string;
   /** URL לתמונת המוצר מ-ODOO (/web/image/...) */
   image?: string;

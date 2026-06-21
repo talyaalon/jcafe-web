@@ -14,11 +14,13 @@ export function ProductRowCard({
   product,
   locale,
   dict,
+  onAdd,
   onOpen,
 }: {
   product: Product;
   locale: Locale;
   dict: Dictionary;
+  onAdd: (p: Product) => void;
   onOpen: (p: Product) => void;
 }) {
   const name = locale === "he" ? product.nameHe : product.nameEn;
@@ -62,6 +64,14 @@ export function ProductRowCard({
           <span className="font-extrabold text-ink text-sm">{formatTHB(product.price)}</span>
           {product.qtyAvailable === 0 ? (
             <span className="text-red-600 font-semibold text-xs">{dict.product.outOfStock}</span>
+          ) : product.hasOptions ? (
+            // מוצר עם אפשרויות בחירה → תמיד פותח חלון בחירה (כל הרכבה = שורה נפרדת)
+            <button
+              onClick={() => onOpen(product)}
+              className="border border-wine text-wine rounded-lg px-3.5 py-1.5 text-xs font-bold transition hover:bg-wine hover:text-white"
+            >
+              {dict.product.add}
+            </button>
           ) : qty > 0 ? (
             <div className="flex items-center gap-3 border border-wine rounded-lg px-2.5 py-1 text-wine">
               <button onClick={() => dec(product.id)} className="text-lg leading-none font-bold w-5">
@@ -74,7 +84,7 @@ export function ProductRowCard({
             </div>
           ) : (
             <button
-              onClick={() => onOpen(product)}
+              onClick={() => onAdd(product)}
               className="border border-wine text-wine rounded-lg px-3.5 py-1.5 text-xs font-bold transition hover:bg-wine hover:text-white"
             >
               {dict.product.add}

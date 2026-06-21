@@ -75,7 +75,7 @@ export function ProductCard({
         </div>
 
         <div className="mt-auto pt-2 flex items-center justify-end">
-          {qty > 0 ? (
+          {qty > 0 && !product.hasOptions ? (
             <div className="flex items-center gap-3 border border-wine rounded-lg px-2.5 py-1 text-wine">
               <button onClick={() => dec(product.id)} className="text-lg leading-none font-bold w-5">
                 −
@@ -89,7 +89,8 @@ export function ProductCard({
             <button
               type="button"
               disabled={outOfStock}
-              onClick={() => onAdd(product)}
+              // מוצר עם אפשרויות → פותח חלון בחירה; אחרת הוספה ישירה לסל
+              onClick={() => (product.hasOptions ? onOpen(product) : onAdd(product))}
               aria-label={dict.product.add}
               className="w-10 h-10 rounded-lg bg-[#f1eff3] text-ink/40 text-2xl leading-none grid place-items-center transition hover:text-wine active:scale-95 disabled:opacity-40"
             >

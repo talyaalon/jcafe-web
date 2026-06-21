@@ -153,6 +153,7 @@ interface ProdRow {
   qty_available: number;
   pos_categ_ids: number[];
   categ_id: [number, string] | false;
+  attribute_line_ids: number[];
   barcode: string | false;
   description_sale: string | false;
 }
@@ -179,7 +180,7 @@ async function loadProducts(
     searchRead<ProdRow>(
       "product.template",
       domain,
-      ["id", "name", "list_price", "qty_available", "pos_categ_ids", "categ_id", "barcode", "description_sale"],
+      ["id", "name", "list_price", "qty_available", "pos_categ_ids", "categ_id", "attribute_line_ids", "barcode", "description_sale"],
       { limit: 500, order: "name asc" },
     ),
     buildPricer(cfg.pricelistId),
@@ -211,6 +212,7 @@ async function loadProducts(
       qtyAvailable: isKitchen ? null : typeof r.qty_available === "number" ? r.qty_available : null,
       isKitchen,
       isFeatured: false,
+      hasOptions: (r.attribute_line_ids?.length ?? 0) > 0,
       barcode: r.barcode || undefined,
       image: imageUrl(r.id),
     } satisfies Product;
@@ -306,7 +308,7 @@ export async function getGroceryBundle(
         ? ["!", ["public_categ_ids", "child_of", MENU_ROOT_IDS]]
         : [["public_categ_ids", "child_of", GROCERY_ROOT_IDS]]),
     ],
-    ["id", "name", "list_price", "qty_available", "public_categ_ids", "categ_id", "barcode", "description_sale"],
+    ["id", "name", "list_price", "qty_available", "public_categ_ids", "categ_id", "attribute_line_ids", "barcode", "description_sale"],
     { limit: 1500, order: "name asc" },
   );
   if (!rows.length) return null;
@@ -340,6 +342,7 @@ export async function getGroceryBundle(
         qtyAvailable: typeof r.qty_available === "number" ? r.qty_available : null,
         isKitchen: false,
         isFeatured: false,
+        hasOptions: (r.attribute_line_ids?.length ?? 0) > 0,
         barcode: r.barcode || undefined,
         image: imageUrl(r.id),
       } satisfies Product;

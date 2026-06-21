@@ -33,6 +33,7 @@ interface PosProductRow {
   qty_available: number;
   pos_categ_ids: number[];
   categ_id: [number, string] | false;
+  attribute_line_ids: number[];
   barcode: string | false;
   type: string;
   description_sale: string | false;
@@ -156,7 +157,7 @@ export const odooApiAdapter: OdooAdapter = {
       searchRead<PosProductRow>(
         "product.template",
         domain,
-        ["id", "name", "list_price", "qty_available", "pos_categ_ids", "categ_id", "barcode", "type", "description_sale"],
+        ["id", "name", "list_price", "qty_available", "pos_categ_ids", "categ_id", "attribute_line_ids", "barcode", "type", "description_sale"],
         { limit: 120, order: "name asc" },
       ),
       buildPricer(PHUKET_PRICELIST_ID),
@@ -186,6 +187,7 @@ export const odooApiAdapter: OdooAdapter = {
             : null,
         isKitchen,
         isFeatured: false,
+        hasOptions: (r.attribute_line_ids?.length ?? 0) > 0,
         barcode: r.barcode || undefined,
         image: imageUrl(r.id),
       } satisfies Product;

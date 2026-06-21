@@ -129,6 +129,35 @@ export function Storefront({
     return list;
   }, [bundle, activeCat, search, sort, locale]);
 
+  // חיפוש בכל חנויות הסניף (לא רק החנות הפעילה)
+  const searching = search.trim().length > 0;
+  const searchResults = useMemo(() => {
+    if (!searching) return [];
+    const term = search.trim();
+    const q = term.toLowerCase();
+    const list = data
+      .flatMap((d) => d.products)
+      .filter((p) => p.nameHe.includes(term) || p.nameEn.toLowerCase().includes(q));
+    switch (sort) {
+      case "priceLow":
+        list.sort((a, b) => a.price - b.price);
+        break;
+      case "priceHigh":
+        list.sort((a, b) => b.price - a.price);
+        break;
+      case "featured":
+        list.sort((a, b) => Number(b.isFeatured) - Number(a.isFeatured));
+        break;
+      default:
+        list.sort((a, b) =>
+          locale === "he"
+            ? a.nameHe.localeCompare(b.nameHe, "he")
+            : a.nameEn.localeCompare(b.nameEn),
+        );
+    }
+    return list;
+  }, [searching, search, data, sort, locale]);
+
   function switchStore(id: string) {
     setActiveStoreId(id);
     setActiveCat(null);
@@ -189,8 +218,9 @@ export function Storefront({
         </div>
       )}
 
-      {/* banners — visible when no category filter (All), ומופעלים לסניף+לחנות */}
+      {/* banners — visible when no category filter (All), ללא חיפוש, ומופעלים לסניף+לחנות */}
       {activeCat === null &&
+        !searching &&
         (bannerSettings["*"] ?? true) &&
         (bannerSettings[activeStoreId] ?? true) && (
         <div className="shrink-0 px-4 sm:px-7 pt-4">
@@ -280,7 +310,32 @@ export function Storefront({
 
       {/* main grid + cart */}
       <main className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 px-4 sm:px-7 py-4 flex-1">
-        {activeStore?.type === "grocery" ? (
+        {searching ? (
+          // תוצאות חיפוש מכל חנויות הסניף
+          <div>
+            <h3 className="font-extrabold text-ink text-lg mb-3">
+              {locale === "he" ? "תוצאות חיפוש" : "Search results"}{" "}
+              <span className="text-ink/40 text-sm font-normal">({searchResults.length})</span>
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 content-start">
+              {searchResults.map((p) => (
+                <ProductCard
+                  key={p.id}
+                  product={p}
+                  locale={locale}
+                  dict={dict}
+                  onAdd={addProduct}
+                  onOpen={setSelected}
+                />
+              ))}
+              {searchResults.length === 0 && (
+                <p className="text-ink/50 col-span-full py-10 text-center">
+                  {locale === "he" ? "לא נמצאו מוצרים" : "No products found"}
+                </p>
+              )}
+            </div>
+          </div>
+        ) : activeStore?.type === "grocery" ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 content-start">
             {products.map((p) => (
               <ProductCard
@@ -311,6 +366,7 @@ export function Storefront({
                         product={p}
                         locale={locale}
                         dict={dict}
+                        onAdd={addProduct}
                         onOpen={setSelected}
                       />
                     ))}
