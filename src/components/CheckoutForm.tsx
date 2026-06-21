@@ -30,16 +30,18 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
   const storeHours = useStoreHours();
   const [deliverySettings, setDeliverySettings] = useState<DeliverySettings>(DEFAULT_DELIVERY);
   const [zones, setZones] = useState<{ id: number; name: string; zip: string | null; fee: number }[]>([]);
+  // סניף ההזמנה נגזר מהפריטים בעגלה (לא מקובע לפוקט) — לטעינת הגדרות/אזורי המשלוח הנכונים
+  const cartBranch = items.find((i) => i.branch)?.branch ?? branchCompany;
   useEffect(() => {
-    fetch("/api/delivery/settings")
+    fetch(`/api/delivery/settings?branch=${cartBranch}`)
       .then((r) => r.json())
       .then((d) => d?.settings && setDeliverySettings(d.settings))
       .catch(() => {});
-    fetch("/api/delivery/zones?branch=14")
+    fetch(`/api/delivery/zones?branch=${cartBranch}`)
       .then((r) => r.json())
       .then((d) => setZones(d?.zones ?? []))
       .catch(() => {});
-  }, []);
+  }, [cartBranch]);
   const [step, setStep] = useState<Step>("contact");
   const [method, setMethod] = useState<Method>("delivery");
   const [payment, setPayment] = useState<Payment>("card");

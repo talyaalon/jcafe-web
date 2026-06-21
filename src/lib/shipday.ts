@@ -9,12 +9,15 @@ export interface ShipdayResult {
   message: string;
 }
 
-export async function requestCourier(_order: {
-  orderName: string | null;
-  customer: string | null;
-  phone: string | null;
-  address?: string | null;
-}): Promise<ShipdayResult> {
+export async function requestCourier(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _order: {
+    orderName: string | null;
+    customer: string | null;
+    phone: string | null;
+    address?: string | null;
+  },
+): Promise<ShipdayResult> {
   const key = process.env.SHIPDAY_API_KEY;
   if (!key) {
     // ללא מפתח — placeholder בלבד

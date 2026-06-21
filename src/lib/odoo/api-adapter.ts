@@ -47,19 +47,20 @@ function stripHtml(v: string | false): string {
     .trim();
 }
 
-// ===== קאשים בזיכרון התהליך =====
-const allowedCategsCache = new Map<number, number[]>();
+// ===== קאשים בזיכרון התהליך (עם תפוגה) =====
+const CACHE_TTL_MS = 5 * 60 * 1000;
+const allowedCategsCache = new Map<number, { ids: number[]; ts: number }>();
 
 async function allowedCategs(posConfigId: number): Promise<number[]> {
   const cached = allowedCategsCache.get(posConfigId);
-  if (cached) return cached;
+  if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.ids;
   const rows = await searchRead<{ iface_available_categ_ids: number[] }>(
     "pos.config",
     [["id", "=", posConfigId]],
     ["iface_available_categ_ids"],
   );
   const ids = rows[0]?.iface_available_categ_ids ?? [];
-  allowedCategsCache.set(posConfigId, ids);
+  allowedCategsCache.set(posConfigId, { ids, ts: Date.now() });
   return ids;
 }
 

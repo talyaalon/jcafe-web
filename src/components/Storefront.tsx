@@ -136,9 +136,15 @@ export function Storefront({
     if (!searching) return [];
     const term = search.trim();
     const q = term.toLowerCase();
+    const seen = new Set<string>();
     const list = data
       .flatMap((d) => d.products)
-      .filter((p) => p.nameHe.includes(term) || p.nameEn.toLowerCase().includes(q));
+      .filter((p) => {
+        if (!(p.nameHe.includes(term) || p.nameEn.toLowerCase().includes(q))) return false;
+        if (seen.has(p.id)) return false; // מניעת כפילות (מוצר משותף בכמה חנויות)
+        seen.add(p.id);
+        return true;
+      });
     switch (sort) {
       case "priceLow":
         list.sort((a, b) => a.price - b.price);

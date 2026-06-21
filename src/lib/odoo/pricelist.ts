@@ -24,12 +24,14 @@ interface PItem {
   date_end: string | false;
 }
 
-const itemsCache = new Map<number, PItem[]>();
-let categParent: Map<number, number | null> | null = null;
+// קאש עם תפוגה (TTL) — כדי ששינוי מחיר/קטגוריה ב-ODOO יתעדכן תוך דקות.
+const CACHE_TTL_MS = 5 * 60 * 1000;
+const itemsCache = new Map<number, { items: PItem[]; ts: number }>();
+let categParent: { map: Map<number, number | null>; ts: number } | null = null;
 
 async function getItems(pricelistId: number): Promise<PItem[]> {
   const cached = itemsCache.get(pricelistId);
-  if (cached) return cached;
+  if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.items;
   const rows = await searchRead<PItem>(
     "product.pricelist.item",
     [["pricelist_id", "=", pricelistId]],
@@ -51,13 +53,13 @@ async function getItems(pricelistId: number): Promise<PItem[]> {
     ],
     { limit: 8000 },
   );
-  itemsCache.set(pricelistId, rows);
+  itemsCache.set(pricelistId, { items: rows, ts: Date.now() });
   return rows;
 }
 
 // היררכיית product.category (פנימית) — להתאמת כללי קטגוריה לאב-קדמון.
 async function getCategParent(): Promise<Map<number, number | null>> {
-  if (categParent) return categParent;
+  if (categParent && Date.now() - categParent.ts < CACHE_TTL_MS) return categParent.map;
   const rows = await searchRead<{ id: number; parent_id: [number, string] | false }>(
     "product.category",
     [],
@@ -66,7 +68,7 @@ async function getCategParent(): Promise<Map<number, number | null>> {
   );
   const m = new Map<number, number | null>();
   for (const r of rows) m.set(r.id, r.parent_id ? r.parent_id[0] : null);
-  categParent = m;
+  categParent = { map: m, ts: Date.now() };
   return m;
 }
 

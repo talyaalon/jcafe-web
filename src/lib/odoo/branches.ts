@@ -110,19 +110,20 @@ export async function getBranches(): Promise<Branch[]> {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-// ===== קאשים =====
-const allowedCache = new Map<number, number[]>();
+// ===== קאשים (עם תפוגה — שינוי ב-ODOO יתעדכן תוך דקות) =====
+const CACHE_TTL_MS = 5 * 60 * 1000;
+const allowedCache = new Map<number, { ids: number[]; ts: number }>();
 
 async function allowedCategs(configId: number): Promise<number[]> {
   const c = allowedCache.get(configId);
-  if (c) return c;
+  if (c && Date.now() - c.ts < CACHE_TTL_MS) return c.ids;
   const rows = await searchRead<{ iface_available_categ_ids: number[] }>(
     "pos.config",
     [["id", "=", configId]],
     ["iface_available_categ_ids"],
   );
   const ids = rows[0]?.iface_available_categ_ids ?? [];
-  allowedCache.set(configId, ids);
+  allowedCache.set(configId, { ids, ts: Date.now() });
   return ids;
 }
 
