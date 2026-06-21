@@ -1,6 +1,6 @@
 {
   "brand": { "name": "J Cafe", "tagline": "THE KOSHER PLACE" },
-  "header": { "search": "Search J Cafe", "about": "About", "login": "Login" },
+  "header": { "search": "Search", "about": "About", "login": "Login" },
   "sort": {
     "label": "Sort by",
     "featured": "Featured",

@@ -199,8 +199,9 @@ export function Storefront({
               {banners.slice(0, 3).map((b) => {
                 const inner = (
                   <>
+                    {/* object-contain — מציג את התמונה המלאה בלי חיתוך (בכל הגדלים) */}
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={b.image_url} alt={b.title ?? ""} className="w-full h-full object-cover" />
+                    <img src={b.image_url} alt={b.title ?? ""} className="w-full h-full object-contain" />
                     {b.title && (
                       <span className="absolute bottom-2 start-3 bg-black/45 text-white text-xs font-bold px-2.5 py-1 rounded-md">
                         {b.title}
@@ -209,7 +210,7 @@ export function Storefront({
                   </>
                 );
                 const cls =
-                  "relative block w-full text-start h-28 sm:h-44 rounded-2xl overflow-hidden border border-line";
+                  "relative block w-full text-start h-28 sm:h-44 rounded-2xl overflow-hidden border border-line bg-soft";
                 if (b.product_id) {
                   return (
                     <button key={b.id} onClick={() => openBannerProduct(b.product_id!)} className={cls}>

@@ -1,6 +1,6 @@
 {
   "brand": { "name": "J Cafe", "tagline": "THE KOSHER PLACE" },
-  "header": { "search": "חיפוש ב-J Cafe", "about": "אודות", "login": "כניסה" },
+  "header": { "search": "חיפוש", "about": "אודות", "login": "כניסה" },
   "sort": {
     "label": "מיון",
     "featured": "מומלצים",
