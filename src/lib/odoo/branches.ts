@@ -161,6 +161,7 @@ async function loadProducts(
   companyId: number,
   cfg: BranchConfig,
   effective: number[],
+  menuOnly = false,
 ): Promise<Product[]> {
   if (!effective.length) return [];
   const domain: unknown[] = [
@@ -168,10 +169,10 @@ async function loadProducts(
     ["company_id", "in", [companyId, false]],
     ["pos_categ_ids", "in", effective],
   ];
-  // חנות מטבח (מסעדה) — רק מנות מתפריט (קטגוריות ציבוריות של תפריט).
-  // מוצרי חנות/מדף (כמו במבה, גזר, פמוטים) משויכים לקטגוריות POS משותפות אך
-  // אינם תחת שורש תפריט — לכן יוחרגו מהמטבח ויופיעו רק ב"מכולת".
-  if (cfg.type === "kitchen") {
+  // סניפי "קפה בלבד" (ללא חנות POS): מנות מזוהות לפי קטגוריית תפריט ציבורית,
+  // ומוצרי מדף (במבה וכו') מסוננים. בסניפים עם חנות POS משתמשים בחיסור
+  // קטגוריות החנות (effective) במקום, כי שם המנות אינן ממופות לקטגוריה ציבורית.
+  if (menuOnly) {
     domain.push(["public_categ_ids", "child_of", MENU_ROOT_IDS]);
   }
   const [rows, pricer] = await Promise.all([
@@ -227,11 +228,39 @@ export const GROCERY_ROOT_IDS = [28, 49, 60, 45, 41, 56, 81, 80];
 // שורשי קטגוריות התפריט (מנות מסעדה) — J Cafe / Jdeli / Catering / Habsarit / Jcafe Phuket.
 // כל מוצר תחת שורש כזה = מנת מסעדה (מטבח); כל השאר שמפורסם = מוצר חנות (מכולת).
 export const MENU_ROOT_IDS = [64, 233, 248, 299, 321];
+// קטגוריות POS של מוצרי חנות/מדף (לא תפריט): Shop Items / Fresh / Wholesale.
+export const SHOP_POS_CATEGORY_IDS = [44, 42, 43];
 
-// חנות מכולת מבוססת eCommerce (website_published) לסניף — כל קטלוג המצרכים.
+// סדר קטגוריות מכולת: "מכולת" (Grocery) ראשון, "יודאיקה" אחרון.
+const groceryCatRank = (id: string): number => {
+  if (id === "28") return -1; // Grocery (מכולת) first
+  if (id === "81") return 999; // Jewish Accessories (יודאיקה) last
+  if (id === "shop") return 900; // Shop Items fallback near end
+  const order = [49, 60, 45, 41, 56, 80];
+  const i = order.indexOf(Number(id));
+  return i === -1 ? 500 : i;
+};
+
+// סדר קטגוריות מטבח: מנות פתיחה ראשונות, שתייה אחרונה, השאר באמצע (סדר ODOO נשמר).
+const STARTER_RE = /starter|מנות פתיחה|פתיחה|ראשונות|appetizer/i;
+const DRINK_RE = /drink|beverage|soft.?drink|smoothie|coffee|משקא|שתי|שייק|קפה|מיץ|juice/i;
+export function orderKitchenCategories(cats: Category[]): Category[] {
+  const rank = (c: Category) => {
+    const n = `${c.nameEn} ${c.nameHe}`;
+    if (STARTER_RE.test(n)) return -1;
+    if (DRINK_RE.test(n)) return 1;
+    return 0;
+  };
+  return cats.map((c, i) => ({ c, i })).sort((a, b) => rank(a.c) - rank(b.c) || a.i - b.i).map((x) => x.c);
+}
+
+// חנות מכולת לסניף.
+// broad=true (קפה בלבד): כל מוצר מפורסם שאינו תפריט (+ קטגוריית "מוצרי חנות").
+// broad=false (סניף עם חנות POS): רק מוצרים בקטגוריות מכולת ציבוריות (לא מנות POS).
 export async function getGroceryBundle(
   companyId: number,
   pricelistId: number | null,
+  broad = true,
 ): Promise<BranchBundle | null> {
   // מפת קטגוריה→שורש (לסיווג המוצר לקטגוריה עליונה)
   const cats = await searchRead<{ id: number; name: string; parent_id: [number, string] | false }>(
@@ -273,8 +302,9 @@ export async function getGroceryBundle(
       ["website_published", "=", true],
       ["sale_ok", "=", true],
       ["company_id", "in", [companyId, false]],
-      "!",
-      ["public_categ_ids", "child_of", MENU_ROOT_IDS],
+      ...(broad
+        ? ["!", ["public_categ_ids", "child_of", MENU_ROOT_IDS]]
+        : [["public_categ_ids", "child_of", GROCERY_ROOT_IDS]]),
     ],
     ["id", "name", "list_price", "qty_available", "public_categ_ids", "categ_id", "barcode", "description_sale"],
     { limit: 1500, order: "name asc" },
@@ -329,7 +359,7 @@ export async function getGroceryBundle(
             storeId: STORE_ID,
           },
     )
-    .sort((a, b) => (a.id === SHOP_CAT ? 1 : b.id === SHOP_CAT ? -1 : 0));
+    .sort((a, b) => groceryCatRank(a.id) - groceryCatRank(b.id));
 
   const store: Store = {
     id: STORE_ID,
@@ -387,19 +417,25 @@ export async function getBranchData(companyId: number): Promise<BranchBundle[]> 
   const branch = (await getBranches()).find((b) => b.companyId === companyId);
   if (!branch) return [];
 
-  // קטגוריות מכולת (POS) — מוחסרות מחנויות המטבח כדי לא לערבב.
+  // ===== שני מצבי סיווג מטבח↔מכולת (לפי מבנה ה-ODOO של הסניף) =====
+  // posMode (יש חנות POS, למשל פוקט/סמוי): המנות הן POS-only ללא קטגוריה
+  //   ציבורית → מסננים לפי קטגוריות POS (מחסרים את קטגוריות החנות + מדף).
+  // !posMode (קפה בלבד, למשל בנגקוק): המנות ממופות לקטגוריית תפריט ציבורית →
+  //   מסננים לפי whitelist של שורשי תפריט, והמכולת היא קטלוג ה-eCommerce.
   const groceryCfg = branch.configs.find((c) => c.type === "grocery");
-  const shared = groceryCfg ? new Set(await allowedCategs(groceryCfg.id)) : new Set<number>();
+  const posMode = !!groceryCfg;
+  const shopSet = posMode
+    ? new Set<number>([...(await allowedCategs(groceryCfg!.id)), ...SHOP_POS_CATEGORY_IDS])
+    : new Set<number>();
 
-  // חנויות מטבח (מסעדה) מ-pos.config בלבד
   const kitchenConfigs = branch.configs.filter((c) => c.type === "kitchen");
   const kitchenBundles = await Promise.all(
     kitchenConfigs.map(async (cfg, idx) => {
       const allowed = await allowedCategs(cfg.id);
-      const effective = allowed.filter((id) => !shared.has(id));
+      const effective = posMode ? allowed.filter((id) => !shopSet.has(id)) : allowed;
       const [categories, products] = await Promise.all([
         loadCategories(effective, String(cfg.id)),
-        loadProducts(companyId, cfg, effective),
+        loadProducts(companyId, cfg, effective, !posMode),
       ]);
       const store: Store = {
         id: String(cfg.id),
@@ -410,13 +446,12 @@ export async function getBranchData(companyId: number): Promise<BranchBundle[]> 
         emoji: "",
         order: idx,
       };
-      return { store, categories, products };
+      return { store, categories: orderKitchenCategories(categories), products };
     }),
   );
 
-  // חנות מכולת מבוססת eCommerce (כל קטלוג המצרכים) — מחליפה את מכולת ה-POS
   const pricelistId = branch.configs.find((c) => c.pricelistId)?.pricelistId ?? null;
-  const grocery = await getGroceryBundle(companyId, pricelistId);
+  const grocery = await getGroceryBundle(companyId, pricelistId, !posMode);
 
   return grocery ? [...kitchenBundles, grocery] : kitchenBundles;
 }

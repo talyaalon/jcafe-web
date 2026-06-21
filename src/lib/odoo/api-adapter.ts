@@ -7,7 +7,7 @@ import {
   phuketStores,
   findPhuketStore,
 } from "./phuket";
-import { MENU_ROOT_IDS } from "./branches";
+import { SHOP_POS_CATEGORY_IDS, orderKitchenCategories } from "./branches";
 import { buildPricer } from "./pricelist";
 
 // ===== OdooApiAdapter — שואב נתונים אמיתיים מ-ODOO (JSON-RPC) =====
@@ -71,7 +71,11 @@ async function effectiveCategs(
 ): Promise<number[]> {
   const allowed = await allowedCategs(store.posConfigId);
   if (store.type === "grocery") return allowed;
-  const shared = new Set(await allowedCategs(groceryConfigId()));
+  // מטבח: מחסרים את קטגוריות חנות ה-POS + קטגוריות המדף (Shop Items/Fresh/Wholesale).
+  const shared = new Set([
+    ...(await allowedCategs(groceryConfigId())),
+    ...SHOP_POS_CATEGORY_IDS,
+  ]);
   return allowed.filter((id) => !shared.has(id));
 }
 
@@ -117,7 +121,7 @@ export const odooApiAdapter: OdooAdapter = {
     ]);
     const heMap = new Map(he.map((c) => [c.id, c.name]));
 
-    return en
+    const cats = en
       .filter((c) => !isTakeAway(c.name))
       .map((c) => ({
         id: String(c.id),
@@ -126,6 +130,8 @@ export const odooApiAdapter: OdooAdapter = {
         nameEn: c.name,
         storeId,
       }));
+    // מטבח: מנות פתיחה ראשונות, שתייה אחרונה
+    return store.type === "kitchen" ? orderKitchenCategories(cats) : cats;
   },
 
   async getProducts({ storeId, categoryId, search }): Promise<Product[]> {
@@ -140,10 +146,7 @@ export const odooApiAdapter: OdooAdapter = {
       ["company_id", "in", [PHUKET_COMPANY_ID, false]],
       ["pos_categ_ids", "in", catFilter],
     ];
-    // חנות מטבח — רק מנות מתפריט (קטגוריות ציבוריות של תפריט), ללא מוצרי חנות.
-    if (store.type === "kitchen") {
-      domain.push(["public_categ_ids", "child_of", MENU_ROOT_IDS]);
-    }
+    // מוצרי המדף (Shop Items/Fresh/Wholesale) כבר נוסרו מ-effectiveCategs.
     if (search?.trim()) {
       const q = search.trim();
       domain.push("|", ["name", "ilike", q], ["barcode", "ilike", q]);

@@ -38,7 +38,8 @@ export default async function Page({
         ).open;
         // המכולת — קטלוג eCommerce מלא (כל מוצרי המצרכים)
         if (store.id === "grocery") {
-          const g = await getGroceryBundle(PHUKET_COMPANY_ID, PHUKET_PRICELIST_ID);
+          // פוקט = סניף עם חנות POS → מכולת לפי קטגוריות מכולת ציבוריות (broad=false)
+          const g = await getGroceryBundle(PHUKET_COMPANY_ID, PHUKET_PRICELIST_ID, false);
           return {
             store,
             categories: g?.categories ?? [],
