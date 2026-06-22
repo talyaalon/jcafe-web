@@ -24,6 +24,7 @@ export function Header({
   cartCount,
   onCartClick,
   brand,
+  onHome,
 }: {
   locale: Locale;
   dict: Dictionary;
@@ -32,6 +33,7 @@ export function Header({
   cartCount: number;
   onCartClick: () => void;
   brand?: HeaderBrand;
+  onHome?: () => void;
 }) {
   const brandName = brand?.name?.trim() || `${dict.brand.name} Phuket`;
   const brandTagline = brand?.tagline?.trim() || dict.brand.tagline;
@@ -42,7 +44,11 @@ export function Header({
   return (
     <header className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 sm:px-7 py-3 bg-white border-b border-line">
       {/* logo */}
-      <Link href={homeHref} className="order-1 leading-none flex-none flex items-center gap-2.5">
+      <Link
+        href={homeHref}
+        onClick={() => onHome?.()}
+        className="order-1 leading-none flex-none flex items-center gap-2.5"
+      >
         {brand?.logoUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img

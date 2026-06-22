@@ -221,6 +221,14 @@ export function Storefront({
     if (typeof window !== "undefined") window.scrollTo(0, 0);
   }
 
+  // לחיצה על שם/לוגו הסניף בהדר → חזרה למסך "ברוכים הבאים" עם חנויות הסניף
+  function goWelcome() {
+    setShowWelcome(true);
+    setSearch("");
+    setActiveCat(null);
+    if (typeof window !== "undefined") window.scrollTo(0, 0);
+  }
+
   const activeStore = bundle?.store;
 
   // ===== מסך קבלת פנים — ריבוע לכל חנות =====
@@ -259,6 +267,7 @@ export function Storefront({
         onSearch={setSearch}
         cartCount={count}
         onCartClick={() => setDrawerOpen(true)}
+        onHome={goWelcome}
         brand={
           branding
             ? { name: branding.name, tagline: branding.tagline, logoUrl: branding.logoUrl }
@@ -533,8 +542,10 @@ function Pill({
   return (
     <button
       onClick={onClick}
-      className={`shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-[13px] border ${
-        active ? "bg-wine text-white border-wine" : "bg-white text-ink/60 border-line"
+      className={`shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-[13px] font-medium border transition ${
+        active
+          ? "bg-wine text-white border-wine"
+          : "bg-white text-ink/85 border-ink/25 hover:border-wine"
       }`}
     >
       {children}

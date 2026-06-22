@@ -7,7 +7,7 @@ import {
   phuketStores,
   findPhuketStore,
 } from "./phuket";
-import { SHOP_POS_CATEGORY_IDS, orderKitchenCategories } from "./branches";
+import { SHOP_POS_CATEGORY_IDS, orderKitchenCategories, CATEGORY_HE } from "./branches";
 import { buildPricer } from "./pricelist";
 
 // ===== OdooApiAdapter — שואב נתונים אמיתיים מ-ODOO (JSON-RPC) =====
@@ -138,13 +138,12 @@ export const odooApiAdapter: OdooAdapter = {
 
     const cats = en
       .filter((c) => !isTakeAway(c.name))
-      .map((c) => ({
-        id: String(c.id),
-        slug: String(c.id),
-        nameHe: heMap.get(c.id) ?? c.name,
-        nameEn: c.name,
-        storeId,
-      }));
+      .map((c) => {
+        const heName = heMap.get(c.id);
+        const nameHe =
+          heName && heName !== c.name ? heName : (CATEGORY_HE[c.name.trim()] ?? heName ?? c.name);
+        return { id: String(c.id), slug: String(c.id), nameHe, nameEn: c.name, storeId };
+      });
     // מטבח: מנות פתיחה ראשונות, שתייה אחרונה
     return store.type === "kitchen" ? orderKitchenCategories(cats) : cats;
   },

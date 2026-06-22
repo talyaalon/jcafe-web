@@ -9,6 +9,53 @@ import { buildPricer } from "./pricelist";
 
 const HE = "he_IL";
 const ODOO_BASE = (process.env.ODOO_URL ?? "").replace(/\/$/, "");
+
+// תרגום עברי לקטגוריות מסעדה נפוצות — fallback כש-ODOO לא מתרגם את pos.category.
+export const CATEGORY_HE: Record<string, string> = {
+  Starters: "מנות ראשונות",
+  Appetizers: "מתאבנים",
+  "Main Dish": "מנות עיקריות",
+  "Main Dishes": "מנות עיקריות",
+  "Side Dish": "תוספות",
+  "Side Dishes": "תוספות",
+  Sides: "תוספות",
+  Salads: "סלטים",
+  Soup: "מרקים",
+  Soups: "מרקים",
+  Fish: "דגים",
+  Meat: "בשר",
+  Beef: "בקר",
+  Chicken: "עוף",
+  "Meat Topping": "תוספות בשר",
+  Pasta: "פסטה",
+  Pizza: "פיצה",
+  Hamburger: "המבורגר",
+  Burgers: "המבורגרים",
+  Sandwiches: "כריכים",
+  Sandwich: "כריך",
+  Bagels: "בייגלים",
+  Toasts: "טוסטים",
+  Toast: "טוסט",
+  Breads: "לחמים",
+  Bread: "לחם",
+  Hummus: "חומוס",
+  Breakfast: "ארוחת בוקר",
+  Specials: "ספיישלים",
+  Special: "ספיישל",
+  Thai: "תאילנדי",
+  Drinks: "משקאות",
+  Beverages: "משקאות",
+  Desserts: "קינוחים",
+  Dessert: "קינוח",
+  "Pastries & Desserts": "מאפים וקינוחים",
+  Pastries: "מאפים",
+  Bakery: "מאפייה",
+  "TKP Bakery": "מאפיית TKP",
+  "Shop Items": "מוצרי חנות",
+  Fresh: "טרי",
+  Others: "אחר",
+  Other: "אחר",
+};
 const imageUrl = (id: number) =>
   ODOO_BASE ? `${ODOO_BASE}/web/image/product.template/${id}/image_512` : undefined;
 
@@ -138,13 +185,13 @@ async function loadCategories(catIds: number[], storeId: string): Promise<Catego
   const heMap = new Map(he.map((c) => [c.id, c.name]));
   return en
     .filter((c) => !isTakeAway(c.name))
-    .map((c) => ({
-      id: String(c.id),
-      slug: String(c.id),
-      nameHe: heMap.get(c.id) ?? c.name,
-      nameEn: c.name,
-      storeId,
-    }));
+    .map((c) => {
+      const heName = heMap.get(c.id);
+      // עברית מ-ODOO אם קיים תרגום אמיתי, אחרת מהמפה הידנית, אחרת אנגלית
+      const nameHe =
+        heName && heName !== c.name ? heName : (CATEGORY_HE[c.name.trim()] ?? heName ?? c.name);
+      return { id: String(c.id), slug: String(c.id), nameHe, nameEn: c.name, storeId };
+    });
 }
 
 interface ProdRow {
