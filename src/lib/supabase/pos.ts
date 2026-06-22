@@ -25,10 +25,16 @@ export interface PosOrder {
   scheduled_for: string | null;
   notes: string | null;
   total: number;
+  delivery_fee?: number | null;
+  address?: string | null;
   items: PosOrderItem[];
   pos_status: string;
   kitchen_status: string;
   courier_status?: string | null;
+  /** false = הזמנה עתידית מוחזקת (טרם נשלחה למטבח). true = פעילה. */
+  released?: boolean;
+  /** מתי לשחרר למטבח (מועד ההזמנה פחות שעה) — רק להזמנות מוחזקות. */
+  release_at?: string | null;
   created_at: string;
 }
 
@@ -57,6 +63,28 @@ export async function getPosOrder(id: string): Promise<PosOrder | null> {
   } catch (e) {
     console.error("[getPosOrder]", e);
     return null;
+  }
+}
+
+// ===== נמעני התראות (פר-סניף) =====
+export interface NotificationRecipient {
+  id: number;
+  channel: "email" | "whatsapp";
+  value: string;
+}
+
+export async function getNotificationRecipients(branch: number): Promise<NotificationRecipient[]> {
+  if (!supabaseConfigured) return [];
+  try {
+    const { data } = await supabaseAdmin()
+      .from("notification_recipients")
+      .select("id,channel,value")
+      .eq("branch", branch)
+      .order("created_at", { ascending: true });
+    return (data as NotificationRecipient[]) ?? [];
+  } catch (e) {
+    console.error("[getNotificationRecipients]", e);
+    return [];
   }
 }
 

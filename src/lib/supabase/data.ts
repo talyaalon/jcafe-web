@@ -42,13 +42,14 @@ export interface Banner {
   image_url: string;
   link: string | null;
   product_id?: string | null;
+  discount_percent?: number | null;
 }
 
 export async function getActiveBanners(branch = 14): Promise<Banner[]> {
   if (!supabaseConfigured) return [];
   const { data } = await supabasePublic
     .from("banners")
-    .select("id,title,image_url,link,product_id")
+    .select("id,title,image_url,link,product_id,discount_percent")
     .eq("active", true)
     .eq("branch", branch)
     .order("sort", { ascending: true });
@@ -81,7 +82,7 @@ export async function getAllBanners(branch = 14): Promise<BannerRow[]> {
   if (!supabaseConfigured) return [];
   const { data } = await supabasePublic
     .from("banners")
-    .select("id,title,image_url,link,active,sort,product_id")
+    .select("id,title,image_url,link,active,sort,product_id,discount_percent")
     .eq("branch", branch)
     .order("sort", { ascending: true });
   return (data as BannerRow[]) ?? [];

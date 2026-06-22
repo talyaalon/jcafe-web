@@ -27,7 +27,8 @@ export function LoginForm({ locale, dict }: { locale: Locale; dict: Dictionary }
       setErr(locale === "he" ? "אימייל או סיסמה שגויים" : "Invalid email or password");
       return;
     }
-    router.push(`/${locale}/account`);
+    // אחרי התחברות — חוזרים לעמוד הבית של החנות (לא לאזור האישי)
+    router.push(`/${locale}`);
   };
 
   return (

@@ -74,6 +74,7 @@ export async function addBannerAction(formData: FormData) {
       image_url,
       title: String(formData.get("title") ?? "").trim() || null,
       product_id: String(formData.get("product_id") ?? "").trim() || null,
+      discount_percent: Math.max(0, Math.min(90, Number(formData.get("discount_percent")) || 0)),
       active: true,
       branch: Number(formData.get("branch")) || 14,
     });
@@ -134,6 +135,31 @@ export async function addZoneAction(formData: FormData) {
 export async function deleteZoneAction(formData: FormData) {
   const id = Number(formData.get("id"));
   if (id) await supabaseAdmin().from("delivery_zones").delete().eq("id", id);
+  revalidatePath("/", "layout");
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export async function addRecipientAction(formData: FormData) {
+  const branch = Number(formData.get("branch")) || 14;
+  const channel = String(formData.get("channel") ?? "");
+  let value = String(formData.get("value") ?? "").trim();
+  if (channel !== "email" && channel !== "whatsapp") return;
+  if (channel === "email") {
+    value = value.toLowerCase();
+    if (!EMAIL_RE.test(value)) return;
+  } else {
+    // וואטסאפ — נרמול למספר בינלאומי (ספרות + + מוביל)
+    value = value.replace(/[^\d+]/g, "");
+    if (value.replace(/\D/g, "").length < 8) return;
+  }
+  await supabaseAdmin().from("notification_recipients").insert({ branch, channel, value });
+  revalidatePath("/", "layout");
+}
+
+export async function deleteRecipientAction(formData: FormData) {
+  const id = Number(formData.get("id"));
+  if (id) await supabaseAdmin().from("notification_recipients").delete().eq("id", id);
   revalidatePath("/", "layout");
 }
 
@@ -204,6 +230,7 @@ export async function editBannerAction(formData: FormData) {
   const patch: Record<string, unknown> = {
     title: String(formData.get("title") ?? "").trim() || null,
     product_id: String(formData.get("product_id") ?? "").trim() || null,
+    discount_percent: Math.max(0, Math.min(90, Number(formData.get("discount_percent")) || 0)),
   };
   if (image_url) patch.image_url = image_url;
   await supabaseAdmin().from("banners").update(patch).eq("id", id);

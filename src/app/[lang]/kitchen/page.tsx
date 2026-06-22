@@ -35,8 +35,10 @@ export default async function KitchenPage({
   const company = Number((await searchParams).company) || 0;
   const branches = (await getBranches()).map((b) => ({ companyId: b.companyId, name: b.name }));
 
-  // הזמנות פעילות עם פריטי מטבח
-  const orders = (await getPosOrders(company || undefined)).filter((o) => o.pos_status !== "done");
+  // הזמנות פעילות עם פריטי מטבח (הזמנות עתידיות מוחזקות לא מוצגות עד שעה לפני מועדן)
+  const orders = (await getPosOrders(company || undefined)).filter(
+    (o) => o.pos_status !== "done" && o.released !== false,
+  );
   const kds: KdsOrder[] = orders
     .map((o) => ({
       id: o.id,

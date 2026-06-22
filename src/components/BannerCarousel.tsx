@@ -9,7 +9,7 @@ function BannerItem({
   heightCls,
 }: {
   b: Banner;
-  onProductClick: (id: string) => void;
+  onProductClick: (id: string, discount?: number) => void;
   heightCls: string;
 }) {
   const inner = (
@@ -26,7 +26,7 @@ function BannerItem({
   );
   const cls = `relative block w-full text-start ${heightCls} rounded-2xl overflow-hidden border border-line bg-soft`;
   return b.product_id ? (
-    <button onClick={() => onProductClick(b.product_id!)} className={cls}>
+    <button onClick={() => onProductClick(b.product_id!, b.discount_percent ?? 0)} className={cls}>
       {inner}
     </button>
   ) : (
@@ -42,7 +42,7 @@ export function BannerCarousel({
   onProductClick,
 }: {
   banners: Banner[];
-  onProductClick: (id: string) => void;
+  onProductClick: (id: string, discount?: number) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [idx, setIdx] = useState(0);

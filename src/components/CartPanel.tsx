@@ -69,7 +69,14 @@ export function CartPanel({ locale, dict }: { locale: Locale; dict: Dictionary }
                   <CartThumb src={product.image} alt={pName(product)} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
-                      <span className="text-[13px] leading-tight line-clamp-2">{pName(product)}</span>
+                      <span className="text-[13px] leading-tight line-clamp-2">
+                        {pName(product)}
+                        {product.discountPercent ? (
+                          <span className="ms-1 inline-block align-middle bg-red-500 text-white text-[9px] font-extrabold rounded-full px-1.5 py-0.5">
+                            -{product.discountPercent}%
+                          </span>
+                        ) : null}
+                      </span>
                       <button
                         onClick={() => remove(product.id)}
                         className="text-ink/40 hover:text-red-500 flex-none"
@@ -86,6 +93,9 @@ export function CartPanel({ locale, dict }: { locale: Locale; dict: Dictionary }
                       <div className="text-end leading-tight">
                         <div className="font-bold text-sm">{formatTHB(product.price * qty)}</div>
                         <div className="text-[10px] text-ink/45">
+                          {product.discountPercent && product.originalPrice ? (
+                            <span className="line-through me-1">{formatTHB(product.originalPrice)}</span>
+                          ) : null}
                           {formatTHB(product.price)} {he ? "ליח׳" : "/ea"}
                         </div>
                       </div>

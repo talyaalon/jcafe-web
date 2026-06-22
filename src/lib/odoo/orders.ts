@@ -16,7 +16,8 @@ export interface OrderCustomer {
 export interface OrderItem {
   templateId: number; // product.template id
   qty: number;
-  unitPrice: number;
+  unitPrice: number; // מחיר בסיס (לפני הנחה)
+  discount?: number; // אחוז הנחה (שדה discount של sale.order.line)
   name: string;
   storeName: string;
 }
@@ -173,34 +174,48 @@ export async function createOrder(opts: {
   const vmap = await variantMap(tmplIds);
 
   const stores = [...new Set(items.map((i) => i.storeName))];
-  const lines: unknown[] = [];
-  for (const store of stores) {
-    lines.push([0, 0, { display_type: "line_section", name: store }]);
-    for (const it of items.filter((i) => i.storeName === store)) {
-      const variant = vmap.get(it.templateId);
-      if (!variant) continue;
-      lines.push([
-        0,
-        0,
-        {
+  // useDiscountField=true → שדה discount הנייטיבי של ODOO; false → fallback למחיר אחרי הנחה
+  const buildLines = (useDiscountField: boolean): unknown[] => {
+    const out: unknown[] = [];
+    for (const store of stores) {
+      out.push([0, 0, { display_type: "line_section", name: store }]);
+      for (const it of items.filter((i) => i.storeName === store)) {
+        const variant = vmap.get(it.templateId);
+        if (!variant) continue;
+        const disc = it.discount && it.discount > 0 ? it.discount : 0;
+        const line: Record<string, unknown> = {
           product_id: variant,
           product_uom_qty: it.qty,
-          price_unit: it.unitPrice,
           name: it.name,
-        },
-      ]);
+        };
+        if (disc && useDiscountField) {
+          line.price_unit = it.unitPrice;
+          line.discount = disc;
+        } else {
+          line.price_unit = disc
+            ? Math.round(it.unitPrice * (1 - disc / 100) * 100) / 100
+            : it.unitPrice;
+        }
+        out.push([0, 0, line]);
+      }
     }
-  }
+    return out;
+  };
 
   const soVals: Record<string, unknown> = {
     partner_id: partnerId,
     company_id: companyId,
     pricelist_id: pricelistId,
-    order_line: lines,
   };
   if (notes) soVals.note = notes;
 
-  const soId = await executeKw<number>("sale.order", "create", [soVals]);
+  // ניסיון עם שדה discount הנייטיבי; אם ODOO דוחה — נופלים למחיר אחרי הנחה (לא שובר הזמנה)
+  let soId: number;
+  try {
+    soId = await executeKw<number>("sale.order", "create", [{ ...soVals, order_line: buildLines(true) }]);
+  } catch {
+    soId = await executeKw<number>("sale.order", "create", [{ ...soVals, order_line: buildLines(false) }]);
+  }
 
   let confirmed = false;
   try {

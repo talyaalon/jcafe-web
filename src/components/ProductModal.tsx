@@ -135,7 +135,19 @@ export function ProductModal({
         {/* name + price (fixed) */}
         <div className="px-5 pt-3 flex-none">
           <h3 className="font-extrabold text-lg text-ink leading-tight">{name}</h3>
-          <div className="text-wine font-extrabold text-lg mt-0.5">{formatTHB(product.price)}</div>
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            <span className="text-wine font-extrabold text-lg">{formatTHB(product.price)}</span>
+            {product.discountPercent ? (
+              <>
+                <span className="text-ink/40 line-through text-sm">
+                  {formatTHB(product.originalPrice ?? product.price)}
+                </span>
+                <span className="bg-red-500 text-white text-[11px] font-extrabold rounded-full px-2 py-0.5">
+                  -{product.discountPercent}%
+                </span>
+              </>
+            ) : null}
+          </div>
           {product.weight && <div className="text-ink/55 text-sm">{product.weight}</div>}
         </div>
 

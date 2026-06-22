@@ -107,7 +107,7 @@ export function BannerUploader({
         <label className="block text-xs text-ink/55 mb-1">
           {he ? "קישור למוצר (נפתח בלחיצה על הבאנר)" : "Link to product (opens on banner click)"}
         </label>
-        <ProductPicker products={products} he={he} name="product_id" />
+        <ProductPicker products={products} he={he} name="product_id" discountName="discount_percent" />
       </div>
 
       <button

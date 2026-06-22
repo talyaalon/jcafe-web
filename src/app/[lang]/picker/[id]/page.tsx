@@ -3,10 +3,13 @@ import Link from "next/link";
 import { isLocale, type Locale } from "@/i18n/config";
 import { isAdmin } from "@/lib/admin/session";
 import { getPosOrder, itemStatus } from "@/lib/supabase/pos";
+import { getBranchBranding } from "@/lib/supabase/data";
+import { BRANCH_TAG } from "@/lib/odoo/branches";
 import { syncActiveKitchenStatuses } from "@/lib/odoo/prep-sync";
 import { productImageUrl } from "@/lib/odoo/image";
 import { formatTHB } from "@/lib/format";
 import { ManagerLogin } from "@/components/manager/ManagerLogin";
+import { PrintReceiptButton } from "@/components/staff/PrintReceiptButton";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { readyForPickupAction } from "@/lib/staff/actions";
 import { GroceryScanner, type ScanItem } from "@/components/picker/GroceryScanner";
@@ -31,6 +34,14 @@ export default async function PickerDetail({
 
   await syncActiveKitchenStatuses();
   const order = await getPosOrder(id);
+  const company = order?.company ?? 14;
+  const branding = order ? await getBranchBranding(company) : null;
+  const branchName =
+    (he ? branding?.name_he : branding?.name_en) ||
+    branding?.name_en ||
+    BRANCH_TAG[company] ||
+    "J Cafe";
+  const logoUrl = branding?.logo_url ?? null;
   if (!order) {
     return (
       <div className="min-h-screen grid place-items-center bg-[#f7f6f8] p-4 text-ink/60">
@@ -180,8 +191,19 @@ export default async function PickerDetail({
               value={order.method === "delivery" ? (he ? "משלוח" : "Delivery") : he ? "איסוף" : "Pickup"}
             />
             <Row label={he ? 'סה"כ' : "Total"} value={formatTHB(order.total)} />
+            {order.method === "delivery" && order.address && (
+              <Row label={he ? "כתובת" : "Address"} value={order.address} />
+            )}
             {order.scheduled_for && <Row label={he ? "מתוזמן" : "Scheduled"} value={order.scheduled_for} />}
           </dl>
+
+          <PrintReceiptButton
+            order={order}
+            branchName={branchName}
+            logoUrl={logoUrl}
+            locale={locale}
+            className="mt-4 w-full inline-flex items-center justify-center gap-2 bg-white text-wine border border-wine font-bold rounded-xl py-2.5 text-sm hover:bg-wine hover:text-white transition"
+          />
 
           <div className="mt-4">
             <div className="flex justify-between text-xs text-ink/60 mb-1">

@@ -1,15 +1,15 @@
 @import "tailwindcss";
 
-/* ===== J-Cafe — צבעי Figma מדויקים (פוקסיה #861E74 + פחם #2E3333) ===== */
+/* ===== J-Cafe — סגול המותג מתוך הלוגו (J Cafe Kosher Shoppe) ===== */
 @theme {
-  --color-wine: #861e74;        /* Primary — Fuchsia (כפתורים, פעיל, נבחר) */
-  --color-wine-hover: #6d1860;  /* פוקסיה כהה (hover) */
+  --color-wine: #6c2b8e;        /* Primary — סגול הלוגו (כפתורים, פעיל, נבחר) */
+  --color-wine-hover: #562272;  /* סגול כהה (hover) */
   --color-wine-dark: #2e3333;   /* Footer — פחם */
-  --color-wine-bright: #a02a8c; /* פוקסיה בהיר (גרדיאנט) */
-  --color-gold: #861e74;        /* אקסנט = פוקסיה (אין זהב ב-Figma) */
+  --color-wine-bright: #8a3eb0; /* סגול בהיר (גרדיאנט) */
+  --color-gold: #6c2b8e;        /* אקסנט = סגול המותג */
   --color-gold-soft: #d6d2da;   /* אפור בהיר (טקסט Footer) */
   --color-slate: #6e7491;       /* משני — אפור-כחלחל */
-  --color-cream: #f4eef3;       /* רקע עדין לכפתור + */
+  --color-cream: #f2ecf8;       /* רקע עדין סגלגל */
   --color-ink: #2a2a2a;         /* טקסט גוף */
   --color-label: #3c3c43;       /* טקסט תווית (טאב לא-פעיל) */
   --color-soft: #f7f6f8;        /* רקע אפור-בהיר */
@@ -24,11 +24,16 @@
 html,
 body {
   height: 100%;
+  /* נעילה לרוחב המסך — מונע "זחילה" אופקית של כל העמוד בנייד */
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 body {
   background-color: var(--color-soft);
   color: var(--color-ink);
+  position: relative;
+  width: 100%;
 }
 
 /* גלילה אופקית עדינה לפסי קטגוריות */

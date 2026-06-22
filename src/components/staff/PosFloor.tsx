@@ -14,29 +14,55 @@ export interface FloorOrder {
   done: number;
   stores: string[];
   scheduled: string | null;
+  release_at?: string | null;
 }
 
 type Stage = "new" | "picking" | "ready";
+type Tab = "all" | Stage | "future";
 const stageOf = (o: FloorOrder): Stage =>
   o.done === 0 ? "new" : o.done >= o.total ? "ready" : "picking";
 
-export function PosFloor({ locale, orders }: { locale: Locale; orders: FloorOrder[] }) {
+export function PosFloor({
+  locale,
+  orders,
+  future = [],
+}: {
+  locale: Locale;
+  orders: FloorOrder[];
+  future?: FloorOrder[];
+}) {
   const he = locale === "he";
-  const [tab, setTab] = useState<"all" | Stage>("all");
+  const [tab, setTab] = useState<Tab>("all");
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 30000);
     return () => clearInterval(id);
   }, []);
 
-  const tabs: { key: "all" | Stage; label: string }[] = [
+  const tabs: { key: Tab; label: string; badge?: number }[] = [
     { key: "all", label: he ? "הכל" : "All" },
     { key: "new", label: he ? "חדשים" : "New" },
     { key: "picking", label: he ? "בליקוט" : "Picking" },
     { key: "ready", label: he ? "מוכן לאיסוף" : "Ready" },
+    { key: "future", label: he ? "עתידיות" : "Scheduled", badge: future.length },
   ];
 
-  const shown = orders.filter((o) => tab === "all" || stageOf(o) === tab);
+  const isFuture = tab === "future";
+  const shown = isFuture
+    ? future
+    : orders.filter((o) => tab === "all" || stageOf(o) === tab);
+
+  // עיצוב מועד השחרור (תאילנד) + ספירה לאחור עד הכניסה למטבח
+  const bkk = (iso: string, opts: Intl.DateTimeFormatOptions) =>
+    new Date(iso).toLocaleString(he ? "he-IL" : "en-GB", { timeZone: "Asia/Bangkok", ...opts });
+  const untilRelease = (iso: string) => {
+    const mins = Math.round((new Date(iso).getTime() - now) / 60000);
+    if (mins <= 0) return he ? "נכנס למטבח עכשיו" : "entering kitchen now";
+    if (mins < 60) return he ? `נכנס למטבח בעוד ${mins} דק׳` : `to kitchen in ${mins}m`;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return he ? `נכנס למטבח בעוד ${h}ש׳ ${m}ד׳` : `to kitchen in ${h}h ${m}m`;
+  };
 
   const elapsed = (iso: string, stage: Stage) => {
     if (stage === "ready") return he ? "מוכן ✓" : "Ready ✓";
@@ -60,17 +86,82 @@ export function PosFloor({ locale, orders }: { locale: Locale; orders: FloorOrde
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`text-sm font-bold rounded-full px-4 py-1.5 border transition ${
+            className={`text-sm font-bold rounded-full px-4 py-1.5 border transition flex items-center gap-1.5 ${
               tab === t.key ? "bg-wine text-white border-wine" : "border-line text-ink/70 hover:border-wine"
             }`}
           >
+            {t.key === "future" && "🗓"}
             {t.label}
+            {!!t.badge && (
+              <span
+                className={`text-[11px] font-extrabold rounded-full px-1.5 ${
+                  tab === t.key ? "bg-white/25 text-white" : "bg-amber-100 text-amber-700"
+                }`}
+              >
+                {t.badge}
+              </span>
+            )}
           </button>
         ))}
       </div>
 
       {shown.length === 0 ? (
-        <p className="p-8 text-center text-ink/50">{he ? "אין הזמנות" : "No orders"}</p>
+        <p className="p-8 text-center text-ink/50">
+          {isFuture
+            ? he
+              ? "אין הזמנות עתידיות. הזמנות מתוזמנות יופיעו כאן עד שעה לפני מועדן."
+              : "No scheduled orders. Future orders appear here until an hour before their time."
+            : he
+              ? "אין הזמנות"
+              : "No orders"}
+        </p>
+      ) : isFuture ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 px-4 sm:px-6 pb-6">
+          {shown.map((o) => (
+            <div
+              key={o.id}
+              className="block rounded-xl bg-white border border-line border-t-4 border-t-amber-300 p-4"
+            >
+              <div className="flex justify-between items-start">
+                <span className="font-extrabold text-wine">{o.order_name || "—"}</span>
+                <span className="text-[10px] font-bold bg-amber-100 text-amber-700 rounded-full px-2 py-0.5">
+                  {he ? "עתידית" : "Scheduled"}
+                </span>
+              </div>
+              <div className="text-sm font-bold text-ink mt-0.5">{o.customer || "—"}</div>
+              <div className="text-[12px] text-ink/55 mt-0.5 line-clamp-1">{o.stores.join(" · ")}</div>
+              <div className="mt-3 rounded-lg bg-amber-50 border border-amber-100 p-2">
+                <div className="text-[12px] font-bold text-amber-800">
+                  🗓 {o.scheduled
+                    ? bkk(new Date(o.scheduled.slice(0, 16) + ":00+07:00").toISOString(), {
+                        day: "2-digit",
+                        month: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                    : "—"}
+                  {"  "}
+                  <span className="text-amber-600 font-normal">{he ? "מועד ההזמנה" : "order time"}</span>
+                </div>
+                {o.release_at && (
+                  <div className="text-[11px] text-amber-700 mt-0.5">{untilRelease(o.release_at)}</div>
+                )}
+              </div>
+              <div className="flex items-center justify-between mt-3">
+                <span
+                  className={`text-[11px] font-bold rounded-full px-2 py-0.5 ${
+                    o.method === "delivery" ? "bg-wine/10 text-wine" : "bg-soft text-ink/70"
+                  }`}
+                >
+                  {o.method === "delivery" ? (he ? "משלוח" : "Delivery") : he ? "איסוף" : "Pickup"}
+                </span>
+                <span className="text-[11px] text-ink/45">
+                  {o.total} {he ? "פריטים" : "items"}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 px-4 sm:px-6 pb-6">
           {shown.map((o) => {

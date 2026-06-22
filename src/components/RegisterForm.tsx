@@ -36,7 +36,8 @@ export function RegisterForm({ locale, dict }: { locale: Locale; dict: Dictionar
       if (!res.ok || !data.ok) throw new Error(data.error || "Registration failed");
       const { error } = await signIn(form.email.trim(), form.password);
       if (error) throw new Error(error);
-      router.push(`/${locale}/account`);
+      // אחרי הרשמה והתחברות — לעמוד הבית של החנות (לא לאזור האישי)
+      router.push(`/${locale}`);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {

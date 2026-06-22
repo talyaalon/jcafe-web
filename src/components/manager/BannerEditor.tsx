@@ -9,6 +9,7 @@ export interface EditBanner {
   title: string | null;
   image_url: string;
   product_id?: string | null;
+  discount_percent?: number | null;
 }
 
 export function BannerEditor({
@@ -72,7 +73,14 @@ export function BannerEditor({
         placeholder={he ? "כותרת" : "Title"}
         className="w-full border border-line rounded px-2 py-1 text-sm"
       />
-      <ProductPicker products={products} he={he} name="product_id" defaultId={banner.product_id ?? ""} />
+      <ProductPicker
+        products={products}
+        he={he}
+        name="product_id"
+        defaultId={banner.product_id ?? ""}
+        discountName="discount_percent"
+        defaultDiscount={banner.discount_percent ?? 0}
+      />
 
       <div className="flex gap-2 items-center">
         <button className="bg-wine text-white text-xs font-bold rounded px-3 py-1.5">

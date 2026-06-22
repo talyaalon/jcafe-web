@@ -10,6 +10,8 @@ import {
   addZoneAction,
   deleteZoneAction,
   setBannerEnabledAction,
+  addRecipientAction,
+  deleteRecipientAction,
 } from "@/app/[lang]/manager/actions";
 import type { DeliverySettings } from "@/lib/delivery";
 import { formatTHB } from "@/lib/format";
@@ -43,6 +45,7 @@ export interface BannerRow {
   active: boolean;
   sort: number;
   product_id?: string | null;
+  discount_percent?: number | null;
 }
 
 export interface OrderRow {
@@ -78,7 +81,20 @@ export interface ZoneRow {
   fee: number;
 }
 
-type Section = "orders" | "customers" | "hours" | "banners" | "branding" | "delivery";
+export interface RecipientRow {
+  id: number;
+  channel: "email" | "whatsapp";
+  value: string;
+}
+
+type Section =
+  | "orders"
+  | "customers"
+  | "hours"
+  | "banners"
+  | "branding"
+  | "delivery"
+  | "notifications";
 
 export function ManagerDashboard({
   locale,
@@ -94,6 +110,7 @@ export function ManagerDashboard({
   webCustomers,
   products,
   zones,
+  recipients,
 }: {
   locale: "he" | "en";
   branch: number;
@@ -108,6 +125,7 @@ export function ManagerDashboard({
   webCustomers: WebCustomer[];
   products: PickerProduct[];
   zones: ZoneRow[];
+  recipients: RecipientRow[];
 }) {
   const he = locale === "he";
   const [section, setSection] = useState<Section>("orders");
@@ -125,8 +143,12 @@ export function ManagerDashboard({
     { key: "banners" as const, icon: "🖼️", label: he ? "באנרים ומבצעים" : "Banners & promos" },
     { key: "branding" as const, icon: "🎨", label: he ? "שם ולוגו" : "Name & logo" },
     { key: "delivery" as const, icon: "🛵", label: he ? "משלוחים" : "Delivery" },
+    { key: "notifications" as const, icon: "🔔", label: he ? "התראות" : "Notifications" },
   ];
   const soon = he ? ["מוצרים", "הגדרות"] : ["Products", "Settings"];
+
+  const emailRecipients = recipients.filter((r) => r.channel === "email");
+  const waRecipients = recipients.filter((r) => r.channel === "whatsapp");
 
   // נגזרות: סטטיסטיקה + לקוחות (מתוך ההזמנות)
   const totalRevenue = orders.reduce((s, o) => s + Number(o.total || 0), 0);
@@ -659,6 +681,118 @@ export function ManagerDashboard({
               {he
                 ? "💡 הזנת אזור ידנית. אינטגרציית Google Maps Places (השלמה אוטומטית) דורשת מפתח API."
                 : "💡 Manual entry. Google Maps Places autocomplete needs an API key."}
+            </p>
+          </section>
+        )}
+
+        {section === "notifications" && (
+          <section>
+            <h2 className="text-xl font-extrabold text-wine mb-1">
+              {he ? "התראות הזמנה" : "Order notifications"}
+            </h2>
+            <p className="text-ink/55 text-sm mb-5">
+              {he
+                ? "כשנכנסת הזמנה חדשה לסניף זה, נשלחת אוטומטית הודעה לכל הנמענים שמוגדרים כאן — בלבד."
+                : "When a new order comes into this branch, every recipient listed here is notified automatically — and only them."}
+            </p>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-3xl">
+              {/* אימייל */}
+              <div className="bg-white border border-line rounded-xl p-4">
+                <h3 className="font-bold text-ink mb-1 flex items-center gap-2">
+                  ✉️ {he ? "כתובות אימייל" : "Email addresses"}
+                </h3>
+                <p className="text-ink/55 text-[13px] mb-3">
+                  {he ? "מקבלים מייל עם פירוט ההזמנה." : "Receive an email with the order details."}
+                </p>
+                <div className="space-y-2 mb-3">
+                  {emailRecipients.length === 0 ? (
+                    <p className="text-ink/40 text-sm">{he ? "לא הוגדרו כתובות." : "No addresses yet."}</p>
+                  ) : (
+                    emailRecipients.map((r) => (
+                      <div
+                        key={r.id}
+                        className="flex items-center justify-between gap-2 border-b border-line/60 pb-2"
+                      >
+                        <span className="text-sm text-ink break-all">{r.value}</span>
+                        <form action={deleteRecipientAction} className="flex-none">
+                          <input type="hidden" name="id" value={r.id} />
+                          <button className="text-xs text-red-500 font-bold">
+                            {he ? "הסר" : "Remove"}
+                          </button>
+                        </form>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <form action={addRecipientAction} className="flex gap-2 items-end flex-wrap">
+                  <input type="hidden" name="branch" value={branch} />
+                  <input type="hidden" name="channel" value="email" />
+                  <input
+                    name="value"
+                    type="email"
+                    required
+                    placeholder={he ? "name@example.com" : "name@example.com"}
+                    className="flex-1 min-w-[10rem] border border-line rounded-lg px-3 py-2 text-sm"
+                  />
+                  <button className="bg-wine text-white font-bold rounded-lg px-3 py-2 text-sm hover:bg-wine-hover">
+                    {he ? "הוסף אימייל" : "Add email"}
+                  </button>
+                </form>
+              </div>
+
+              {/* וואטסאפ */}
+              <div className="bg-white border border-line rounded-xl p-4">
+                <h3 className="font-bold text-ink mb-1 flex items-center gap-2">
+                  💬 {he ? "מספרי וואטסאפ" : "WhatsApp numbers"}
+                </h3>
+                <p className="text-ink/55 text-[13px] mb-3">
+                  {he
+                    ? "מקבלים הודעת וואטסאפ עם פירוט ההזמנה. הזינו מספר בפורמט בינלאומי."
+                    : "Receive a WhatsApp message with the order details. Enter an international number."}
+                </p>
+                <div className="space-y-2 mb-3">
+                  {waRecipients.length === 0 ? (
+                    <p className="text-ink/40 text-sm">{he ? "לא הוגדרו מספרים." : "No numbers yet."}</p>
+                  ) : (
+                    waRecipients.map((r) => (
+                      <div
+                        key={r.id}
+                        className="flex items-center justify-between gap-2 border-b border-line/60 pb-2"
+                      >
+                        <span className="text-sm text-ink" dir="ltr">{r.value}</span>
+                        <form action={deleteRecipientAction} className="flex-none">
+                          <input type="hidden" name="id" value={r.id} />
+                          <button className="text-xs text-red-500 font-bold">
+                            {he ? "הסר" : "Remove"}
+                          </button>
+                        </form>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <form action={addRecipientAction} className="flex gap-2 items-end flex-wrap">
+                  <input type="hidden" name="branch" value={branch} />
+                  <input type="hidden" name="channel" value="whatsapp" />
+                  <input
+                    name="value"
+                    type="tel"
+                    required
+                    dir="ltr"
+                    placeholder="+972501234567"
+                    className="flex-1 min-w-[10rem] border border-line rounded-lg px-3 py-2 text-sm"
+                  />
+                  <button className="bg-wine text-white font-bold rounded-lg px-3 py-2 text-sm hover:bg-wine-hover">
+                    {he ? "הוסף מספר" : "Add number"}
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-ink/45 mt-3 max-w-3xl">
+              {he
+                ? "💡 שליחת אימייל פעילה דרך Resend (לאחר אימות דומיין — לכל נמען). שליחת וואטסאפ מחייבת חיבור ספק (Twilio) — עד אז המספרים נשמרים אך ההודעה לא נשלחת."
+                : "💡 Email is sent via Resend (after domain verification — to any recipient). WhatsApp requires a provider (Twilio) — until connected, numbers are saved but messages are not sent."}
             </p>
           </section>
         )}

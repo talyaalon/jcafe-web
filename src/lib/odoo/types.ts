@@ -32,7 +32,11 @@ export interface Product {
   nameEn: string;
   descHe?: string;
   descEn?: string;
-  price: number; // THB
+  price: number; // THB (אם יש הנחת באנר — זהו המחיר אחרי ההנחה)
+  /** מחיר מקורי לפני הנחת באנר (מוצג עם קו חוצה) */
+  originalPrice?: number;
+  /** אחוז הנחת באנר שחל על המוצר */
+  discountPercent?: number;
   weight?: string;
   /** מלאי אמיתי מ-ODOO; null = מנת מטבח (ללא מלאי מספרי) */
   qtyAvailable: number | null;

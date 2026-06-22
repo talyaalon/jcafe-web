@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
 import type { Store, Category, Product } from "@/lib/odoo/types";
@@ -28,6 +29,7 @@ export interface Banner {
   image_url: string;
   link: string | null;
   product_id?: string | null;
+  discount_percent?: number | null;
 }
 
 type SortKey = "featured" | "newest" | "nameAsc" | "priceLow" | "priceHigh";
@@ -58,16 +60,38 @@ export function Storefront({
   const [activeStoreId, setActiveStoreId] = useState(data[0]?.store.id ?? "");
   const [activeCat, setActiveCat] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  // מסך קבלת פנים — ריבועי חנויות; לחיצה נכנסת לחנות הנבחרת
+  const [showWelcome, setShowWelcome] = useState(true);
+  const router = useRouter();
+
+  // רענון פנימי: כשחוזרים ללשונית, מושכים נתונים טריים מהשרת (באנרים/שעות/מיתוג
+  // שהמנהל עדכן) בלי איבוד מצב הלקוח (עגלה/חנות פעילה).
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") router.refresh();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
+  }, [router]);
   // ברירת מחדל: מיון אלפביתי א→ת (לפי השם המוצג), כך שב"הכל" המוצרים מסודרים.
   const [sort, setSort] = useState<SortKey>("nameAsc");
   const [selected, setSelected] = useState<Product | null>(null);
 
-  // פתיחת חלון המוצר המקושר לבאנר (לפי מזהה בסיס)
-  const openBannerProduct = (pid: string) => {
+  // פתיחת חלון המוצר המקושר לבאנר (לפי מזהה בסיס) — עם הנחת הבאנר אם הוגדרה
+  const openBannerProduct = (pid: string, discount = 0) => {
     for (const d of data) {
       const p = d.products.find((x) => String(x.id).split("|")[0] === pid);
       if (p) {
-        setSelected(p);
+        if (discount > 0) {
+          const newPrice = Math.round(p.price * (1 - discount / 100) * 100) / 100;
+          setSelected({ ...p, price: newPrice, originalPrice: p.price, discountPercent: discount });
+        } else {
+          setSelected(p);
+        }
         return;
       }
     }
@@ -171,7 +195,40 @@ export function Storefront({
     setSearch("");
   }
 
+  function pickStore(id: string) {
+    switchStore(id);
+    setShowWelcome(false);
+    if (typeof window !== "undefined") window.scrollTo(0, 0);
+  }
+
   const activeStore = bundle?.store;
+
+  // ===== מסך קבלת פנים — ריבוע לכל חנות =====
+  if (showWelcome) {
+    return (
+      <div className="flex flex-col min-h-full">
+        <Header
+          locale={locale}
+          dict={dict}
+          search={search}
+          onSearch={(v) => {
+            setSearch(v);
+            if (v) setShowWelcome(false);
+          }}
+          cartCount={count}
+          onCartClick={() => setDrawerOpen(true)}
+          brand={
+            branding
+              ? { name: branding.name, tagline: branding.tagline, logoUrl: branding.logoUrl }
+              : undefined
+          }
+        />
+        <WelcomeTiles stores={stores} locale={locale} onPick={pickStore} />
+        <SiteFooter locale={locale} dict={dict} />
+        <CartDrawer locale={locale} dict={dict} open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-full">
@@ -378,6 +435,69 @@ export function Storefront({
         />
       )}
     </div>
+  );
+}
+
+function WelcomeTiles({
+  stores,
+  locale,
+  onPick,
+}: {
+  stores: Store[];
+  locale: Locale;
+  onPick: (id: string) => void;
+}) {
+  const he = locale === "he";
+  return (
+    <main className="flex-1 bg-soft">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
+        <h1 className="text-center font-tabs font-extrabold text-2xl sm:text-4xl text-ink">
+          {he ? "ברוכים הבאים" : "Welcome"}
+        </h1>
+        <p className="text-center text-ink/55 mt-2 text-sm sm:text-base">
+          {he ? "בחרו חנות כדי להתחיל בהזמנה" : "Choose a store to start your order"}
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mt-8 sm:mt-10">
+          {stores.map((s) => {
+            const name = he ? s.nameHe : s.nameEn;
+            return (
+              <button
+                key={s.id}
+                onClick={() => onPick(s.id)}
+                className="group relative h-60 rounded-2xl overflow-hidden border border-line shadow-sm hover:shadow-xl transition text-start"
+              >
+                {s.logo ? (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={s.logo}
+                      alt={name}
+                      className="absolute inset-0 w-full h-full object-cover transition duration-300 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+                  </>
+                ) : (
+                  <>
+                    <div className="absolute inset-0 bg-gradient-to-br from-wine via-wine to-wine-bright" />
+                    <div className="absolute inset-0 grid place-items-center text-6xl opacity-90 transition duration-300 group-hover:scale-110">
+                      {s.emoji || (s.type === "grocery" ? "🛒" : "🍳")}
+                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
+                  </>
+                )}
+                <div className="absolute inset-x-0 bottom-0 p-5">
+                  <div className="text-white font-extrabold text-xl drop-shadow">{name}</div>
+                  <span className="mt-3 inline-flex items-center gap-1.5 bg-white text-wine font-bold rounded-full px-4 py-1.5 text-sm shadow group-hover:bg-wine group-hover:text-white transition">
+                    {he ? "להזמנה" : "Order Now"} <span aria-hidden>←</span>
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </main>
   );
 }
 

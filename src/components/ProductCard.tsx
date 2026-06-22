@@ -92,7 +92,7 @@ export function ProductCard({
               // מוצר עם אפשרויות → פותח חלון בחירה; אחרת הוספה ישירה לסל
               onClick={() => (product.hasOptions ? onOpen(product) : onAdd(product))}
               aria-label={dict.product.add}
-              className="w-10 h-10 rounded-lg bg-[#f1eff3] text-ink/40 text-2xl leading-none grid place-items-center transition hover:text-wine active:scale-95 disabled:opacity-40"
+              className="w-10 h-10 rounded-lg border border-wine text-wine text-2xl leading-none grid place-items-center font-bold transition hover:bg-wine hover:text-white active:scale-95 disabled:opacity-40"
             >
               +
             </button>

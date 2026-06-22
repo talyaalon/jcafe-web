@@ -35,8 +35,9 @@ export function Header({
   const brandName = brand?.name?.trim() || `${dict.brand.name} Phuket`;
   const brandTagline = brand?.tagline?.trim() || dict.brand.tagline;
   const pathname = usePathname();
-  // הלוגו מוביל לעמוד הסניף הנוכחי (לא לדף הבית של פוקט), כדי לא לצאת מהסניף.
-  const homeHref = brand?.href ?? pathname ?? `/${locale}`;
+  // הלוגו תמיד מוביל לעמוד הבית של החנות — בית הסניף אם גולשים בסניף, אחרת הבית הראשי.
+  const branchHome = pathname?.match(new RegExp(`^/${locale}/s/[^/]+`))?.[0];
+  const homeHref = brand?.href ?? branchHome ?? `/${locale}`;
   return (
     <header className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 sm:px-7 py-3 bg-white border-b border-line">
       {/* logo */}

@@ -40,6 +40,7 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
     addr1: "",
     addr2: "",
     postcode: "",
+    deliveryNotes: "",
     notes: "",
   });
   const [errors, setErrors] = useState<Record<string, boolean>>({});
@@ -197,6 +198,7 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
           storeName: i.store.nameEn || i.store.nameHe,
           storeId: i.store.id,
           barcode: i.product.barcode,
+          discount: i.product.discountPercent || 0,
         })),
         method,
         payment,
@@ -207,6 +209,7 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
         notes:
           [
             form.notes,
+            method === "delivery" && form.deliveryNotes ? `משלוח: ${form.deliveryNotes}` : "",
             paymentRef,
             scheduledAt ? `Scheduled for: ${scheduledAt}` : "",
             method === "delivery" && deliveryFee ? `Delivery fee: ${deliveryFee} THB` : "",
@@ -232,12 +235,23 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
             orderNo: data.orderNo,
             total,
             name: form.name,
+            phone: form.phone,
+            address:
+              method === "delivery" ? [form.addr1, form.addr2].filter(Boolean).join(", ") : undefined,
             method,
             deliveryFee,
+            scheduledFor: scheduledAt || undefined,
+            notes:
+              [form.notes, method === "delivery" && form.deliveryNotes ? `משלוח: ${form.deliveryNotes}` : ""]
+                .filter(Boolean)
+                .join(" · ") || undefined,
+            branchName: dict.brand.name,
+            locale,
             items: items.map((i) => ({
-              name: i.product.nameEn || i.product.nameHe,
+              name: he ? i.product.nameHe : i.product.nameEn,
               qty: i.qty,
               price: i.product.price,
+              storeName: he ? i.store.nameHe : i.store.nameEn,
             })),
           }),
         }).catch(() => {});
@@ -429,6 +443,18 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
                       ) : null}
                     </div>
                   )}
+
+                  {/* הערות למשלוח — רק במשלוח, בתוך פרטי המשלוח מתחת לכתובת */}
+                  <Label className="mt-4">{he ? "הערות למשלוח (אופציונלי)" : "Delivery notes (optional)"}</Label>
+                  <textarea
+                    value={form.deliveryNotes}
+                    onChange={(e) => set("deliveryNotes", e.target.value)}
+                    rows={2}
+                    placeholder={
+                      he ? "למשל: קומה 3, להתקשר בהגעה…" : "e.g. 3rd floor, call on arrival…"
+                    }
+                    className="w-full border border-line rounded-lg px-3 py-2.5 text-sm outline-none focus:border-wine"
+                  />
                 </section>
               ) : (
                 <section className="bg-white border border-line rounded-2xl p-5">
@@ -487,13 +513,13 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
                 )}
               </section>
 
-              {/* notes */}
+              {/* order notes — הערות כלליות להזמנה (תמיד) */}
               <section className="bg-white border border-line rounded-2xl p-5">
-                <h2 className="font-bold text-ink mb-2">{t.notes}</h2>
+                <h2 className="font-bold text-ink mb-2">{he ? "הערות להזמנה" : "Order notes"}</h2>
                 <textarea
                   value={form.notes}
                   onChange={(e) => set("notes", e.target.value)}
-                  placeholder={t.notesPlaceholder}
+                  placeholder={he ? "הערות כלליות להזמנה (אופציונלי)" : "General notes for your order (optional)"}
                   rows={2}
                   className="w-full border border-line rounded-lg px-3 py-2.5 text-sm outline-none focus:border-wine"
                 />
@@ -521,59 +547,73 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
                 </div>
               )}
 
-              {hasClosed ? (
-                <>
-                  <div className="text-[13px] text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                    {he
-                      ? "יש בעגלה מוצרים מחנות שסגורה כעת — ניתן רק לבצע הזמנה מתוזמנת."
-                      : "Cart has items from a store that's closed now — only a scheduled order is available."}
-                  </div>
-                  {/* Place order — חסום */}
-                  <button
-                    disabled
-                    className="w-full bg-wine/40 text-white font-extrabold rounded-xl py-3.5 cursor-not-allowed"
-                  >
-                    {t.placeOrder}
-                  </button>
-                  {/* Scheduled order — בהיר */}
-                  {!scheduleMode ? (
-                    <button
-                      onClick={() => setScheduleMode(true)}
-                      className="w-full border-2 border-wine text-wine font-bold rounded-xl py-3 hover:bg-wine/5"
-                    >
-                      🗓 {he ? "הזמנה מתוזמנת" : "Scheduled order"}
-                    </button>
-                  ) : (
-                    <div className="border border-line rounded-xl p-3 space-y-2">
-                      <label className="block text-sm text-ink/70">
-                        {he ? "בחר/י תאריך ושעה (בשעות הפתיחה)" : "Choose date & time (within opening hours)"}
-                      </label>
-                      <input
-                        type="datetime-local"
-                        min={minDateTime()}
-                        value={scheduledAt}
-                        onChange={(e) => onScheduleChange(e.target.value)}
-                        className={`w-full border rounded-lg px-3 py-2.5 text-sm outline-none ${scheduleError ? "border-red-500" : "border-line focus:border-wine"}`}
-                      />
-                      {scheduleError && <p className="text-red-600 text-xs">{scheduleError}</p>}
-                      <button
-                        onClick={placeOrder}
-                        disabled={submitting || !scheduledAt || !!scheduleError || deliveryBlocked || mixedBranches}
-                        className="w-full bg-wine text-white font-extrabold rounded-xl py-3 hover:bg-wine-hover disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {submitting ? "…" : he ? "אשר הזמנה מתוזמנת" : "Confirm scheduled order"}
-                      </button>
-                    </div>
-                  )}
-                </>
-              ) : (
+              {hasClosed && (
+                <div className="text-[13px] text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                  {he
+                    ? "יש בעגלה מוצרים מחנות שסגורה כעת — ניתן לבצע הזמנה מתוזמנת בלבד."
+                    : "Cart has items from a store that's closed now — only a scheduled order is available."}
+                </div>
+              )}
+
+              {/* Place order — חסום כשחנות סגורה */}
+              <button
+                onClick={placeOrder}
+                disabled={hasClosed || submitting || deliveryBlocked || mixedBranches}
+                className={`w-full font-extrabold rounded-xl py-3.5 ${
+                  hasClosed
+                    ? "bg-wine/40 text-white cursor-not-allowed"
+                    : "bg-wine text-white hover:bg-wine-hover disabled:opacity-60 disabled:cursor-not-allowed"
+                }`}
+              >
+                {submitting && !scheduleMode ? "…" : t.placeOrder}
+              </button>
+
+              {/* Scheduled order — תמיד זמין, מתחת לכפתור ההזמנה */}
+              {!scheduleMode ? (
                 <button
-                  onClick={placeOrder}
-                  disabled={submitting || deliveryBlocked || mixedBranches}
-                  className="w-full bg-wine text-white font-extrabold rounded-xl py-3.5 hover:bg-wine-hover disabled:opacity-60 disabled:cursor-not-allowed"
+                  type="button"
+                  onClick={() => setScheduleMode(true)}
+                  className="w-full border-2 border-wine text-wine font-bold rounded-xl py-3 hover:bg-wine/5"
                 >
-                  {submitting ? "…" : t.placeOrder}
+                  🗓 {he ? "הזמנה מתוזמנת" : "Scheduled order"}
                 </button>
+              ) : (
+                <div className="border-2 border-wine/40 rounded-xl p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-sm font-bold text-wine">
+                      🗓 {he ? "הזמנה מתוזמנת" : "Scheduled order"}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScheduleMode(false);
+                        setScheduledAt("");
+                        setScheduleError("");
+                      }}
+                      className="text-ink/40 hover:text-ink text-sm"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <label className="block text-sm text-ink/70">
+                    {he ? "בחר/י תאריך ושעה (בשעות הפתיחה)" : "Choose date & time (within opening hours)"}
+                  </label>
+                  <input
+                    type="datetime-local"
+                    min={minDateTime()}
+                    value={scheduledAt}
+                    onChange={(e) => onScheduleChange(e.target.value)}
+                    className={`w-full border rounded-lg px-3 py-2.5 text-sm outline-none ${scheduleError ? "border-red-500" : "border-line focus:border-wine"}`}
+                  />
+                  {scheduleError && <p className="text-red-600 text-xs">{scheduleError}</p>}
+                  <button
+                    onClick={placeOrder}
+                    disabled={submitting || !scheduledAt || !!scheduleError || deliveryBlocked || mixedBranches}
+                    className="w-full bg-wine text-white font-extrabold rounded-xl py-3 hover:bg-wine-hover disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {submitting ? "…" : he ? "אשר הזמנה מתוזמנת" : "Confirm scheduled order"}
+                  </button>
+                </div>
               )}
             </>
           )}
@@ -594,7 +634,14 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
                   <div className="flex items-center gap-3">
                     <CartThumb src={product.image} alt={pName(product)} />
                     <div className="flex-1 min-w-0">
-                      <div className="leading-tight line-clamp-2">{pName(product)}</div>
+                      <div className="leading-tight line-clamp-2">
+                        {pName(product)}
+                        {product.discountPercent ? (
+                          <span className="ms-1.5 inline-block align-middle bg-red-500 text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">
+                            -{product.discountPercent}%
+                          </span>
+                        ) : null}
+                      </div>
                       <div className="text-ink/45">
                         {storeName(store)}
                         {closed && (

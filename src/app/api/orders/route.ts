@@ -9,6 +9,9 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "");
 import { pushKitchenToPrep } from "@/lib/odoo/pos-prep";
 import { PHUKET_COMPANY_ID, PHUKET_PRICELIST_ID } from "@/lib/odoo/phuket";
 import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase/server";
+import { getBranchBranding, getActiveBanners } from "@/lib/supabase/data";
+import { notifyStaffNewOrder } from "@/lib/notify-staff";
+import { releaseAtFor } from "@/lib/odoo/release-scheduled";
 
 interface OrderBody {
   customer: {
@@ -27,6 +30,7 @@ interface OrderBody {
     storeName: string;
     storeId?: string;
     barcode?: string;
+    discount?: number;
   }[];
   method?: "delivery" | "pickup";
   payment?: "card" | "cod" | "qr";
@@ -68,8 +72,24 @@ export async function POST(req: Request) {
         priced.filter((p) => Math.abs(p.clientPrice - p.unitPrice) > 0.01),
       );
     }
-    const unitPriceAt = (idx: number) => priced[idx]?.unitPrice ?? body.items[idx].price;
-    const productsTotal = priced.reduce((s, p) => s + p.unitPrice * p.qty, 0);
+    // הנחות באנר פעילות לסניף — מקור-אמת בצד-שרת (לא סומכים על אחוז ההנחה מהלקוח)
+    const activeBanners = await getActiveBanners(companyId).catch(() => []);
+    const discountMap = new Map<string, number>();
+    for (const b of activeBanners) {
+      if (b.product_id && b.discount_percent && b.discount_percent > 0) {
+        discountMap.set(String(b.product_id), Math.min(90, Number(b.discount_percent)));
+      }
+    }
+    const discountAt = (idx: number) =>
+      discountMap.get(String(body.items[idx].id).split("|")[0]) ?? 0;
+    // מחיר בסיס מהשרת (ל-ODOO price_unit) ומחיר אפקטיבי אחרי הנחה (לסכומים ולקבלה)
+    const baseUnitAt = (idx: number) => priced[idx]?.unitPrice ?? body.items[idx].price;
+    const unitPriceAt = (idx: number) =>
+      Math.round(baseUnitAt(idx) * (1 - discountAt(idx) / 100) * 100) / 100;
+    const productsTotal = body.items.reduce(
+      (s, _i, idx) => s + unitPriceAt(idx) * (priced[idx]?.qty ?? body.items[idx].qty),
+      0,
+    );
     const fullAddr = [body.customer.street, body.customer.city, body.customer.zip]
       .filter(Boolean)
       .join(", ");
@@ -130,7 +150,9 @@ export async function POST(req: Request) {
     const items: OrderItem[] = body.items.map((i, idx) => ({
       templateId: Number(String(i.id).split("|")[0]),
       qty: i.qty,
-      unitPrice: unitPriceAt(idx),
+      // ODOO: מחיר בסיס מלא + שדה discount באחוזים (הדרך הנייטיבית של ODOO)
+      unitPrice: baseUnitAt(idx),
+      discount: discountAt(idx),
       name: i.name,
       storeName: i.storeName,
     }));
@@ -149,24 +171,32 @@ export async function POST(req: Request) {
       }
     }
 
-    // דחיפת פריטי המטבח ל-Preparation Display של ODOO — best-effort, לא חוסם
+    // הזמנה עתידית: מחזיקים אותה עד שעה לפני המועד — לא נשלחת למטבח כעת,
+    // ומופיעה רק בלשונית "עתידיות" אצל המלקט. שחרור בפועל ב-releaseDueOrders.
+    const releaseAt = releaseAtFor(body.scheduledFor);
+    const hold = !!releaseAt && releaseAt.getTime() > Date.now();
+
+    // דחיפת פריטי המטבח ל-Preparation Display של ODOO — best-effort, לא חוסם.
+    // מדלגים אם ההזמנה מוחזקת (תידחף בעת השחרור).
     let prepPosOrderIds: number[] = [];
-    try {
-      const prepResults = await pushKitchenToPrep({
-        items: body.items.map((i) => ({
-          templateId: Number(String(i.id).split("|")[0]),
-          qty: i.qty,
-          price: i.price,
-          name: i.name,
-          storeId: i.storeId || "",
-        })),
-        companyId,
-        configs: branchConfigs,
-        note: body.scheduledFor ? `Scheduled: ${body.scheduledFor}` : undefined,
-      });
-      prepPosOrderIds = prepResults.map((r) => r.posOrderId);
-    } catch {
-      /* ignore — לא לשבור את ההזמנה */
+    if (!hold) {
+      try {
+        const prepResults = await pushKitchenToPrep({
+          items: body.items.map((i) => ({
+            templateId: Number(String(i.id).split("|")[0]),
+            qty: i.qty,
+            price: i.price,
+            name: i.name,
+            storeId: i.storeId || "",
+          })),
+          companyId,
+          configs: branchConfigs,
+          note: body.scheduledFor ? `Scheduled: ${body.scheduledFor}` : undefined,
+        });
+        prepPosOrderIds = prepResults.map((r) => r.posOrderId);
+      } catch {
+        /* ignore — לא לשבור את ההזמנה */
+      }
     }
 
     // שמירה למסכי הצוות (מלקט/מטבח) — best-effort, לא חוסם
@@ -184,11 +214,16 @@ export async function POST(req: Request) {
             scheduled_for: body.scheduledFor || null,
             notes: body.notes || null,
             total: grandTotal,
+            delivery_fee: deliveryFee,
+            address: body.method === "delivery" ? fullAddr || null : null,
+            released: !hold,
+            release_at: hold ? releaseAt!.toISOString() : null,
             prep_pos_order_ids: prepPosOrderIds,
             items: body.items.map((i, idx) => ({
               name: i.name,
               qty: i.qty,
               price: unitPriceAt(idx),
+              discount: discountAt(idx),
               storeId: i.storeId || "",
               storeName: i.storeName,
               templateId: Number(String(i.id).split("|")[0]),
@@ -199,6 +234,33 @@ export async function POST(req: Request) {
       } catch {
         /* ignore — לא לשבור את ההזמנה */
       }
+    }
+
+    // התראת מייל/וואטסאפ לצוות הסניף שממנו נוצרה ההזמנה — best-effort, לא חוסם
+    try {
+      const branding = await getBranchBranding(companyId).catch(() => null);
+      await notifyStaffNewOrder(companyId, {
+        orderNo: order.name,
+        branchName,
+        logoUrl: branding?.logo_url ?? null,
+        customer: body.customer.name,
+        phone: body.customer.phone,
+        email: body.customer.email,
+        address: body.method === "delivery" ? fullAddr || null : null,
+        method: body.method,
+        scheduledFor: body.scheduledFor || null,
+        notes: body.notes || null,
+        total: grandTotal,
+        delivery: deliveryFee,
+        items: body.items.map((i, idx) => ({
+          name: i.name,
+          qty: i.qty,
+          price: unitPriceAt(idx),
+          storeName: i.storeName,
+        })),
+      });
+    } catch {
+      /* ignore — לא לשבור את ההזמנה */
     }
 
     return NextResponse.json({

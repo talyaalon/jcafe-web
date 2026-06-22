@@ -3,6 +3,7 @@ import { isLocale, type Locale } from "@/i18n/config";
 import { isAdmin } from "@/lib/admin/session";
 import { getPosOrders, itemStatus } from "@/lib/supabase/pos";
 import { syncActiveKitchenStatuses } from "@/lib/odoo/prep-sync";
+import { releaseDueOrders } from "@/lib/odoo/release-scheduled";
 import { getBranches } from "@/lib/odoo/branches";
 import { ManagerLogin } from "@/components/manager/ManagerLogin";
 import { BranchSelect } from "@/components/manager/BranchSelect";
@@ -36,10 +37,12 @@ export default async function PickerPage({
   const company = Number((await searchParams).company) || 0;
   const branches = (await getBranches()).map((b) => ({ companyId: b.companyId, name: b.name }));
 
+  // שחרור הזמנות עתידיות שהגיע מועדן (שעה לפני) — נכנסות למטבח ולהזמנות הפעילות
+  await releaseDueOrders(company || undefined);
   // סנכרון סטטוס המטבח מ-ODOO לפני הצגה (בהכנה / מוכן)
   await syncActiveKitchenStatuses();
-  const orders = (await getPosOrders(company || undefined)).filter((o) => o.pos_status !== "done");
-  const summaries: FloorOrder[] = orders.map((o) => ({
+  const all = (await getPosOrders(company || undefined)).filter((o) => o.pos_status !== "done");
+  const toFloor = (o: (typeof all)[number]): FloorOrder => ({
     id: o.id,
     order_name: o.order_name,
     customer: o.customer_name,
@@ -49,7 +52,14 @@ export default async function PickerPage({
     done: o.items.filter((i) => itemStatus(i) === "done").length,
     stores: [...new Set(o.items.map((i) => i.storeName))],
     scheduled: o.scheduled_for,
-  }));
+    release_at: o.release_at ?? null,
+  });
+  // עתידיות = מוחזקות (released=false); פעילות = כל השאר
+  const summaries: FloorOrder[] = all.filter((o) => o.released !== false).map(toFloor);
+  const future: FloorOrder[] = all
+    .filter((o) => o.released === false)
+    .sort((a, b) => (a.release_at ?? "").localeCompare(b.release_at ?? ""))
+    .map(toFloor);
 
   return (
     <div className="min-h-screen bg-[#f7f6f8]">
@@ -69,7 +79,7 @@ export default async function PickerPage({
           </span>
         </div>
       </header>
-      <PosFloor locale={locale} orders={summaries} />
+      <PosFloor locale={locale} orders={summaries} future={future} />
     </div>
   );
 }
