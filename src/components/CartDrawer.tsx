@@ -20,7 +20,7 @@ export function CartDrawer({
   locale: Locale;
   dict: Dictionary;
 }) {
-  const { items, subtotal, inc, dec, remove, clear, branchCompany } = useCart();
+  const { items, subtotal, inc, dec, remove, branchCompany } = useCart();
   const statuses = useStoreStatus(branchCompany);
   const he = locale === "he";
   const storeName = (s: CartStoreRef) => (he ? s.nameHe : s.nameEn);
@@ -56,11 +56,8 @@ export function CartDrawer({
           </button>
           <div className="text-center">
             <div className="font-extrabold text-ink">{dict.cart.yourOrder}</div>
-            <div className="text-[11px] text-ink/50">Jcafe Phuket</div>
           </div>
-          <button onClick={clear} aria-label={dict.cart.remove} className="text-ink/50 hover:text-red-500">
-            🗑
-          </button>
+          <span className="w-5" aria-hidden />
         </div>
 
         {items.length === 0 ? (

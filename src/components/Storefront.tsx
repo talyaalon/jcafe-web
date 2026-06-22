@@ -477,48 +477,61 @@ function WelcomeTiles({
   onPick: (id: string) => void;
 }) {
   const he = locale === "he";
-  return (
-    <main className="flex-1 bg-soft">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
-        <h1 className="text-center font-tabs font-extrabold text-2xl sm:text-4xl text-ink">
-          {he ? "ברוכים הבאים" : "Welcome"}
-        </h1>
-        <p className="text-center text-ink/55 mt-2 text-sm sm:text-base">
-          {he ? "בחרו חנות כדי להתחיל בהזמנה" : "Choose a store to start your order"}
-        </p>
+  // סדר תצוגה מבוקש: מכולת כשרה ← ג'יי קפה ← ג'יי דלי
+  const rank = (s: Store) => {
+    if (s.type === "grocery") return 0;
+    const n = `${s.nameEn} ${s.nameHe}`.toLowerCase();
+    if (n.includes("cafe") || n.includes("קפה")) return 1;
+    if (n.includes("deli") || n.includes("דלי")) return 2;
+    return 3;
+  };
+  const ordered = [...stores].sort((a, b) => rank(a) - rank(b));
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mt-8 sm:mt-10">
-          {stores.map((s) => {
+  return (
+    <main className="flex-1 flex flex-col bg-soft">
+      <div className="flex flex-col flex-1 min-h-[calc(100svh-76px)] w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
+        <div className="shrink-0 text-center">
+          <h1 className="font-tabs font-extrabold text-2xl sm:text-4xl text-ink">
+            {he ? "ברוכים הבאים" : "Welcome"}
+          </h1>
+          <p className="text-ink/50 mt-1.5 text-sm sm:text-base">
+            {he ? "בחרו חנות כדי להתחיל בהזמנה" : "Choose a store to start your order"}
+          </p>
+          <span className="mt-3 inline-block h-1 w-14 rounded-full bg-wine/80" />
+        </div>
+
+        <div className="flex-1 min-h-0 mt-5 sm:mt-10 flex flex-col gap-3 sm:grid sm:grid-cols-3 sm:gap-6">
+          {ordered.map((s) => {
             const name = he ? s.nameHe : s.nameEn;
             return (
               <button
                 key={s.id}
                 onClick={() => onPick(s.id)}
-                className="group relative h-60 rounded-2xl overflow-hidden border border-line shadow-sm hover:shadow-xl transition text-start"
+                className="group flex-1 min-h-0 sm:flex-none sm:h-80 flex flex-col rounded-2xl overflow-hidden border border-line bg-white shadow-sm hover:shadow-xl hover:border-wine/40 transition text-start"
               >
-                {s.logo ? (
-                  <>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                {/* תמונה נקייה — ללא שכבת כהות מעל */}
+                <div className="relative flex-1 min-h-0 bg-white">
+                  {s.logo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={s.logo}
                       alt={name}
-                      className="absolute inset-0 w-full h-full object-cover transition duration-300 group-hover:scale-105"
+                      className="absolute inset-0 w-full h-full object-cover transition duration-300 group-hover:scale-[1.04]"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
-                  </>
-                ) : (
-                  <>
-                    <div className="absolute inset-0 bg-gradient-to-br from-wine via-wine to-wine-bright" />
-                    <div className="absolute inset-0 grid place-items-center text-6xl opacity-90 transition duration-300 group-hover:scale-110">
+                  ) : (
+                    <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-wine to-wine-bright text-5xl text-white/90 transition duration-300 group-hover:scale-110">
                       {s.emoji || (s.type === "grocery" ? "🛒" : "🍳")}
                     </div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
-                  </>
-                )}
-                <div className="absolute inset-x-0 bottom-0 p-5">
-                  <div className="text-white font-extrabold text-xl drop-shadow">{name}</div>
-                  <span className="mt-3 inline-flex items-center gap-1.5 bg-white text-wine font-bold rounded-full px-4 py-1.5 text-sm shadow group-hover:bg-wine group-hover:text-white transition">
-                    {he ? "להזמנה" : "Order Now"} <span aria-hidden>←</span>
+                  )}
+                </div>
+                {/* פס שם + כפתור — רקע לבן, טקסט כהה */}
+                <div className="shrink-0 flex items-center justify-between gap-2 px-4 py-3 border-t border-line bg-white">
+                  <span className="font-extrabold text-ink text-base sm:text-lg leading-tight line-clamp-1">
+                    {name}
+                  </span>
+                  <span className="flex-none inline-flex items-center gap-1.5 bg-wine text-white font-bold rounded-full px-3.5 py-1.5 text-[13px] shadow-sm group-hover:bg-wine-hover transition">
+                    {he ? "להזמנה" : "Order"}
+                    <span aria-hidden>{he ? "←" : "→"}</span>
                   </span>
                 </div>
               </button>
