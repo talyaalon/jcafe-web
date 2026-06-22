@@ -9,6 +9,8 @@ import {
   type ReactNode,
 } from "react";
 import type { Product } from "@/lib/odoo/types";
+import { parseBranchId } from "@/lib/resolve-branch-from-request";
+import { COMPANY_SLUG } from "@/lib/branch-slugs";
 
 export interface CartStoreRef {
   id: string;
@@ -39,8 +41,9 @@ interface CartContextValue {
   schedules: Record<string, string>;
   setSchedule: (storeId: string, value: string) => void;
   clearSchedule: (storeId: string) => void;
-  /** הסניף (company id) שממנו מזמינים — נקבע לפי הסטורפרונט שנצפה */
-  branchCompany: number;
+  /** הסניף (company id) שממנו מזמינים — נקבע לפי הסטורפרונט שנצפה.
+   *  null = אין סניף פעיל (משתמש בעמוד auth ללא Cookie). אין יותר fallback שקט ל-14. */
+  branchCompany: number | null;
   setBranchCompany: (n: number) => void;
 }
 
@@ -50,6 +53,7 @@ const STORAGE_KEY = "jcafe_cart_v2";
 
 const SCHED_KEY = "jcafe_schedules";
 const BRANCH_KEY = "jcafe_branch";
+const VALID_COMPANY_IDS = Object.keys(COMPANY_SLUG).map(Number);
 
 export function CartProvider({
   children,
@@ -62,7 +66,8 @@ export function CartProvider({
 }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [schedules, setSchedules] = useState<Record<string, string>>({});
-  const [branchCompany, setBranchCompanyState] = useState(initialBranch ?? 14);
+  // 2ג-3b: אין יותר ברירת-מחדל שקטה ל-14. בלי סניף מפורש (URL/Cookie) → null.
+  const [branchCompany, setBranchCompanyState] = useState<number | null>(initialBranch ?? null);
   // אם סופק סניף מ-SSR — הוא מפורש (מנצח את localStorage); אחרת false, כמו היום.
   const branchExplicit = useRef(initialBranch != null);
   // הסטורפרונט קובע את הסניף במפורש — מנצח את הערך הנטען מ-localStorage.
@@ -81,7 +86,9 @@ export function CartProvider({
       if (s) setSchedules(JSON.parse(s) as Record<string, string>);
       const b = localStorage.getItem(BRANCH_KEY);
       // לא לדרוס אם סטורפרונט כבר קבע את הסניף במפורש (effect של child רץ קודם).
-      if (b && !branchExplicit.current) setBranchCompanyState(Number(b) || 14);
+      // 2ג-3b: ערך מאומת מול ה-whitelist (parseBranchId) — בלי fallback שקט ל-14.
+      const fromLs = parseBranchId(b ?? undefined, VALID_COMPANY_IDS);
+      if (fromLs != null && !branchExplicit.current) setBranchCompanyState(fromLs);
     } catch {
       /* ignore */
     }
@@ -94,20 +101,25 @@ export function CartProvider({
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
       localStorage.setItem(SCHED_KEY, JSON.stringify(schedules));
-      localStorage.setItem(BRANCH_KEY, String(branchCompany));
+      // 2ג-3b: לא לכתוב "null" — שומרים רק סניף תקף.
+      if (branchCompany != null) localStorage.setItem(BRANCH_KEY, String(branchCompany));
     } catch {
       /* ignore */
     }
   }, [items, schedules, branchCompany, hydrated]);
 
   const addItem: CartContextValue["addItem"] = (product, store, qty = 1) => {
+    // 2ג-3b fail-closed: אי-אפשר להוסיף לעגלה בלי סניף פעיל. נקרא רק מ-Storefront
+    // (שם branchCompany תמיד נקבע מה-URL), לכן ה-guard לעולם לא נורה בפועל.
+    if (branchCompany == null) return;
+    const branch = branchCompany; // צמצום ל-number עבור CartItem.branch
     setItems((prev) => {
       const ex = prev.find((i) => i.product.id === product.id);
       if (ex)
         return prev.map((i) =>
-          i.product.id === product.id ? { ...i, qty: i.qty + qty, branch: branchCompany } : i,
+          i.product.id === product.id ? { ...i, qty: i.qty + qty, branch } : i,
         );
-      return [...prev, { product, qty, store, branch: branchCompany }];
+      return [...prev, { product, qty, store, branch }];
     });
   };
 

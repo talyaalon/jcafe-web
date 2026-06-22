@@ -34,9 +34,10 @@ export function resolveBranch(param: string): number | null {
 }
 
 // סבב 2ב-1a — קישור פנימי לחנות הסניף הנוכחי, במקום ל-/he העירום (שיהפוך ל-404).
-// branchCompany מובטח חוקי (∈ COMPANY_SLUG) בכל קרייני הקריאה, לכן ה-fallback
-// `/${locale}` הוא קוד-מת בר-הוכחה (לעולם לא נורה) — נשמר רק כבטחון טיפוסי.
-export function branchHref(locale: string, branchCompany: number): string {
-  const slug = COMPANY_SLUG[branchCompany];
-  return slug ? `/${locale}/s/${slug}` : `/${locale}`;
+// סבב 2ג-3b — branchCompany יכול להיות null (משתמש בעמוד auth ללא Cookie סניף).
+// fallback ל-null/לא-מוכר → /${locale}/account (עמוד branch-agnostic; לא 404):
+// משתמש מחובר רואה את חשבונו, לא-מחובר מקבל redirect נקי ל-/login (אין לולאה).
+export function branchHref(locale: string, branchCompany: number | null): string {
+  const slug = branchCompany == null ? undefined : COMPANY_SLUG[branchCompany];
+  return slug ? `/${locale}/s/${slug}` : `/${locale}/account`;
 }

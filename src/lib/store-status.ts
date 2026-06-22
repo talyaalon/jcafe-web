@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { DayHours } from "@/lib/schedule";
 
 // הוק שמביא את סטטוס הפתיחה (פתוח/סגור) של חנויות הסניף מהשרת.
-export function useStoreStatus(company?: number): Record<string, boolean> {
+export function useStoreStatus(company?: number | null): Record<string, boolean> {
   const [statuses, setStatuses] = useState<Record<string, boolean>>({});
   useEffect(() => {
     let active = true;
@@ -20,7 +20,7 @@ export function useStoreStatus(company?: number): Record<string, boolean> {
 }
 
 // הוק שמביא את שעות הפעילות המלאות של חנויות הסניף (לוולידציית תזמון).
-export function useStoreHours(company?: number): Record<string, DayHours[]> {
+export function useStoreHours(company?: number | null): Record<string, DayHours[]> {
   const [hours, setHours] = useState<Record<string, DayHours[]>>({});
   useEffect(() => {
     let active = true;

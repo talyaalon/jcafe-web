@@ -28,6 +28,15 @@ test("צ'אנג מאי — branchHref('he',18) → /he/s/chiangmai", () => {
   assert.equal(branchHref("he", 18), "/he/s/chiangmai");
 });
 
-test("id לא-מוכר → fallback /${locale} (קוד-מת, בטחון)", () => {
-  assert.equal(branchHref("he", 999), "/he");
+// סבב 2ג-3b — fallback בטוח (לא 404) לסניף null/לא-מוכר → עמוד החשבון (branch-agnostic).
+test("id לא-מוכר → fallback /he/account", () => {
+  assert.equal(branchHref("he", 999), "/he/account");
+});
+
+test("branchCompany null (אין סניף פעיל) → /he/account", () => {
+  assert.equal(branchHref("he", null), "/he/account");
+});
+
+test("null באנגלית → /en/account", () => {
+  assert.equal(branchHref("en", null), "/en/account");
 });
