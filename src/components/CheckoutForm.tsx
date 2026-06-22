@@ -606,96 +606,6 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
                 />
               </section>
 
-              <p className="text-[12px] text-ink/55">{t.terms}</p>
-              {apiError && (
-                <p className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                  {apiError}
-                </p>
-              )}
-              {deliveryBlocked && (
-                <p className="text-red-700 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                  {he
-                    ? "האזור שנבחר אינו באזורי המשלוח של הסניף. בחר/י איסוף עצמי או אזור אחר."
-                    : "The selected area is not in the branch's delivery zones. Choose pickup or another area."}
-                </p>
-              )}
-
-              {mixedBranches && (
-                <div className="text-[13px] text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                  {he
-                    ? "העגלה מכילה מוצרים מכמה סניפים. ניתן להזמין מסניף אחד בכל פעם — הסר/י מוצרים מהסניף השני."
-                    : "Your cart has products from multiple branches. Please order from one branch at a time."}
-                </div>
-              )}
-
-              {hasClosed && (
-                <div className="text-[13px] text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                  {he
-                    ? "יש בעגלה מוצרים מחנות שסגורה כעת — ניתן לבצע הזמנה מתוזמנת בלבד."
-                    : "Cart has items from a store that's closed now — only a scheduled order is available."}
-                </div>
-              )}
-
-              {/* Place order — חסום כשחנות סגורה */}
-              <button
-                onClick={placeOrder}
-                disabled={hasClosed || submitting || deliveryBlocked || mixedBranches}
-                className={`w-full font-extrabold rounded-xl py-3.5 ${
-                  hasClosed
-                    ? "bg-wine/40 text-white cursor-not-allowed"
-                    : "bg-wine text-white hover:bg-wine-hover disabled:opacity-60 disabled:cursor-not-allowed"
-                }`}
-              >
-                {submitting && !scheduleMode ? "…" : t.placeOrder}
-              </button>
-
-              {/* Scheduled order — תמיד זמין, מתחת לכפתור ההזמנה */}
-              {!scheduleMode ? (
-                <button
-                  type="button"
-                  onClick={() => setScheduleMode(true)}
-                  className="w-full border-2 border-wine text-wine font-bold rounded-xl py-3 hover:bg-wine/5"
-                >
-                  🗓 {he ? "הזמנה מתוזמנת" : "Scheduled order"}
-                </button>
-              ) : (
-                <div className="border-2 border-wine/40 rounded-xl p-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-sm font-bold text-wine">
-                      🗓 {he ? "הזמנה מתוזמנת" : "Scheduled order"}
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setScheduleMode(false);
-                        setScheduledAt("");
-                        setScheduleError("");
-                      }}
-                      className="text-ink/40 hover:text-ink text-sm"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                  <label className="block text-sm text-ink/70">
-                    {he ? "בחר/י תאריך ושעה (בשעות הפתיחה)" : "Choose date & time (within opening hours)"}
-                  </label>
-                  <input
-                    type="datetime-local"
-                    min={minDateTime()}
-                    value={scheduledAt}
-                    onChange={(e) => onScheduleChange(e.target.value)}
-                    className={`w-full border rounded-lg px-3 py-2.5 text-sm outline-none ${scheduleError ? "border-red-500" : "border-line focus:border-wine"}`}
-                  />
-                  {scheduleError && <p className="text-red-600 text-xs">{scheduleError}</p>}
-                  <button
-                    onClick={placeOrder}
-                    disabled={submitting || !scheduledAt || !!scheduleError || deliveryBlocked || mixedBranches}
-                    className="w-full bg-wine text-white font-extrabold rounded-xl py-3 hover:bg-wine-hover disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {submitting ? "…" : he ? "אשר הזמנה מתוזמנת" : "Confirm scheduled order"}
-                  </button>
-                </div>
-              )}
             </>
           )}
         </div>
@@ -710,8 +620,8 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
           <div className="max-h-[46vh] overflow-y-auto divide-y divide-line">
             {summaryGroups.map(({ store, storeItems, closed }) => (
               <div key={store.id}>
-                {/* כותרת חנות */}
-                <div className="px-4 py-2 bg-soft flex items-center gap-2 text-[12px] font-bold text-ink/70">
+                {/* כותרת חנות — בצבע המותג הסגול */}
+                <div className="px-4 py-2 bg-soft flex items-center gap-2 text-[13px] font-extrabold text-wine">
                   <span>{storeName(store)}</span>
                   {closed && (
                     <span className="text-red-500 font-bold">· {he ? "סגור כעת" : "Closed"}</span>
@@ -788,6 +698,102 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
           </div>
         </aside>
       </div>
+
+      {/* ===== פעולות הזמנה — מתחת לסיכום העגלה ===== */}
+      {step !== "contact" && (
+        <div className="px-4 sm:px-7 pb-8 max-w-6xl mx-auto w-full space-y-3">
+          <p className="text-[12px] text-ink/55">{t.terms}</p>
+          {apiError && (
+            <p className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              {apiError}
+            </p>
+          )}
+          {deliveryBlocked && (
+            <p className="text-red-700 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              {he
+                ? "האזור שנבחר אינו באזורי המשלוח של הסניף. בחר/י איסוף עצמי או אזור אחר."
+                : "The selected area is not in the branch's delivery zones. Choose pickup or another area."}
+            </p>
+          )}
+
+          {mixedBranches && (
+            <div className="text-[13px] text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              {he
+                ? "העגלה מכילה מוצרים מכמה סניפים. ניתן להזמין מסניף אחד בכל פעם — הסר/י מוצרים מהסניף השני."
+                : "Your cart has products from multiple branches. Please order from one branch at a time."}
+            </div>
+          )}
+
+          {hasClosed && (
+            <div className="text-[13px] text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              {he
+                ? "יש בעגלה מוצרים מחנות שסגורה כעת — ניתן לבצע הזמנה מתוזמנת בלבד."
+                : "Cart has items from a store that's closed now — only a scheduled order is available."}
+            </div>
+          )}
+
+          {/* Place order — חסום כשחנות סגורה */}
+          <button
+            onClick={placeOrder}
+            disabled={hasClosed || submitting || deliveryBlocked || mixedBranches}
+            className={`w-full font-extrabold rounded-xl py-3.5 ${
+              hasClosed
+                ? "bg-wine/40 text-white cursor-not-allowed"
+                : "bg-wine text-white hover:bg-wine-hover disabled:opacity-60 disabled:cursor-not-allowed"
+            }`}
+          >
+            {submitting && !scheduleMode ? "…" : t.placeOrder}
+          </button>
+
+          {/* Scheduled order — תמיד זמין, מתחת לכפתור ההזמנה */}
+          {!scheduleMode ? (
+            <button
+              type="button"
+              onClick={() => setScheduleMode(true)}
+              className="w-full border-2 border-wine text-wine font-bold rounded-xl py-3 hover:bg-wine/5"
+            >
+              🗓 {he ? "הזמנה מתוזמנת" : "Scheduled order"}
+            </button>
+          ) : (
+            <div className="border-2 border-wine/40 rounded-xl p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="block text-sm font-bold text-wine">
+                  🗓 {he ? "הזמנה מתוזמנת" : "Scheduled order"}
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setScheduleMode(false);
+                    setScheduledAt("");
+                    setScheduleError("");
+                  }}
+                  className="text-ink/40 hover:text-ink text-sm"
+                >
+                  ✕
+                </button>
+              </div>
+              <label className="block text-sm text-ink/70">
+                {he ? "בחר/י תאריך ושעה (בשעות הפתיחה)" : "Choose date & time (within opening hours)"}
+              </label>
+              <input
+                type="datetime-local"
+                min={minDateTime()}
+                value={scheduledAt}
+                onChange={(e) => onScheduleChange(e.target.value)}
+                className={`w-full border rounded-lg px-3 py-2.5 text-sm outline-none ${scheduleError ? "border-red-500" : "border-line focus:border-wine"}`}
+              />
+              {scheduleError && <p className="text-red-600 text-xs">{scheduleError}</p>}
+              <button
+                onClick={placeOrder}
+                disabled={submitting || !scheduledAt || !!scheduleError || deliveryBlocked || mixedBranches}
+                className="w-full bg-wine text-white font-extrabold rounded-xl py-3 hover:bg-wine-hover disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submitting ? "…" : he ? "אשר הזמנה מתוזמנת" : "Confirm scheduled order"}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       <CheckoutFooter dict={dict} />
     </div>
