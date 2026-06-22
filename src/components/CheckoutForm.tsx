@@ -10,6 +10,8 @@ import { CheckoutFooter } from "./CheckoutFooter";
 import { CartThumb } from "./CartThumb";
 import { AddressAutocomplete } from "./AddressAutocomplete";
 import { IconDelivery, IconPickup, IconAccount, IconCart } from "./Icons";
+import { FavoritesMenu } from "./FavoritesMenu";
+import { LangMenu } from "./LangMenu";
 import { useStoreStatus, useStoreHours } from "@/lib/store-status";
 import { isOpenAt, minDateTime } from "@/lib/schedule";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -19,6 +21,16 @@ import { CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 type Method = "delivery" | "pickup";
 type Step = "contact" | "review" | "done";
 type Payment = "card" | "qr" | "cod";
+
+interface BranchInfo {
+  slug: string;
+  nameHe: string | null;
+  nameEn: string | null;
+  taglineHe: string | null;
+  taglineEn: string | null;
+  logoUrl: string | null;
+  pickupAddress: string | null;
+}
 
 
 export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionary }) {
@@ -35,6 +47,8 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
   const [payment, setPayment] = useState<Payment>("card");
   // שיטות תשלום פעילות לסניף (נטען מצד-שרת לפי הסניף שבעגלה)
   const [pay, setPay] = useState({ card: true, qr: true, cod: true });
+  // מידע תצוגה לסניף שבעגלה (שם, לוגו, slug, כתובת איסוף) — להדר ולמסך האיסוף
+  const [branchInfo, setBranchInfo] = useState<BranchInfo | null>(null);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -102,6 +116,19 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
       alive = false;
     };
   }, [cartBranch]);
+  // טעינת מידע הסניף (שם/לוגו/slug/כתובת איסוף)
+  useEffect(() => {
+    let alive = true;
+    fetch(`/api/branch/info?company=${cartBranch}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (alive) setBranchInfo(d as BranchInfo);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [cartBranch]);
   // אם השיטה הנבחרת כבויה — מעבר לראשונה הפעילה
   useEffect(() => {
     if (!pay[payment]) {
@@ -126,6 +153,13 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
     (id) => statuses[id] === false,
   );
   const hasClosed = closedStoreIds.length > 0;
+
+  // קיבוץ פריטי הסיכום לפי חנות (כמו בעגלת הקנייה)
+  const summaryGroups = [...new Set(items.map((i) => i.store.id))].map((id) => ({
+    store: items.find((i) => i.store.id === id)!.store,
+    storeItems: items.filter((i) => i.store.id === id),
+    closed: statuses[id] === false,
+  }));
 
   function onScheduleChange(v: string) {
     setScheduledAt(v);
@@ -303,7 +337,7 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
   if (items.length === 0 && step !== "done") {
     return (
       <div className="flex flex-col min-h-full">
-        <CheckoutTopBar locale={locale} dict={dict} />
+        <CheckoutTopBar locale={locale} dict={dict} branch={branchInfo} />
         <div className="flex-1 grid place-items-center p-6">
           <div className="text-center">
             <div className="text-5xl text-gold">🛒</div>
@@ -327,7 +361,7 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
     const addr = [form.addr1, form.addr2, form.city, form.postcode].filter(Boolean).join(", ");
     return (
       <div className="flex flex-col min-h-full">
-        <CheckoutTopBar locale={locale} dict={dict} />
+        <CheckoutTopBar locale={locale} dict={dict} branch={branchInfo} />
         <div className="flex-1 grid place-items-start justify-center p-6">
           <div className="bg-white border border-line rounded-2xl p-8 max-w-md w-full text-center mt-6">
             <div className="w-16 h-16 rounded-full bg-brand-green text-white text-3xl grid place-items-center mx-auto mb-3">
@@ -368,7 +402,7 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
 
   return (
     <div className="flex flex-col min-h-full">
-      <CheckoutTopBar locale={locale} dict={dict} />
+      <CheckoutTopBar locale={locale} dict={dict} branch={branchInfo} />
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 px-4 sm:px-7 py-6 max-w-6xl mx-auto w-full">
         {/* ===== left: steps ===== */}
@@ -487,10 +521,26 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
                 </section>
               ) : (
                 <section className="bg-white border border-line rounded-2xl p-5">
-                  <h2 className="font-bold text-ink mb-2">{t.pickupFrom}</h2>
-                  <a className="text-wine text-sm underline cursor-pointer">
-                    3rd Floor, Mille Malle, Phuket
-                  </a>
+                  <h2 className="font-bold text-ink mb-1">
+                    {he ? "איסוף עצמי מ־" : "Pickup from "}
+                    {(he ? branchInfo?.nameHe : branchInfo?.nameEn) || dict.brand.name}
+                  </h2>
+                  {branchInfo?.pickupAddress ? (
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(branchInfo.pickupAddress)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-wine text-sm underline"
+                    >
+                      📍 {branchInfo.pickupAddress}
+                    </a>
+                  ) : (
+                    <p className="text-ink/50 text-sm">
+                      {he
+                        ? "כתובת האיסוף תוגדר ע״י הסניף בהגדרות המשלוחים."
+                        : "Pickup address is set by the branch in delivery settings."}
+                    </p>
+                  )}
                 </section>
               )}
 
@@ -658,44 +708,49 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
             </h2>
           </div>
           <div className="max-h-[46vh] overflow-y-auto divide-y divide-line">
-            {items.map(({ product, qty, store }) => {
-              const closed = statuses[store.id] === false;
-              return (
-                <div key={product.id} className="px-4 py-3 text-[12.5px]">
-                  <div className="flex items-center gap-3">
-                    <CartThumb src={product.image} alt={pName(product)} />
-                    <div className="flex-1 min-w-0">
-                      <div className="leading-tight line-clamp-2">
-                        {pName(product)}
-                        {product.discountPercent ? (
-                          <span className="ms-1.5 inline-block align-middle bg-red-500 text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">
-                            -{product.discountPercent}%
-                          </span>
-                        ) : null}
-                      </div>
-                      <div className="text-ink/45">
-                        {storeName(store)}
-                        {closed && (
-                          <span className="text-red-500 font-bold"> · {he ? "סגור כעת" : "Closed"}</span>
-                        )}{" "}
-                        · ×{qty}
-                      </div>
-                    </div>
-                    <span className="font-bold">{formatTHB(product.price * qty)}</span>
-                    <button onClick={() => remove(product.id)} className="text-ink/40 hover:text-red-500">
-                      ✕
-                    </button>
-                  </div>
+            {summaryGroups.map(({ store, storeItems, closed }) => (
+              <div key={store.id}>
+                {/* כותרת חנות */}
+                <div className="px-4 py-2 bg-soft flex items-center gap-2 text-[12px] font-bold text-ink/70">
+                  <span>{storeName(store)}</span>
                   {closed && (
-                    <div className="mt-2 rounded-lg bg-red-50 border border-red-200 p-2 text-[11px] text-red-700">
-                      {he
-                        ? "החנות סגורה כעת — הסירו את הפריט (✕) או בצעו הזמנה מתוזמנת למטה."
-                        : "Store closed — remove the item (✕) or schedule the order below."}
-                    </div>
+                    <span className="text-red-500 font-bold">· {he ? "סגור כעת" : "Closed"}</span>
                   )}
                 </div>
-              );
-            })}
+                {storeItems.map(({ product, qty }) => (
+                  <div key={product.id} className="px-4 py-2.5 text-[12.5px]">
+                    <div className="flex items-center gap-3">
+                      <CartThumb src={product.image} alt={pName(product)} />
+                      <div className="flex-1 min-w-0">
+                        <div className="leading-tight line-clamp-2">
+                          {pName(product)}
+                          {product.discountPercent ? (
+                            <span className="ms-1.5 inline-block align-middle bg-red-500 text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">
+                              -{product.discountPercent}%
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="text-ink/45">×{qty}</div>
+                      </div>
+                      <span className="font-bold flex-none">{formatTHB(product.price * qty)}</span>
+                      <button
+                        onClick={() => remove(product.id)}
+                        className="text-ink/40 hover:text-red-500 flex-none"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {closed && (
+                  <div className="mx-4 mb-3 rounded-lg bg-red-50 border border-red-200 p-2 text-[11px] text-red-700">
+                    {he
+                      ? "החנות סגורה כעת — הסירו את הפריטים (✕) או בצעו הזמנה מתוזמנת למטה."
+                      : "Store closed — remove the items (✕) or schedule the order below."}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
           <div className="px-4 py-3 border-t border-line text-[13px] bg-soft">
             <div className="flex justify-between py-0.5">
@@ -739,20 +794,41 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
   );
 }
 
-function CheckoutTopBar({ locale, dict }: { locale: Locale; dict: Dictionary }) {
+function CheckoutTopBar({
+  locale,
+  dict,
+  branch,
+}: {
+  locale: Locale;
+  dict: Dictionary;
+  branch: BranchInfo | null;
+}) {
   const { count } = useCart();
+  const he = locale === "he";
+  // הלוגו/השם מובילים לחזית הסניף הנוכחי (מסך בחירת החנויות), עם השם והלוגו שהוגדרו בניהול
+  const home = branch?.slug ? `/${locale}/s/${branch.slug}` : `/${locale}`;
+  const name = (he ? branch?.nameHe : branch?.nameEn) || dict.brand.name;
+  const tagline = (he ? branch?.taglineHe : branch?.taglineEn) || dict.brand.tagline;
   return (
-    <header className="flex items-center justify-between px-4 sm:px-8 py-3.5 bg-white border-b border-line">
-      <Link href={`/${locale}`} className="leading-none">
-        <span className="block text-2xl font-extrabold text-ink">{dict.brand.name}</span>
-        <span className="block text-[8px] tracking-[3px] text-wine font-bold">{dict.brand.tagline}</span>
+    <header className="flex items-center justify-between px-4 sm:px-8 py-3 bg-white border-b border-line">
+      <Link href={home} className="leading-none flex items-center gap-2.5">
+        {branch?.logoUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={branch.logoUrl} alt={name} className="h-10 w-10 rounded-lg object-cover flex-none" />
+        )}
+        <span>
+          <span className="block text-xl font-extrabold text-ink leading-none">{name}</span>
+          <span className="block text-[9px] tracking-[2px] text-wine font-bold mt-0.5">{tagline}</span>
+        </span>
       </Link>
-      <div className="flex items-center gap-5 text-ink/80">
+      <div className="flex items-center gap-4 sm:gap-5 text-ink/80">
+        <LangMenu locale={locale} />
         <Link href={`/${locale}/login`} className="flex items-center gap-1.5 hover:text-wine" aria-label={dict.header.login}>
           <IconAccount className="w-6 h-6" />
           <span className="hidden sm:inline text-sm">{dict.header.login}</span>
         </Link>
-        <Link href={`/${locale}`} className="relative flex items-center hover:text-wine" aria-label="cart">
+        <FavoritesMenu locale={locale} />
+        <Link href={home} className="relative flex items-center hover:text-wine" aria-label="cart">
           <IconCart className="w-6 h-6" />
           {count > 0 && (
             <span className="absolute -top-2 -end-2 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold grid place-items-center">

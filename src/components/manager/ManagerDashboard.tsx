@@ -619,6 +619,17 @@ export function ManagerDashboard({
                   />
                 </div>
               ))}
+              <div>
+                <label className="block text-sm text-ink/70 mb-1">
+                  {he ? "כתובת לאיסוף עצמי (מוצגת בקופה)" : "Pickup address (shown at checkout)"}
+                </label>
+                <input
+                  name="pickup_address"
+                  defaultValue={delivery.pickup_address ?? ""}
+                  placeholder={he ? "למשל: רחוב סוקומוויט 123, בנגקוק" : "e.g. 123 Sukhumvit Rd, Bangkok"}
+                  className="w-full border border-line rounded-lg px-3 py-2 text-sm"
+                />
+              </div>
               <SubmitButton
                 className="bg-wine text-white font-bold rounded-lg px-4 py-2 text-sm hover:bg-wine-hover"
                 savedLabel={he ? "נשמר ✓" : "Saved ✓"}

@@ -7,6 +7,7 @@ export interface DeliverySettings {
   per_km: number;
   free_over: number;
   max_km: number;
+  pickup_address?: string | null;
 }
 
 export const DEFAULT_DELIVERY: DeliverySettings = {
@@ -16,6 +17,7 @@ export const DEFAULT_DELIVERY: DeliverySettings = {
   per_km: 10,
   free_over: 0,
   max_km: 25,
+  pickup_address: null,
 };
 
 // קואורדינטות מרכזי הערים בפוקט (לחישוב מרחק ללא צורך ב-API חיצוני).

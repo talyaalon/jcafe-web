@@ -6,7 +6,7 @@ export async function getDeliverySettings(branch = 14): Promise<DeliverySettings
   if (!supabaseConfigured) return DEFAULT_DELIVERY;
   const { data } = await supabasePublic
     .from("delivery_settings")
-    .select("origin_lat,origin_lng,base_fee,per_km,free_over,max_km")
+    .select("origin_lat,origin_lng,base_fee,per_km,free_over,max_km,pickup_address")
     .eq("branch", branch)
     .maybeSingle();
   if (!data) return DEFAULT_DELIVERY;
@@ -17,6 +17,7 @@ export async function getDeliverySettings(branch = 14): Promise<DeliverySettings
     per_km: Number(data.per_km),
     free_over: Number(data.free_over),
     max_km: Number(data.max_km),
+    pickup_address: (data.pickup_address as string | null) ?? null,
   };
 }
 

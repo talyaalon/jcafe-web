@@ -18,7 +18,25 @@ export async function serverDeliveryFee(
   ]);
   const freeNow = settings.free_over > 0 && subtotal >= settings.free_over;
 
-  // 1. כתובת מלאה → Geocoding ומרחק אווירי מהסניף (מדויק — עדיפות ראשונה)
+  // 1. אם הוגדרו אזורי משלוח — הם מקור האמת: הכתובת חייבת להתאים לאחד מהם.
+  //    התאמה לפי שם האזור (או החלק הראשון שלו) / מיקוד בתוך הכתובת המלאה, או שם העיר.
+  if (zones.length > 0) {
+    const addr = (loc.address ?? "").toLowerCase();
+    const city = (loc.city ?? "").toLowerCase().trim();
+    const z = zones.find((zone) => {
+      const full = (zone.name ?? "").toLowerCase().trim();
+      const first = full.split(",")[0].trim();
+      if (zone.zip && addr.includes(String(zone.zip).toLowerCase())) return true;
+      if (full && addr.includes(full)) return true;
+      if (first.length >= 3 && addr.includes(first)) return true;
+      if (city && first && first === city) return true;
+      return false;
+    });
+    if (z) return { fee: freeNow ? 0 : Number(z.fee), blocked: false };
+    return { fee: 0, blocked: true };
+  }
+
+  // 2. אין אזורים מוגדרים — כתובת מלאה → Geocoding ומרחק אווירי מהסניף
   if (loc.address && loc.address.trim()) {
     const geo = await geocodeAddress(loc.address);
     if (geo) {
@@ -27,13 +45,6 @@ export async function serverDeliveryFee(
       const fee = freeNow ? 0 : Math.round(settings.base_fee + settings.per_km * km);
       return { fee, blocked: false, km };
     }
-  }
-
-  // 2. אזורים מוגדרים → לפי שם האזור/עיר
-  if (zones.length > 0) {
-    const z = zones.find((zone) => zone.name === loc.city);
-    if (!z) return { fee: 0, blocked: true };
-    return { fee: freeNow ? 0 : Number(z.fee), blocked: false };
   }
 
   // 3. fallback — עיר מרשימת הערים (קואורדינטות ידועות)

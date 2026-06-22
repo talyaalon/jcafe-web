@@ -112,6 +112,7 @@ export async function saveDeliveryAction(formData: FormData) {
         per_km: num("per_km", 10),
         free_over: num("free_over", 0),
         max_km: num("max_km", 25),
+        pickup_address: String(formData.get("pickup_address") ?? "").trim() || null,
       },
       { onConflict: "branch" },
     );
