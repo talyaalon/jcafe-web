@@ -50,14 +50,3 @@ export interface Product {
   /** URL לתמונת המוצר מ-ODOO (/web/image/...) */
   image?: string;
 }
-
-// ===== ODOO Adapter — ממשק אחיד (מומש ב-mock ו-api) =====
-export interface OdooAdapter {
-  getStores(): Promise<Store[]>;
-  getCategories(storeId: string): Promise<Category[]>;
-  getProducts(opts: {
-    storeId: string;
-    categoryId?: string;
-    search?: string;
-  }): Promise<Product[]>;
-}
