@@ -203,7 +203,8 @@ async function loadProducts(
       "product.template",
       domain,
       ["id", "name", "list_price", "qty_available", "pos_categ_ids", "categ_id", "attribute_line_ids", "is_storable", "allow_out_of_stock_order", "barcode", "default_code", "description_sale"],
-      { limit: 500, order: "name asc" },
+      // הקשר חברה — qty_available (ON HAND) מחושב לפי מלאי הסניף (החברה) הספציפי
+      { limit: 500, order: "name asc", context: { allowed_company_ids: [companyId] } },
     ),
     buildPricer(cfg.pricelistId),
   ]);
@@ -335,7 +336,8 @@ export async function getGroceryBundle(
         : [["public_categ_ids", "child_of", GROCERY_ROOT_IDS]]),
     ],
     ["id", "name", "list_price", "qty_available", "public_categ_ids", "categ_id", "attribute_line_ids", "is_storable", "allow_out_of_stock_order", "barcode", "description_sale"],
-    { limit: 1500, order: "name asc" },
+    // ON HAND לפי מלאי הסניף (החברה) הספציפי
+    { limit: 1500, order: "name asc", context: { allowed_company_ids: [companyId] } },
   );
   if (!rows.length) return null;
 
