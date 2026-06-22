@@ -51,11 +51,20 @@ const STORAGE_KEY = "jcafe_cart_v2";
 const SCHED_KEY = "jcafe_schedules";
 const BRANCH_KEY = "jcafe_branch";
 
-export function CartProvider({ children }: { children: ReactNode }) {
+export function CartProvider({
+  children,
+  initialBranch,
+}: {
+  children: ReactNode;
+  /** סבב 2א: זרע סניף מ-SSR (Cookie). רדום כרגע — לא מחווט עד 2ב.
+   *  כשאינו מסופק, ההתנהגות זהה לחלוטין להיום (ברירת מחדל 14 + localStorage). */
+  initialBranch?: number;
+}) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [schedules, setSchedules] = useState<Record<string, string>>({});
-  const [branchCompany, setBranchCompanyState] = useState(14);
-  const branchExplicit = useRef(false);
+  const [branchCompany, setBranchCompanyState] = useState(initialBranch ?? 14);
+  // אם סופק סניף מ-SSR — הוא מפורש (מנצח את localStorage); אחרת false, כמו היום.
+  const branchExplicit = useRef(initialBranch != null);
   // הסטורפרונט קובע את הסניף במפורש — מנצח את הערך הנטען מ-localStorage.
   const setBranchCompany = (n: number) => {
     branchExplicit.current = true;
