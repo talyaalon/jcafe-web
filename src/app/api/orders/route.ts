@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { findOrCreatePartner, createOrder, type OrderItem } from "@/lib/odoo/orders";
 import { getBranches, BRANCH_TAG } from "@/lib/odoo/branches";
+import { resolveOrderCompany, OrderCompanyError } from "@/lib/odoo/resolve-order-company";
 import { priceOrderItems } from "@/lib/odoo/pricelist";
 import { serverDeliveryFee } from "@/lib/delivery-server";
 
@@ -31,6 +32,7 @@ interface OrderBody {
     storeId?: string;
     barcode?: string;
     discount?: number;
+    branch?: number;
   }[];
   method?: "delivery" | "pickup";
   payment?: "card" | "cod" | "qr";
@@ -53,9 +55,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Missing customer details" }, { status: 400 });
     }
 
-    // קביעת חברה + מחירון + תג סניף לפי companyId
-    const companyId = Number(body.companyId) || PHUKET_COMPANY_ID;
-    const branch = (await getBranches()).find((b) => b.companyId === companyId);
+    // קביעת חברה — נגזרת אך ורק מה-branch של פריטי העגלה (השרת אוטוריטטיבי).
+    // אכיפה לפני כל כתיבה ל-ODOO/Supabase: עגלה ריקה/מעורבת/סניף לא-חוקי/
+    // אי-התאמה ל-companyId מהלקוח → 400, בלי שום רשומה חלקית.
+    const branches = await getBranches();
+    let companyId: number;
+    try {
+      companyId = resolveOrderCompany(
+        body.items,
+        body.companyId,
+        branches.map((b) => b.companyId),
+      );
+    } catch (e) {
+      if (e instanceof OrderCompanyError) {
+        console.warn(`[orders] SECURITY: order rejected (${e.code}): ${e.message}`);
+        return NextResponse.json({ ok: false, error: e.code }, { status: 400 });
+      }
+      throw e;
+    }
+    const branch = branches.find((b) => b.companyId === companyId);
     const branchConfigs = branch?.configs ?? [];
     let branchName = BRANCH_TAG[companyId] ?? "Phuket";
     let pricelistId = PHUKET_PRICELIST_ID;

@@ -215,7 +215,13 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
           headers: { "Content-Type": "application/json" },
           // הסכום מחושב בשרת מהפריטים + Pricelist הסניף; deliveryFee נוסף עליו
           body: JSON.stringify({
-            items: items.map((i) => ({ id: i.product.id, qty: i.qty, price: i.product.price })),
+            // branch פר-פריט — מאפשר לשרת לגזור ולאמת את החברה מהעגלה בלבד
+            items: items.map((i) => ({
+              id: i.product.id,
+              qty: i.qty,
+              price: i.product.price,
+              branch: i.branch,
+            })),
             companyId: orderCompany,
             method,
             city: method === "delivery" ? form.city : undefined,
@@ -255,6 +261,8 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
           name: i.product.nameEn || i.product.nameHe,
           storeName: i.store.nameEn || i.store.nameHe,
           storeId: i.store.id,
+          // branch פר-פריט — מקור הגזירה והאכיפה של חברת ההזמנה בשרת
+          branch: i.branch,
           barcode: i.product.barcode,
           discount: i.product.discountPercent || 0,
         })),

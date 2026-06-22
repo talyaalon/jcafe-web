@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getBranches } from "@/lib/odoo/branches";
+import { resolveOrderCompany, OrderCompanyError } from "@/lib/odoo/resolve-order-company";
 import { priceOrderItems, type OrderItemIn } from "@/lib/odoo/pricelist";
 import { serverDeliveryFee } from "@/lib/delivery-server";
 import { PHUKET_COMPANY_ID, PHUKET_PRICELIST_ID } from "@/lib/odoo/phuket";
@@ -8,7 +9,8 @@ import { PHUKET_COMPANY_ID, PHUKET_PRICELIST_ID } from "@/lib/odoo/phuket";
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "");
 
 interface Body {
-  items?: OrderItemIn[];
+  // branch פר-פריט נשלח מהקופה — לגזירת החברה האוטוריטטיבית בשרת
+  items?: (OrderItemIn & { branch?: number })[];
   companyId?: number;
   method?: "delivery" | "pickup";
   city?: string;
@@ -26,10 +28,26 @@ export async function POST(req: Request) {
 
     let baht: number;
     if (Array.isArray(body.items) && body.items.length) {
-      const companyId = Number(body.companyId) || PHUKET_COMPANY_ID;
+      // אותה גזירה אוטוריטטיבית כמו ב-/api/orders: החברה נגזרת מה-branch של
+      // הפריטים בלבד — כדי שהחברה שמחויבת ב-PaymentIntent זהה לזו של ההזמנה.
+      const branches = await getBranches();
+      let companyId: number;
+      try {
+        companyId = resolveOrderCompany(
+          body.items,
+          body.companyId,
+          branches.map((b) => b.companyId),
+        );
+      } catch (e) {
+        if (e instanceof OrderCompanyError) {
+          console.warn(`[payment-intent] SECURITY: rejected (${e.code}): ${e.message}`);
+          return NextResponse.json({ ok: false, error: e.code }, { status: 400 });
+        }
+        throw e;
+      }
       let pricelistId = PHUKET_PRICELIST_ID;
       if (companyId !== PHUKET_COMPANY_ID) {
-        const branch = (await getBranches()).find((b) => b.companyId === companyId);
+        const branch = branches.find((b) => b.companyId === companyId);
         pricelistId = branch?.configs.find((c) => c.pricelistId)?.pricelistId ?? PHUKET_PRICELIST_ID;
       }
       const { total } = await priceOrderItems(pricelistId, body.items);
