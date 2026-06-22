@@ -38,3 +38,16 @@ export function resolveBranchFromRequest(
 
   return null;
 }
+
+/**
+ * אימות ערך ה-Cookie (jcafe_branch_v2) בצד-שרת → company id חוקי או null.
+ * משמש את ה-layout לזריעת CartProvider.initialBranch (2ב). טהור, ללא I/O.
+ */
+export function parseBranchCookie(
+  value: string | undefined,
+  validCompanyIds: number[],
+): number | null {
+  if (value == null || value === "") return null;
+  const id = Number(value);
+  return Number.isInteger(id) && validCompanyIds.includes(id) ? id : null;
+}

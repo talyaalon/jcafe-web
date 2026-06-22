@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 // את ה-whitelist מבחוץ — כדי לא ליצור מקור-אמת מתחרה ולהישאר edge-safe ובדיק.
 //
 // ⚠️ אדום בכוונה: המודול ./resolve-branch-from-request עדיין לא קיים.
-import { resolveBranchFromRequest } from "./resolve-branch-from-request.ts";
+import { resolveBranchFromRequest, parseBranchCookie } from "./resolve-branch-from-request.ts";
 
 const slugToId: Record<string, number> = {
   phuket: 14,
@@ -49,4 +49,35 @@ test("slug מספרי חוקי ב-URL — /he/s/15 → 15", () => {
 
 test("עצמאי-לוקאל — /en/s/phuket → 14", () => {
   assert.equal(resolveBranchFromRequest("/en/s/phuket", undefined, opts), 14);
+});
+
+// ===== 2ב-2: parseBranchCookie — אימות ערך ה-Cookie בצד-שרת (ל-initialBranch) =====
+const VALID = [13, 14, 15, 16, 18, 19];
+
+test("Cookie תקין '15' → 15", () => {
+  assert.equal(parseBranchCookie("15", VALID), 15);
+});
+
+test("Cookie תקין '14' → 14", () => {
+  assert.equal(parseBranchCookie("14", VALID), 14);
+});
+
+test("Cookie לא-חוקי '999' → null", () => {
+  assert.equal(parseBranchCookie("999", VALID), null);
+});
+
+test("Cookie חסר (undefined) → null", () => {
+  assert.equal(parseBranchCookie(undefined, VALID), null);
+});
+
+test("Cookie ריק '' → null", () => {
+  assert.equal(parseBranchCookie("", VALID), null);
+});
+
+test("Cookie לא-מספרי 'abc' → null", () => {
+  assert.equal(parseBranchCookie("abc", VALID), null);
+});
+
+test("Cookie לא-שלם '15.5' → null", () => {
+  assert.equal(parseBranchCookie("15.5", VALID), null);
 });

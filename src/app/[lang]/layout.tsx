@@ -3,9 +3,14 @@ import { Heebo, Nunito_Sans } from "next/font/google";
 import "../globals.css";
 import { i18n, isLocale, dir, type Locale } from "@/i18n/config";
 import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
 import { CartProvider } from "@/lib/cart/CartContext";
 import { FavoritesProvider } from "@/lib/favorites/FavoritesContext";
 import { AuthProvider } from "@/lib/auth/AuthContext";
+import { COMPANY_SLUG } from "@/lib/branch-slugs";
+import { parseBranchCookie } from "@/lib/resolve-branch-from-request";
+
+const VALID_COMPANY_IDS = Object.keys(COMPANY_SLUG).map(Number);
 
 const heebo = Heebo({
   subsets: ["hebrew", "latin"],
@@ -38,6 +43,11 @@ export default async function RootLayout({
   if (!isLocale(lang)) notFound();
   const locale = lang as Locale;
 
+  // 2ב — זריעת הסניף מ-Cookie (שנכתב ע"י proxy על /s/[branch]) ל-CartProvider.
+  // additive: אם אין Cookie תקין → undefined → CartProvider נופל ל-14/localStorage כמו היום.
+  const branchCookie = (await cookies()).get("jcafe_branch_v2")?.value;
+  const initialBranch = parseBranchCookie(branchCookie, VALID_COMPANY_IDS) ?? undefined;
+
   return (
     <html
       lang={locale}
@@ -46,7 +56,7 @@ export default async function RootLayout({
     >
       <body className="min-h-full flex flex-col font-sans bg-soft text-ink">
         <AuthProvider>
-          <CartProvider>
+          <CartProvider initialBranch={initialBranch}>
             <FavoritesProvider>{children}</FavoritesProvider>
           </CartProvider>
         </AuthProvider>
