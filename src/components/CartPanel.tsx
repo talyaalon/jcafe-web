@@ -9,8 +9,8 @@ import { useStoreStatus } from "@/lib/store-status";
 import { CartThumb } from "./CartThumb";
 
 export function CartPanel({ locale, dict }: { locale: Locale; dict: Dictionary }) {
-  const { items, subtotal, inc, dec, remove } = useCart();
-  const statuses = useStoreStatus();
+  const { items, subtotal, inc, dec, remove, branchCompany } = useCart();
+  const statuses = useStoreStatus(branchCompany);
   const he = locale === "he";
   const pName = (p: { nameHe: string; nameEn: string }) => (he ? p.nameHe : p.nameEn);
   const orderTotal = he ? 'סה"כ הזמנה' : "Order total";

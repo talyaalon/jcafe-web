@@ -24,12 +24,12 @@ type Payment = "card" | "qr" | "cod";
 export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionary }) {
   const { items, subtotal, remove, clear, branchCompany } = useCart();
   const { user } = useAuth();
-  const statuses = useStoreStatus();
+  // סניף ההזמנה נגזר מהפריטים בעגלה (לא מקובע לפוקט) — לחישוב המשלוח והסטטוס הנכון
+  const cartBranch = items.find((i) => i.branch)?.branch ?? branchCompany;
+  const statuses = useStoreStatus(cartBranch);
   // מפתח idempotency יציב לניסיון ההזמנה הנוכחי — מונע כפל הזמנה/חיוב ב-retry
   const idemRef = useRef<string>("");
-  const storeHours = useStoreHours();
-  // סניף ההזמנה נגזר מהפריטים בעגלה (לא מקובע לפוקט) — לחישוב המשלוח הנכון
-  const cartBranch = items.find((i) => i.branch)?.branch ?? branchCompany;
+  const storeHours = useStoreHours(cartBranch);
   const [step, setStep] = useState<Step>("contact");
   const [method, setMethod] = useState<Method>("delivery");
   const [payment, setPayment] = useState<Payment>("card");

@@ -20,8 +20,8 @@ export function CartDrawer({
   locale: Locale;
   dict: Dictionary;
 }) {
-  const { items, subtotal, inc, dec, remove, clear } = useCart();
-  const statuses = useStoreStatus();
+  const { items, subtotal, inc, dec, remove, clear, branchCompany } = useCart();
+  const statuses = useStoreStatus(branchCompany);
   const he = locale === "he";
   const storeName = (s: CartStoreRef) => (he ? s.nameHe : s.nameEn);
   const pName = (p: { nameHe: string; nameEn: string }) => (he ? p.nameHe : p.nameEn);
