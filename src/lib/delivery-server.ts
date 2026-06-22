@@ -17,13 +17,22 @@ export async function serverDeliveryFee(
     getDeliveryZones(companyId),
   ]);
   const freeNow = settings.free_over > 0 && subtotal >= settings.free_over;
+  const distanceMode = settings.pricing_mode === "distance";
 
-  // 1. אם הוגדרו אזורי משלוח — הם מקור האמת: הכתובת חייבת להתאים לאחד מהם.
-  //    התאמה לפי שם האזור (או החלק הראשון שלו) / מיקוד בתוך הכתובת המלאה, או שם העיר.
+  // מרחק אווירי מהסניף (לפי Geocoding) — נחוץ לתמחור לפי קמ.
+  const kmFromOrigin = async (): Promise<number | null> => {
+    if (!loc.address || !loc.address.trim()) return null;
+    const geo = await geocodeAddress(loc.address);
+    if (!geo) return null;
+    return haversineKm({ lat: settings.origin_lat, lng: settings.origin_lng }, geo);
+  };
+
+  // 1. אם הוגדרו אזורים (כיסוי או מתומחרים) — הם מקור האמת לכיסוי:
+  //    הכתובת חייבת להתאים לאחד מהם, אחרת המשלוח חסום.
   if (zones.length > 0) {
     const addr = (loc.address ?? "").toLowerCase();
     const city = (loc.city ?? "").toLowerCase().trim();
-    const z = zones.find((zone) => {
+    const matches = (zone: (typeof zones)[number]) => {
       const full = (zone.name ?? "").toLowerCase().trim();
       const first = full.split(",")[0].trim();
       if (zone.zip && addr.includes(String(zone.zip).toLowerCase())) return true;
@@ -31,16 +40,32 @@ export async function serverDeliveryFee(
       if (first.length >= 3 && addr.includes(first)) return true;
       if (city && first && first === city) return true;
       return false;
-    });
-    if (z) return { fee: freeNow ? 0 : Number(z.fee), blocked: false };
-    return { fee: 0, blocked: true };
+    };
+    const z = zones.find(matches);
+    if (!z) return { fee: 0, blocked: true };
+
+    // תמחור לפי מרחק — בכל אזור מכוסה המחיר לפי קמ מהסניף.
+    if (distanceMode) {
+      const km = await kmFromOrigin();
+      if (km != null && km > settings.max_km) return { fee: 0, blocked: true, km };
+      const fee =
+        freeNow || km == null
+          ? freeNow
+            ? 0
+            : Number(settings.base_fee)
+          : Math.round(settings.base_fee + settings.per_km * km);
+      return { fee, blocked: false, km: km ?? undefined };
+    }
+
+    // תמחור לפי אזור — אזור מתומחר משתמש במחירו; אזור כיסוי בלבד → דמי ברירת מחדל.
+    const fee = z.coverage_only ? Number(settings.base_fee) : Number(z.fee);
+    return { fee: freeNow ? 0 : fee, blocked: false };
   }
 
   // 2. אין אזורים מוגדרים — כתובת מלאה → Geocoding ומרחק אווירי מהסניף
   if (loc.address && loc.address.trim()) {
-    const geo = await geocodeAddress(loc.address);
-    if (geo) {
-      const km = haversineKm({ lat: settings.origin_lat, lng: settings.origin_lng }, geo);
+    const km = await kmFromOrigin();
+    if (km != null) {
       if (km > settings.max_km) return { fee: 0, blocked: true, km };
       const fee = freeNow ? 0 : Math.round(settings.base_fee + settings.per_km * km);
       return { fee, blocked: false, km };

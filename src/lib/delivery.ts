@@ -1,5 +1,8 @@
 // חישוב דמי משלוח לפי מרחק (קו אווירי מהסניף לעיר בפוקט) + מדרגות שהמנהל מגדיר.
 
+// אופן התמחור: 'zone' = מחיר לפי אזור ספציפי; 'distance' = מחיר לפי מרחק (קמ).
+export type PricingMode = "zone" | "distance";
+
 export interface DeliverySettings {
   origin_lat: number;
   origin_lng: number;
@@ -8,6 +11,7 @@ export interface DeliverySettings {
   free_over: number;
   max_km: number;
   pickup_address?: string | null;
+  pricing_mode: PricingMode;
 }
 
 export const DEFAULT_DELIVERY: DeliverySettings = {
@@ -18,6 +22,7 @@ export const DEFAULT_DELIVERY: DeliverySettings = {
   free_over: 0,
   max_km: 25,
   pickup_address: null,
+  pricing_mode: "zone",
 };
 
 // קואורדינטות מרכזי הערים בפוקט (לחישוב מרחק ללא צורך ב-API חיצוני).

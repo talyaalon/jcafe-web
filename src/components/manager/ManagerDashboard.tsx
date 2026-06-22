@@ -97,6 +97,7 @@ export interface ZoneRow {
   name: string;
   zip: string | null;
   fee: number;
+  coverage_only: boolean;
 }
 
 export interface RecipientRow {
@@ -607,14 +608,60 @@ export function ManagerDashboard({
             <h2 className="text-xl font-extrabold text-wine mb-1">{he ? "משלוחים" : "Delivery"}</h2>
             <p className="text-ink/55 text-sm mb-4">
               {he
-                ? "הגדירו אזורי משלוח לסניף (אזור/מיקוד + דמי משלוח). לקוח מחוץ לאזורים — משלוח נחסם."
-                : "Define delivery zones for the branch (area/zip + fee). Customers outside zones are blocked."}
+                ? "הגדירו את אזורי הכיסוי (היכן שיש משלוח) ואת אופן התמחור — לפי אזור או לפי מרחק."
+                : "Set the coverage areas (where you deliver) and how pricing works — by area or by distance."}
             </p>
-            <form action={saveDeliveryAction} className="bg-white border border-line rounded-xl p-4 max-w-lg space-y-3">
+            <form action={saveDeliveryAction} className="bg-white border border-line rounded-xl p-4 max-w-lg space-y-4">
               <input type="hidden" name="branch" value={branch} />
+
+              {/* אופן התמחור */}
+              <div>
+                <label className="block text-sm font-bold text-ink/80 mb-2">
+                  {he ? "אופן תמחור המשלוח" : "Delivery pricing mode"}
+                </label>
+                <div className="space-y-1.5">
+                  <label className="flex items-start gap-2 text-sm">
+                    <input
+                      type="radio"
+                      name="pricing_mode"
+                      value="zone"
+                      defaultChecked={delivery.pricing_mode !== "distance"}
+                      className="mt-1 accent-wine"
+                    />
+                    <span>
+                      <b>{he ? "לפי אזור" : "By area"}</b>{" "}
+                      <span className="text-ink/55">
+                        {he
+                          ? "— מחיר קבוע לכל אזור (אזורי כיסוי משתמשים בדמי ברירת המחדל)."
+                          : "— a fixed fee per area (coverage areas use the default fee)."}
+                      </span>
+                    </span>
+                  </label>
+                  <label className="flex items-start gap-2 text-sm">
+                    <input
+                      type="radio"
+                      name="pricing_mode"
+                      value="distance"
+                      defaultChecked={delivery.pricing_mode === "distance"}
+                      className="mt-1 accent-wine"
+                    />
+                    <span>
+                      <b>{he ? "לפי מרחק (ק״מ)" : "By distance (km)"}</b>{" "}
+                      <span className="text-ink/55">
+                        {he
+                          ? "— דמי בסיס + מחיר לכל ק״מ מהסניף, בתוך אזורי הכיסוי."
+                          : "— base fee + price per km from the branch, within coverage areas."}
+                      </span>
+                    </span>
+                  </label>
+                </div>
+              </div>
+
               {(
                 [
                   ["base_fee", he ? "דמי משלוח ברירת מחדל (฿)" : "Default fee (฿)", delivery.base_fee],
+                  ["per_km", he ? "מחיר לכל ק״מ (฿) — לתמחור לפי מרחק" : "Price per km (฿) — distance mode", delivery.per_km],
+                  ["max_km", he ? "מרחק מירבי (ק״מ) — לתמחור לפי מרחק" : "Max distance (km) — distance mode", delivery.max_km],
                   ["free_over", he ? "משלוח חינם מעל (฿, 0=כבוי)" : "Free over (฿, 0=off)", delivery.free_over],
                 ] as const
               ).map(([name, label, val]) => (
@@ -648,45 +695,95 @@ export function ManagerDashboard({
               </SubmitButton>
             </form>
 
-            {/* delivery zones */}
+            {/* ===== אזורי כיסוי (משלוח פעיל, ללא מחיר) ===== */}
             <h3 className="text-lg font-extrabold text-wine mt-6 mb-1">
-              {he ? "אזורי משלוח" : "Delivery zones"}
+              {he ? "אזורי כיסוי (משלוח פעיל)" : "Coverage areas (delivery active)"}
             </h3>
             <p className="text-ink/55 text-sm mb-3">
               {he
-                ? "האזורים שבהם המשלוח פעיל לסניף (שם אזור / מיקוד + דמי משלוח)."
-                : "Areas where delivery is active for this branch (area / zip + fee)."}
+                ? "אזורים גדולים בתאילנד שבהם המשלוח פעיל — ללא מחיר (משתמשים בדמי ברירת המחדל / לפי מרחק). למשל: בנגקוק, פאטאיה, קנצ׳נבורי."
+                : "Large areas in Thailand where delivery is active — no per-area price (use default / distance). E.g. Bangkok, Pattaya, Kanchanaburi."}
             </p>
             <div className="bg-white border border-line rounded-xl p-4 max-w-lg space-y-2">
-              {zones.length === 0 ? (
+              {zones.filter((z) => z.coverage_only).length === 0 ? (
                 <p className="text-ink/40 text-sm">
-                  {he
-                    ? "לא הוגדרו אזורים — המשלוח לסניף זה מושבת עד שיוגדר אזור."
-                    : "No zones — delivery for this branch is disabled until a zone is added."}
+                  {he ? "לא הוגדרו אזורי כיסוי." : "No coverage areas yet."}
                 </p>
               ) : (
-                zones.map((z) => (
-                  <div key={z.id} className="flex items-center justify-between gap-2 border-b border-line/60 pb-2">
-                    <div>
-                      <span className="font-bold text-sm">{z.name}</span>
-                      {z.zip && <span className="text-ink/45 text-xs ms-2">{z.zip}</span>}
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-wine font-bold text-sm">{formatTHB(z.fee)}</span>
+                zones
+                  .filter((z) => z.coverage_only)
+                  .map((z) => (
+                    <div key={z.id} className="flex items-center justify-between gap-2 border-b border-line/60 pb-2">
+                      <div>
+                        <span className="font-bold text-sm">{z.name}</span>
+                        {z.zip && <span className="text-ink/45 text-xs ms-2">{z.zip}</span>}
+                      </div>
                       <form action={deleteZoneAction}>
                         <input type="hidden" name="id" value={z.id} />
                         <button className="text-xs text-red-500 font-bold">{he ? "מחק" : "Delete"}</button>
                       </form>
                     </div>
-                  </div>
-                ))
+                  ))
               )}
               <form action={addZoneAction} className="flex gap-2 items-end pt-2 flex-wrap">
                 <input type="hidden" name="branch" value={branch} />
+                <input type="hidden" name="coverage_only" value="1" />
                 <div>
-                  <label className="block text-[11px] text-ink/55">
-                    {he ? "אזור (גוגל)" : "Area (Google)"}
-                  </label>
+                  <label className="block text-[11px] text-ink/55">{he ? "אזור (גוגל)" : "Area (Google)"}</label>
+                  <ZoneAreaField he={he} />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-ink/55">{he ? "מיקוד (אופציונלי)" : "Zip (optional)"}</label>
+                  <input
+                    name="zip"
+                    placeholder="10110"
+                    className="border border-line rounded-lg px-2 py-1.5 text-sm w-24"
+                  />
+                </div>
+                <button className="bg-wine text-white font-bold rounded-lg px-3 py-1.5 text-sm">
+                  {he ? "הוסף אזור כיסוי" : "Add coverage area"}
+                </button>
+              </form>
+            </div>
+
+            {/* ===== מחיר לפי אזור ספציפי ===== */}
+            <h3 className="text-lg font-extrabold text-wine mt-6 mb-1">
+              {he ? "מחיר לפי אזור ספציפי" : "Per-area pricing"}
+            </h3>
+            <p className="text-ink/55 text-sm mb-3">
+              {he
+                ? "אזורים עם דמי משלוח קבועים משלהם (פעיל כשאופן התמחור הוא ״לפי אזור״)."
+                : "Areas with their own fixed delivery fee (used when pricing mode is “By area”)."}
+            </p>
+            <div className="bg-white border border-line rounded-xl p-4 max-w-lg space-y-2">
+              {zones.filter((z) => !z.coverage_only).length === 0 ? (
+                <p className="text-ink/40 text-sm">
+                  {he ? "לא הוגדרו אזורים מתומחרים." : "No priced areas yet."}
+                </p>
+              ) : (
+                zones
+                  .filter((z) => !z.coverage_only)
+                  .map((z) => (
+                    <div key={z.id} className="flex items-center justify-between gap-2 border-b border-line/60 pb-2">
+                      <div>
+                        <span className="font-bold text-sm">{z.name}</span>
+                        {z.zip && <span className="text-ink/45 text-xs ms-2">{z.zip}</span>}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-wine font-bold text-sm">{formatTHB(z.fee)}</span>
+                        <form action={deleteZoneAction}>
+                          <input type="hidden" name="id" value={z.id} />
+                          <button className="text-xs text-red-500 font-bold">{he ? "מחק" : "Delete"}</button>
+                        </form>
+                      </div>
+                    </div>
+                  ))
+              )}
+              <form action={addZoneAction} className="flex gap-2 items-end pt-2 flex-wrap">
+                <input type="hidden" name="branch" value={branch} />
+                <input type="hidden" name="coverage_only" value="0" />
+                <div>
+                  <label className="block text-[11px] text-ink/55">{he ? "אזור (גוגל)" : "Area (Google)"}</label>
                   <ZoneAreaField he={he} />
                 </div>
                 <div>
@@ -707,14 +804,14 @@ export function ManagerDashboard({
                   />
                 </div>
                 <button className="bg-wine text-white font-bold rounded-lg px-3 py-1.5 text-sm">
-                  {he ? "הוסף אזור" : "Add zone"}
+                  {he ? "הוסף אזור מתומחר" : "Add priced area"}
                 </button>
               </form>
             </div>
             <p className="text-[11px] text-ink/45 mt-2">
               {he
-                ? "💡 בחירת אזור עם השלמה אוטומטית מ-Google (מוגבל לתאילנד). מפת אזורים צבעונית לפי מיקוד — בהמשך."
-                : "💡 Manual entry. Google Maps Places autocomplete needs an API key."}
+                ? "💡 לקוח מחוץ לכל אזורי הכיסוי/המתומחרים — המשלוח נחסם. בחירת אזור עם השלמה אוטומטית מ-Google (מוגבל לתאילנד)."
+                : "💡 Customers outside every coverage/priced area are blocked. Area picker uses Google autocomplete (Thailand only)."}
             </p>
           </section>
         )}

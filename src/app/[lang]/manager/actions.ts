@@ -100,6 +100,7 @@ export async function saveDeliveryAction(formData: FormData) {
     return Number.isFinite(v) ? v : d;
   };
   const branch = Number(formData.get("branch")) || 14;
+  const mode = String(formData.get("pricing_mode") ?? "zone") === "distance" ? "distance" : "zone";
   await supabaseAdmin()
     .from("delivery_settings")
     .upsert(
@@ -112,6 +113,7 @@ export async function saveDeliveryAction(formData: FormData) {
         per_km: num("per_km", 10),
         free_over: num("free_over", 0),
         max_km: num("max_km", 25),
+        pricing_mode: mode,
         pickup_address: String(formData.get("pickup_address") ?? "").trim() || null,
       },
       { onConflict: "branch" },
@@ -122,13 +124,15 @@ export async function saveDeliveryAction(formData: FormData) {
 export async function addZoneAction(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return;
+  const coverageOnly = String(formData.get("coverage_only") ?? "") === "1";
   await supabaseAdmin()
     .from("delivery_zones")
     .insert({
       branch: Number(formData.get("branch")) || 14,
       name,
       zip: String(formData.get("zip") ?? "").trim() || null,
-      fee: Number(formData.get("fee")) || 0,
+      fee: coverageOnly ? 0 : Number(formData.get("fee")) || 0,
+      coverage_only: coverageOnly,
     });
   revalidatePath("/", "layout");
 }
