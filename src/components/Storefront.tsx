@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
@@ -40,6 +40,13 @@ export interface StoreBranding {
   logoUrl?: string | null;
 }
 
+export interface BranchTheme {
+  primary_color?: string | null;
+  primary_hover?: string | null;
+  primary_bright?: string | null;
+  accent_color?: string | null;
+}
+
 export function Storefront({
   locale,
   dict,
@@ -48,6 +55,7 @@ export function Storefront({
   branch = 14,
   branding,
   bannerSettings = {},
+  theme,
 }: {
   locale: Locale;
   dict: Dictionary;
@@ -56,7 +64,19 @@ export function Storefront({
   branch?: number;
   branding?: StoreBranding | null;
   bannerSettings?: Record<string, boolean>;
+  theme?: BranchTheme | null;
 }) {
+  // ערכת צבעים פר-סניף — דורסת את משתני ה-CSS של המותג על כל תת-העץ
+  const themeStyle = (
+    theme && (theme.primary_color || theme.primary_hover || theme.primary_bright || theme.accent_color)
+      ? {
+          ...(theme.primary_color ? { "--color-wine": theme.primary_color } : {}),
+          ...(theme.primary_hover ? { "--color-wine-hover": theme.primary_hover } : {}),
+          ...(theme.primary_bright ? { "--color-wine-bright": theme.primary_bright } : {}),
+          ...(theme.accent_color ? { "--color-gold": theme.accent_color } : {}),
+        }
+      : undefined
+  ) as CSSProperties | undefined;
   const [activeStoreId, setActiveStoreId] = useState(data[0]?.store.id ?? "");
   const [activeCat, setActiveCat] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -206,7 +226,7 @@ export function Storefront({
   // ===== מסך קבלת פנים — ריבוע לכל חנות =====
   if (showWelcome) {
     return (
-      <div className="flex flex-col min-h-full">
+      <div className="flex flex-col min-h-full" style={themeStyle}>
         <Header
           locale={locale}
           dict={dict}
@@ -231,7 +251,7 @@ export function Storefront({
   }
 
   return (
-    <div className="flex flex-col min-h-full">
+    <div className="flex flex-col min-h-full" style={themeStyle}>
       <Header
         locale={locale}
         dict={dict}

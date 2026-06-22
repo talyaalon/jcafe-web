@@ -11,6 +11,8 @@ import {
   getBranchBranding,
   getStoreBranding,
   getBannerSettings,
+  getBlockedProductIds,
+  getBranchTheme,
 } from "@/lib/supabase/data";
 import { Storefront, type StoreBundle } from "@/components/Storefront";
 
@@ -60,9 +62,20 @@ export default async function Page({
 
   // מיתוג פר-חנות — /he משתמש ב-slug, ממופה ל-pos.config (מלבד "grocery")
   const storeBranding = await getStoreBranding(PHUKET_COMPANY_ID);
-  const data = applyStoreBranding(data0, storeBranding, locale, (id) =>
+  const dataBranded = applyStoreBranding(data0, storeBranding, locale, (id) =>
     id === "grocery" ? "grocery" : String(findPhuketStore(id)?.posConfigId ?? id),
   );
+  // סינון מוצרים חסומים (מעל ODOO, פר-סניף) + ערכת צבעים פר-סניף
+  const [blocked, theme] = await Promise.all([
+    getBlockedProductIds(PHUKET_COMPANY_ID),
+    getBranchTheme(PHUKET_COMPANY_ID),
+  ]);
+  const data = blocked.size
+    ? dataBranded.map((d) => ({
+        ...d,
+        products: d.products.filter((p) => !blocked.has(String(p.id).split("|")[0])),
+      }))
+    : dataBranded;
 
   // הגדרות באנרים — מנוהלות לפי מזהה pos.config; ב-/he החנויות הן slug, אז ממפים.
   const rawBanner = await getBannerSettings(PHUKET_COMPANY_ID);
@@ -90,6 +103,7 @@ export default async function Page({
       banners={banners}
       branding={branding}
       bannerSettings={bannerSettings}
+      theme={theme}
     />
   );
 }

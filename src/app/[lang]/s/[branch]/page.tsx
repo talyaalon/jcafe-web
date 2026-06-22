@@ -9,6 +9,8 @@ import {
   getBranchBranding,
   getStoreBranding,
   getBannerSettings,
+  getBlockedProductIds,
+  getBranchTheme,
 } from "@/lib/supabase/data";
 import { Storefront, type StoreBundle } from "@/components/Storefront";
 
@@ -39,7 +41,17 @@ export default async function BranchStore({
     getStoreBranding(companyId),
   ]);
   const bannerSettings = await getBannerSettings(companyId);
-  const data = applyStoreBranding(data0, storeBranding, locale);
+  const dataBranded = applyStoreBranding(data0, storeBranding, locale);
+  const [blocked, theme] = await Promise.all([
+    getBlockedProductIds(companyId),
+    getBranchTheme(companyId),
+  ]);
+  const data = blocked.size
+    ? dataBranded.map((d) => ({
+        ...d,
+        products: d.products.filter((p) => !blocked.has(String(p.id).split("|")[0])),
+      }))
+    : dataBranded;
 
   const bb = await getBranchBranding(companyId);
   const branding = bb
@@ -59,6 +71,7 @@ export default async function BranchStore({
       branch={companyId}
       branding={branding}
       bannerSettings={bannerSettings}
+      theme={theme}
     />
   );
 }

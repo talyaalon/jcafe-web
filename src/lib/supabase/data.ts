@@ -125,6 +125,61 @@ export async function getStoreBranding(branch = 14): Promise<Record<string, Stor
   return map;
 }
 
+// ===== שיטות תשלום פר-סניף =====
+export interface PaymentSettings {
+  card: boolean;
+  qr: boolean;
+  cod: boolean;
+}
+export async function getBranchPayment(branch = 14): Promise<PaymentSettings> {
+  const fallback = { card: true, qr: true, cod: true };
+  if (!supabaseConfigured) return fallback;
+  const { data } = await supabasePublic
+    .from("branch_payment")
+    .select("card,qr,cod")
+    .eq("branch", branch)
+    .maybeSingle();
+  return (data as PaymentSettings) ?? fallback;
+}
+
+// ===== ערכת צבעים פר-סניף =====
+export interface BranchTheme {
+  primary_color: string | null;
+  primary_hover: string | null;
+  primary_bright: string | null;
+  accent_color: string | null;
+}
+export async function getBranchTheme(branch = 14): Promise<BranchTheme | null> {
+  if (!supabaseConfigured) return null;
+  const { data } = await supabasePublic
+    .from("branch_theme")
+    .select("primary_color,primary_hover,primary_bright,accent_color")
+    .eq("branch", branch)
+    .maybeSingle();
+  return (data as BranchTheme) ?? null;
+}
+
+// ===== מוצרים חסומים פר-סניף =====
+export interface BlockedProduct {
+  id: number;
+  template_id: string;
+  name: string | null;
+  reference: string | null;
+}
+export async function getBlockedProducts(branch = 14): Promise<BlockedProduct[]> {
+  if (!supabaseConfigured) return [];
+  const { data } = await supabasePublic
+    .from("blocked_products")
+    .select("id,template_id,name,reference")
+    .eq("branch", branch)
+    .order("created_at", { ascending: false });
+  return (data as BlockedProduct[]) ?? [];
+}
+export async function getBlockedProductIds(branch = 14): Promise<Set<string>> {
+  const rows = await getBlockedProducts(branch);
+  return new Set(rows.map((r) => String(r.template_id)));
+}
+
 export interface DayHours {
   day_of_week: number;
   closed: boolean;

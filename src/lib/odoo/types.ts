@@ -45,6 +45,8 @@ export interface Product {
   /** למוצר יש אפשרויות בחירה (סוג לחם / תוספות) — נפתח חלון בחירה לפני הוספה לסל */
   hasOptions?: boolean;
   barcode?: string;
+  /** קוד מק"ט (default_code ב-ODOO) — לחיפוש/חסימה בצד-מנהל */
+  reference?: string;
   /** URL לתמונת המוצר מ-ODOO (/web/image/...) */
   image?: string;
 }

@@ -7,6 +7,7 @@ export interface PickerProduct {
   id: string;
   nameHe: string;
   nameEn: string;
+  reference?: string;
 }
 
 export function ProductPicker({

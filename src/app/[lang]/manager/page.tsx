@@ -9,6 +9,9 @@ import {
   getBranchBranding,
   getStoreBranding,
   getBannerSettings,
+  getBranchPayment,
+  getBranchTheme,
+  getBlockedProducts,
 } from "@/lib/supabase/data";
 import { getPosOrders, getNotificationRecipients } from "@/lib/supabase/pos";
 import { getWebsiteCustomers } from "@/lib/odoo/orders";
@@ -63,6 +66,9 @@ export default async function ManagerPage({
     products,
     zones,
     recipients,
+    payment,
+    theme,
+    blockedProducts,
   ] = await Promise.all([
     getAllBanners(branch),
     getBannerSettings(branch),
@@ -82,6 +88,9 @@ export default async function ManagerPage({
     getBranchProducts(branch).catch(() => []),
     getDeliveryZones(branch),
     getNotificationRecipients(branch),
+    getBranchPayment(branch),
+    getBranchTheme(branch),
+    getBlockedProducts(branch),
   ]);
 
   return (
@@ -143,6 +152,9 @@ export default async function ManagerPage({
         products={products}
         zones={zones}
         recipients={recipients}
+        payment={payment}
+        theme={theme}
+        blockedProducts={blockedProducts}
       />
     </div>
   );

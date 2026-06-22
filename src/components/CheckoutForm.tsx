@@ -32,6 +32,8 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
   const [step, setStep] = useState<Step>("contact");
   const [method, setMethod] = useState<Method>("delivery");
   const [payment, setPayment] = useState<Payment>("card");
+  // שיטות תשלום פעילות לסניף (נטען מצד-שרת לפי הסניף שבעגלה)
+  const [pay, setPay] = useState({ card: true, qr: true, cod: true });
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -85,6 +87,27 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
     }, 500);
     return () => clearTimeout(t);
   }, [method, form.addr1, cartBranch, subtotal]);
+
+  // טעינת שיטות התשלום הפעילות לסניף
+  useEffect(() => {
+    let alive = true;
+    fetch(`/api/payment/settings?branch=${cartBranch}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (alive) setPay({ card: d.card !== false, qr: d.qr !== false, cod: d.cod !== false });
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [cartBranch]);
+  // אם השיטה הנבחרת כבויה — מעבר לראשונה הפעילה
+  useEffect(() => {
+    if (!pay[payment]) {
+      const first = (["card", "qr", "cod"] as Payment[]).find((k) => pay[k]);
+      if (first) setPayment(first);
+    }
+  }, [pay, payment]);
 
   const deliveryFee = method === "delivery" ? (deliveryQuote?.fee ?? 0) : 0;
   // חוסם הזמנת משלוח עד שיש הצעת מחיר תקפה (כתובת בטווח)
@@ -474,7 +497,9 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
                     ["qr", `📱 ${t.qr}`],
                     ["cod", `💵 ${t.cod}`],
                   ] as [Payment, string][]
-                ).map(([p, label]) => (
+                )
+                  .filter(([p]) => pay[p])
+                  .map(([p, label]) => (
                   <button
                     key={p}
                     onClick={() => setPayment(p)}

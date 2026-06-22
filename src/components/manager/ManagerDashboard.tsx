@@ -24,6 +24,10 @@ import {
   type StoreBrandingValue,
 } from "./StoreBrandingEditor";
 import type { PickerProduct } from "./ProductPicker";
+import { ProductBlocker, type BlockedRow } from "./ProductBlocker";
+import { PaymentEditor, type PaymentValue } from "./PaymentEditor";
+import { ThemeEditor, type ThemeValue } from "./ThemeEditor";
+import { ZoneAreaField } from "./ZoneAreaField";
 import { SubmitButton } from "./SubmitButton";
 
 interface DayH {
@@ -94,7 +98,10 @@ type Section =
   | "banners"
   | "branding"
   | "delivery"
-  | "notifications";
+  | "notifications"
+  | "products"
+  | "payments"
+  | "settings";
 
 export function ManagerDashboard({
   locale,
@@ -111,6 +118,9 @@ export function ManagerDashboard({
   products,
   zones,
   recipients,
+  payment,
+  theme,
+  blockedProducts,
 }: {
   locale: "he" | "en";
   branch: number;
@@ -126,6 +136,9 @@ export function ManagerDashboard({
   products: PickerProduct[];
   zones: ZoneRow[];
   recipients: RecipientRow[];
+  payment: PaymentValue;
+  theme: ThemeValue | null;
+  blockedProducts: BlockedRow[];
 }) {
   const he = locale === "he";
   const [section, setSection] = useState<Section>("orders");
@@ -143,9 +156,12 @@ export function ManagerDashboard({
     { key: "banners" as const, icon: "🖼️", label: he ? "באנרים ומבצעים" : "Banners & promos" },
     { key: "branding" as const, icon: "🎨", label: he ? "שם ולוגו" : "Name & logo" },
     { key: "delivery" as const, icon: "🛵", label: he ? "משלוחים" : "Delivery" },
+    { key: "payments" as const, icon: "💳", label: he ? "תשלומים" : "Payments" },
+    { key: "products" as const, icon: "📦", label: he ? "מוצרים" : "Products" },
     { key: "notifications" as const, icon: "🔔", label: he ? "התראות" : "Notifications" },
+    { key: "settings" as const, icon: "⚙️", label: he ? "הגדרות וצבעים" : "Settings & colors" },
   ];
-  const soon = he ? ["מוצרים", "הגדרות"] : ["Products", "Settings"];
+  const soon: string[] = [];
 
   const emailRecipients = recipients.filter((r) => r.channel === "email");
   const waRecipients = recipients.filter((r) => r.channel === "whatsapp");
@@ -647,13 +663,10 @@ export function ManagerDashboard({
               <form action={addZoneAction} className="flex gap-2 items-end pt-2 flex-wrap">
                 <input type="hidden" name="branch" value={branch} />
                 <div>
-                  <label className="block text-[11px] text-ink/55">{he ? "אזור" : "Area"}</label>
-                  <input
-                    name="name"
-                    required
-                    placeholder={he ? "למשל Sukhumvit" : "e.g. Sukhumvit"}
-                    className="border border-line rounded-lg px-2 py-1.5 text-sm w-36"
-                  />
+                  <label className="block text-[11px] text-ink/55">
+                    {he ? "אזור (גוגל)" : "Area (Google)"}
+                  </label>
+                  <ZoneAreaField he={he} />
                 </div>
                 <div>
                   <label className="block text-[11px] text-ink/55">{he ? "מיקוד" : "Zip"}</label>
@@ -679,7 +692,7 @@ export function ManagerDashboard({
             </div>
             <p className="text-[11px] text-ink/45 mt-2">
               {he
-                ? "💡 הזנת אזור ידנית. אינטגרציית Google Maps Places (השלמה אוטומטית) דורשת מפתח API."
+                ? "💡 בחירת אזור עם השלמה אוטומטית מ-Google (מוגבל לתאילנד). מפת אזורים צבעונית לפי מיקוד — בהמשך."
                 : "💡 Manual entry. Google Maps Places autocomplete needs an API key."}
             </p>
           </section>
@@ -794,6 +807,42 @@ export function ManagerDashboard({
                 ? "💡 שליחת אימייל פעילה דרך Resend (לאחר אימות דומיין — לכל נמען). שליחת וואטסאפ מחייבת חיבור ספק (Twilio) — עד אז המספרים נשמרים אך ההודעה לא נשלחת."
                 : "💡 Email is sent via Resend (after domain verification — to any recipient). WhatsApp requires a provider (Twilio) — until connected, numbers are saved but messages are not sent."}
             </p>
+          </section>
+        )}
+
+        {section === "payments" && (
+          <section>
+            <h2 className="text-xl font-extrabold text-wine mb-1">{he ? "שיטות תשלום" : "Payment methods"}</h2>
+            <p className="text-ink/55 text-sm mb-4">
+              {he
+                ? "בחרו אילו אמצעי תשלום יוצגו ללקוח בקופה — ספציפי לסניף זה."
+                : "Choose which payment methods customers see at checkout — for this branch."}
+            </p>
+            <PaymentEditor branch={branch} he={he} payment={payment} />
+          </section>
+        )}
+
+        {section === "products" && (
+          <section>
+            <h2 className="text-xl font-extrabold text-wine mb-1">{he ? "מוצרים" : "Products"}</h2>
+            <p className="text-ink/55 text-sm mb-4">
+              {he
+                ? "חסימת מוצרים מהצגה בחנות הסניף — חיפוש לפי שם או קוד מק״ט, מעל ODOO וללא קשר למלאי."
+                : "Block products from this branch's store — search by name or reference, above ODOO and regardless of stock."}
+            </p>
+            <ProductBlocker branch={branch} he={he} blocked={blockedProducts} products={products} />
+          </section>
+        )}
+
+        {section === "settings" && (
+          <section>
+            <h2 className="text-xl font-extrabold text-wine mb-1">{he ? "הגדרות וצבעים" : "Settings & colors"}</h2>
+            <p className="text-ink/55 text-sm mb-4">
+              {he
+                ? "ערכת הצבעים של חזית הסניף. בחרו ערכה מוכנה או צבעים אישיים — בשמירה כל החנות תתעדכן."
+                : "The branch storefront color palette. Pick a preset or custom colors — saving recolors the whole store."}
+            </p>
+            <ThemeEditor branch={branch} he={he} theme={theme} />
           </section>
         )}
       </main>

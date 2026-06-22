@@ -158,6 +158,7 @@ interface ProdRow {
   is_storable: boolean;
   allow_out_of_stock_order: boolean;
   barcode: string | false;
+  default_code: string | false;
   description_sale: string | false;
 }
 
@@ -194,7 +195,7 @@ async function loadProducts(
     searchRead<ProdRow>(
       "product.template",
       domain,
-      ["id", "name", "list_price", "qty_available", "pos_categ_ids", "categ_id", "attribute_line_ids", "is_storable", "allow_out_of_stock_order", "barcode", "description_sale"],
+      ["id", "name", "list_price", "qty_available", "pos_categ_ids", "categ_id", "attribute_line_ids", "is_storable", "allow_out_of_stock_order", "barcode", "default_code", "description_sale"],
       { limit: 500, order: "name asc" },
     ),
     buildPricer(cfg.pricelistId),
@@ -228,6 +229,7 @@ async function loadProducts(
       isFeatured: false,
       hasOptions: (r.attribute_line_ids?.length ?? 0) > 0,
       barcode: r.barcode || undefined,
+      reference: r.default_code || undefined,
       image: imageUrl(r.id),
     } satisfies Product;
   });
@@ -396,6 +398,7 @@ export interface BranchProduct {
   id: string;
   nameHe: string;
   nameEn: string;
+  reference?: string;
 }
 export async function getBranchProducts(companyId: number): Promise<BranchProduct[]> {
   const bundles = await getBranchData(companyId);
@@ -406,7 +409,7 @@ export async function getBranchProducts(companyId: number): Promise<BranchProduc
       const base = String(p.id).split("|")[0];
       if (seen.has(base)) continue;
       seen.add(base);
-      out.push({ id: base, nameHe: p.nameHe, nameEn: p.nameEn });
+      out.push({ id: base, nameHe: p.nameHe, nameEn: p.nameEn, reference: p.reference });
     }
   }
   return out.sort((a, b) => a.nameEn.localeCompare(b.nameEn));

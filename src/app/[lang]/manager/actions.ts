@@ -163,6 +163,77 @@ export async function deleteRecipientAction(formData: FormData) {
   revalidatePath("/", "layout");
 }
 
+// ===== שיטות תשלום פר-סניף =====
+export async function savePaymentAction(formData: FormData) {
+  const branch = Number(formData.get("branch")) || 14;
+  await supabaseAdmin()
+    .from("branch_payment")
+    .upsert(
+      {
+        branch,
+        card: formData.get("card") === "on",
+        qr: formData.get("qr") === "on",
+        cod: formData.get("cod") === "on",
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "branch" },
+    );
+  revalidatePath("/", "layout");
+}
+
+// ===== מוצרים חסומים פר-סניף =====
+export async function blockProductAction(formData: FormData) {
+  const branch = Number(formData.get("branch")) || 14;
+  const template_id = String(formData.get("template_id") ?? "").trim();
+  if (!template_id) return;
+  await supabaseAdmin()
+    .from("blocked_products")
+    .upsert(
+      {
+        branch,
+        template_id,
+        name: String(formData.get("name") ?? "").trim() || null,
+        reference: String(formData.get("reference") ?? "").trim() || null,
+      },
+      { onConflict: "branch,template_id" },
+    );
+  revalidatePath("/", "layout");
+}
+export async function unblockProductAction(formData: FormData) {
+  const id = Number(formData.get("id"));
+  if (id) await supabaseAdmin().from("blocked_products").delete().eq("id", id);
+  revalidatePath("/", "layout");
+}
+
+// ===== ערכת צבעים פר-סניף =====
+const HEX = /^#[0-9a-fA-F]{6}$/;
+export async function saveThemeAction(formData: FormData) {
+  const branch = Number(formData.get("branch")) || 14;
+  const hex = (k: string) => {
+    const v = String(formData.get(k) ?? "").trim();
+    return HEX.test(v) ? v.toLowerCase() : null;
+  };
+  await supabaseAdmin()
+    .from("branch_theme")
+    .upsert(
+      {
+        branch,
+        primary_color: hex("primary_color"),
+        primary_hover: hex("primary_hover"),
+        primary_bright: hex("primary_bright"),
+        accent_color: hex("accent_color"),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "branch" },
+    );
+  revalidatePath("/", "layout");
+}
+export async function resetThemeAction(formData: FormData) {
+  const branch = Number(formData.get("branch")) || 14;
+  await supabaseAdmin().from("branch_theme").delete().eq("branch", branch);
+  revalidatePath("/", "layout");
+}
+
 export async function setBannerEnabledAction(formData: FormData) {
   const branch = Number(formData.get("branch")) || 14;
   const store_id = String(formData.get("store_id") ?? "").trim() || "*";
