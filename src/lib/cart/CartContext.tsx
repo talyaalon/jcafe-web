@@ -4,13 +4,10 @@ import {
   createContext,
   useContext,
   useEffect,
-  useRef,
   useState,
   type ReactNode,
 } from "react";
 import type { Product } from "@/lib/odoo/types";
-import { parseBranchId } from "@/lib/resolve-branch-from-request";
-import { COMPANY_SLUG } from "@/lib/branch-slugs";
 
 export interface CartStoreRef {
   id: string;
@@ -52,8 +49,8 @@ const CartContext = createContext<CartContextValue | null>(null);
 const STORAGE_KEY = "jcafe_cart_v2";
 
 const SCHED_KEY = "jcafe_schedules";
+// 2ד: מפתח legacy. כבר לא מקור-אמת לסניף (URL+Cookie הם ה-SSOT) — רק מנקים שארית.
 const BRANCH_KEY = "jcafe_branch";
-const VALID_COMPANY_IDS = Object.keys(COMPANY_SLUG).map(Number);
 
 export function CartProvider({
   children,
@@ -68,13 +65,9 @@ export function CartProvider({
   const [schedules, setSchedules] = useState<Record<string, string>>({});
   // 2ג-3b: אין יותר ברירת-מחדל שקטה ל-14. בלי סניף מפורש (URL/Cookie) → null.
   const [branchCompany, setBranchCompanyState] = useState<number | null>(initialBranch ?? null);
-  // אם סופק סניף מ-SSR — הוא מפורש (מנצח את localStorage); אחרת false, כמו היום.
-  const branchExplicit = useRef(initialBranch != null);
-  // הסטורפרונט קובע את הסניף במפורש — מנצח את הערך הנטען מ-localStorage.
-  const setBranchCompany = (n: number) => {
-    branchExplicit.current = true;
-    setBranchCompanyState(n);
-  };
+  // 2ד: הסניף נקבע מ-URL (Storefront) או Cookie (initialBranch) בלבד — אין יותר
+  // מקור localStorage מתחרה, לכן אין צורך ב-flag "מפורש" שהגן מפני דריסה.
+  const setBranchCompany = (n: number) => setBranchCompanyState(n);
   const [hydrated, setHydrated] = useState(false);
 
   // טעינה מ-localStorage אחרי mount (מונע אי-התאמת hydration).
@@ -84,11 +77,8 @@ export function CartProvider({
       if (raw) setItems(JSON.parse(raw) as CartItem[]);
       const s = localStorage.getItem(SCHED_KEY);
       if (s) setSchedules(JSON.parse(s) as Record<string, string>);
-      const b = localStorage.getItem(BRANCH_KEY);
-      // לא לדרוס אם סטורפרונט כבר קבע את הסניף במפורש (effect של child רץ קודם).
-      // 2ג-3b: ערך מאומת מול ה-whitelist (parseBranchId) — בלי fallback שקט ל-14.
-      const fromLs = parseBranchId(b ?? undefined, VALID_COMPANY_IDS);
-      if (fromLs != null && !branchExplicit.current) setBranchCompanyState(fromLs);
+      // 2ד: ניקוי שארית מקור-האמת המתחרה הישן. הסניף מגיע כעת אך ורק מ-URL/Cookie.
+      localStorage.removeItem(BRANCH_KEY);
     } catch {
       /* ignore */
     }
@@ -101,12 +91,11 @@ export function CartProvider({
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
       localStorage.setItem(SCHED_KEY, JSON.stringify(schedules));
-      // 2ג-3b: לא לכתוב "null" — שומרים רק סניף תקף.
-      if (branchCompany != null) localStorage.setItem(BRANCH_KEY, String(branchCompany));
+      // 2ד: לא כותבים יותר את הסניף ל-localStorage — ה-Cookie (persistent) מחזיק את ההמשכיות.
     } catch {
       /* ignore */
     }
-  }, [items, schedules, branchCompany, hydrated]);
+  }, [items, schedules, hydrated]);
 
   const addItem: CartContextValue["addItem"] = (product, store, qty = 1) => {
     // 2ג-3b fail-closed: אי-אפשר להוסיף לעגלה בלי סניף פעיל. נקרא רק מ-Storefront
