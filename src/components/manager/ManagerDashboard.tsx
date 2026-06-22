@@ -29,6 +29,20 @@ import { PaymentEditor, type PaymentValue } from "./PaymentEditor";
 import { ThemeEditor, type ThemeValue } from "./ThemeEditor";
 import { ZoneAreaField } from "./ZoneAreaField";
 import { SubmitButton } from "./SubmitButton";
+import {
+  IconOrders,
+  IconCustomers,
+  IconClock,
+  IconImage,
+  IconTag,
+  IconDelivery,
+  IconCard,
+  IconBox,
+  IconBell,
+  IconGear,
+  IconMail,
+  IconChat,
+} from "../Icons";
 
 interface DayH {
   day_of_week: number;
@@ -150,18 +164,17 @@ export function ManagerDashboard({
     : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   const nav = [
-    { key: "orders" as const, icon: "🧾", label: he ? "הזמנות" : "Orders" },
-    { key: "customers" as const, icon: "🧑‍🤝‍🧑", label: he ? "לקוחות" : "Customers" },
-    { key: "hours" as const, icon: "🕐", label: he ? "שעות פעילות" : "Store hours" },
-    { key: "banners" as const, icon: "🖼️", label: he ? "באנרים ומבצעים" : "Banners & promos" },
-    { key: "branding" as const, icon: "🎨", label: he ? "שם ולוגו" : "Name & logo" },
-    { key: "delivery" as const, icon: "🛵", label: he ? "משלוחים" : "Delivery" },
-    { key: "payments" as const, icon: "💳", label: he ? "תשלומים" : "Payments" },
-    { key: "products" as const, icon: "📦", label: he ? "מוצרים" : "Products" },
-    { key: "notifications" as const, icon: "🔔", label: he ? "התראות" : "Notifications" },
-    { key: "settings" as const, icon: "⚙️", label: he ? "הגדרות וצבעים" : "Settings & colors" },
+    { key: "orders" as const, Icon: IconOrders, label: he ? "הזמנות" : "Orders" },
+    { key: "customers" as const, Icon: IconCustomers, label: he ? "לקוחות" : "Customers" },
+    { key: "hours" as const, Icon: IconClock, label: he ? "שעות פעילות" : "Store hours" },
+    { key: "banners" as const, Icon: IconImage, label: he ? "באנרים ומבצעים" : "Banners & promos" },
+    { key: "branding" as const, Icon: IconTag, label: he ? "שם ולוגו" : "Name & logo" },
+    { key: "delivery" as const, Icon: IconDelivery, label: he ? "משלוחים" : "Delivery" },
+    { key: "payments" as const, Icon: IconCard, label: he ? "תשלומים" : "Payments" },
+    { key: "products" as const, Icon: IconBox, label: he ? "מוצרים" : "Products" },
+    { key: "notifications" as const, Icon: IconBell, label: he ? "התראות" : "Notifications" },
+    { key: "settings" as const, Icon: IconGear, label: he ? "הגדרות וצבעים" : "Settings & colors" },
   ];
-  const soon: string[] = [];
 
   const emailRecipients = recipients.filter((r) => r.channel === "email");
   const waRecipients = recipients.filter((r) => r.channel === "whatsapp");
@@ -204,16 +217,9 @@ export function ManagerDashboard({
               section === n.key ? "bg-wine text-white font-bold" : "text-ink/70 hover:bg-soft"
             }`}
           >
-            <span>{n.icon}</span>
+            <n.Icon className="w-[18px] h-[18px] flex-none" />
             {n.label}
           </button>
-        ))}
-        <div className="border-t border-line my-2" />
-        <div className="px-3 text-[11px] text-ink/40 mb-1">{he ? "בקרוב" : "Coming soon"}</div>
-        {soon.map((s) => (
-          <div key={s} className="px-3 py-1.5 text-sm text-ink/30 cursor-default">
-            {s}
-          </div>
         ))}
       </aside>
 
@@ -269,8 +275,8 @@ export function ManagerDashboard({
                         {o.method === "delivery" ? (he ? "משלוח" : "Delivery") : he ? "איסוף" : "Pickup"}
                       </span>
                       {o.scheduled_for && (
-                        <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">
-                          🗓 {o.scheduled_for}
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">
+                          <IconClock className="w-3.5 h-3.5" /> {o.scheduled_for}
                         </span>
                       )}
                       <span className="px-2 py-0.5 rounded-full bg-soft">
@@ -290,7 +296,11 @@ export function ManagerDashboard({
                         </li>
                       ))}
                     </ul>
-                    {o.notes && <div className="text-[11px] text-ink/50 mt-2">📝 {o.notes}</div>}
+                    {o.notes && (
+                      <div className="text-[11px] text-ink/50 mt-2">
+                        <span className="font-bold">{he ? "הערה:" : "Note:"}</span> {o.notes}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -484,7 +494,7 @@ export function ManagerDashboard({
                   key={s.id}
                   branch={branch}
                   storeId={s.id}
-                  label={`${s.type === "grocery" ? "🛒" : "🍳"} ${he ? s.nameHe : s.nameEn}`}
+                  label={he ? s.nameHe : s.nameEn}
                   enabled={bannerSettings[s.id] ?? true}
                   onLabel={he ? "מוצג" : "Shown"}
                   offLabel={he ? "מוסתר" : "Hidden"}
@@ -724,7 +734,7 @@ export function ManagerDashboard({
               {/* אימייל */}
               <div className="bg-white border border-line rounded-xl p-4">
                 <h3 className="font-bold text-ink mb-1 flex items-center gap-2">
-                  ✉️ {he ? "כתובות אימייל" : "Email addresses"}
+                  <IconMail className="w-5 h-5 text-wine" /> {he ? "כתובות אימייל" : "Email addresses"}
                 </h3>
                 <p className="text-ink/55 text-[13px] mb-3">
                   {he ? "מקבלים מייל עם פירוט ההזמנה." : "Receive an email with the order details."}
@@ -768,7 +778,7 @@ export function ManagerDashboard({
               {/* וואטסאפ */}
               <div className="bg-white border border-line rounded-xl p-4">
                 <h3 className="font-bold text-ink mb-1 flex items-center gap-2">
-                  💬 {he ? "מספרי וואטסאפ" : "WhatsApp numbers"}
+                  <IconChat className="w-5 h-5 text-wine" /> {he ? "מספרי וואטסאפ" : "WhatsApp numbers"}
                 </h3>
                 <p className="text-ink/55 text-[13px] mb-3">
                   {he
