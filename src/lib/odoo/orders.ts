@@ -225,6 +225,53 @@ export async function createOrder(opts: {
     // נשאר כהצעת מחיר (draft) אם האישור נכשל — לא מפילים את ההזמנה.
   }
 
+  // אישור המשלוח כדי להוריד את הכמות מה-ON HAND של המוצרים — best-effort, לא חוסם.
+  if (confirmed) {
+    try {
+      await validateDeliveries(soId);
+    } catch (e) {
+      console.error("[createOrder] delivery validation failed", e);
+    }
+  }
+
   const so = (await searchRead<{ name: string }>("sale.order", [["id", "=", soId]], ["name"], { limit: 1 }))[0];
   return { id: soId, name: so?.name ?? `S${soId}`, confirmed };
+}
+
+// מאמת את משלוחי ההזמנה (stock.picking) — קובע כמות שבוצעה = ביקוש ומאשר,
+// כך שה-ON HAND של המוצרים יורד מיד. עוטף כל שלב ב-try כדי לא לשבור הזמנה.
+async function validateDeliveries(soId: number): Promise<void> {
+  const pickings = await searchRead<{ id: number }>(
+    "stock.picking",
+    [
+      ["sale_id", "=", soId],
+      ["state", "not in", ["done", "cancel"]],
+    ],
+    ["id"],
+    { limit: 20 },
+  );
+  for (const pk of pickings) {
+    const moves = await searchRead<{ id: number; product_uom_qty: number }>(
+      "stock.move",
+      [["picking_id", "=", pk.id]],
+      ["id", "product_uom_qty"],
+      { limit: 200 },
+    );
+    for (const m of moves) {
+      // ODOO 17/18: שדה הכמות שבוצעה הוא "quantity"
+      try {
+        await executeKw("stock.move", "write", [[m.id], { quantity: m.product_uom_qty }]);
+      } catch {
+        /* ignore — נמשיך לאישור בכל מקרה */
+      }
+    }
+    // אישור המשלוח, תוך דילוג על אשף ה-backorder (הכמות = הביקוש)
+    try {
+      await executeKw("stock.picking", "button_validate", [[pk.id]], {
+        context: { skip_backorder: true, skip_sms: true, skip_immediate: true },
+      });
+    } catch (e) {
+      console.error("[validateDeliveries] picking", pk.id, e);
+    }
+  }
 }

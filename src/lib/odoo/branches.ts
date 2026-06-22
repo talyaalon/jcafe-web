@@ -173,6 +173,13 @@ function inStockOrSellable(r: {
   return !!r.allow_out_of_stock_order;
 }
 
+// מצרכים (מכולת): מוצגים רק אם יש כמות ON HAND (qty_available > 0),
+// אלא אם סומן "המשך מכירה גם כשאזל" (allow_out_of_stock_order) ב-ODOO.
+function hasStock(r: { qty_available: number; allow_out_of_stock_order: boolean }): boolean {
+  if (r.allow_out_of_stock_order) return true;
+  return (r.qty_available ?? 0) > 0;
+}
+
 async function loadProducts(
   companyId: number,
   cfg: BranchConfig,
@@ -201,7 +208,10 @@ async function loadProducts(
     buildPricer(cfg.pricelistId),
   ]);
 
-  const filtered = rows.filter((r) => !isTakeAway(r.name) && inStockOrSellable(r));
+  // מטבח — מנות מוכנות לפי הזמנה (מוצגות תמיד); מכולת — לפי ON HAND בלבד
+  const filtered = rows.filter(
+    (r) => !isTakeAway(r.name) && (cfg.type === "kitchen" ? inStockOrSellable(r) : hasStock(r)),
+  );
   const heRows = filtered.length
     ? await searchRead<{ id: number; name: string; description_sale: string | false }>(
         "product.template",
@@ -343,7 +353,7 @@ export async function getGroceryBundle(
   const STORE_ID = "grocery";
   const SHOP_CAT = "shop"; // קטגוריית ברירת מחדל למוצרי מדף ללא קטגוריית מכולת
   const products: Product[] = rows
-    .filter((r) => !isTakeAway(r.name) && inStockOrSellable(r))
+    .filter((r) => !isTakeAway(r.name) && hasStock(r))
     .map((r) => {
       const root = (r.public_categ_ids ?? []).map(rootOf).find((x) => x != null) ?? null;
       return {

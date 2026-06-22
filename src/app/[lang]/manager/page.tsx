@@ -16,6 +16,7 @@ import {
 import { getPosOrders, getNotificationRecipients } from "@/lib/supabase/pos";
 import { getWebsiteCustomers } from "@/lib/odoo/orders";
 import { getBranches, getBranchProducts, getBranchStores, COMPANY_SLUG } from "@/lib/odoo/branches";
+import { PHUKET_COMPANY_ID } from "@/lib/odoo/phuket";
 import { CopyLink } from "@/components/manager/CopyLink";
 import { ManagerLogin } from "@/components/manager/ManagerLogin";
 import { ManagerDashboard, type StoreHours } from "@/components/manager/ManagerDashboard";
@@ -78,13 +79,24 @@ export default async function ManagerPage({
     getDeliverySettings(branch),
     getPosOrders(),
     getWebsiteCustomers().catch(() => []),
-    Promise.all(
-      configs.map(async (c) => ({
-        id: String(c.id),
-        name: c.name,
-        hours: await getStoreHours(String(c.id)),
-      })),
-    ) as Promise<StoreHours[]>,
+    (async () => {
+      const cfgStores: StoreHours[] = await Promise.all(
+        configs.map(async (c) => ({
+          id: String(c.id),
+          name: c.name,
+          hours: await getStoreHours(String(c.id)),
+        })),
+      );
+      // חנות המכולת היא חנות סינתטית ("grocery") בסניפים שאינם פוקט — מוסיפים לה תיבת שעות
+      if (branch !== PHUKET_COMPANY_ID) {
+        cfgStores.push({
+          id: "grocery",
+          name: he ? "מכולת" : "Kosher Store",
+          hours: await getStoreHours("grocery"),
+        });
+      }
+      return cfgStores;
+    })() as Promise<StoreHours[]>,
     getBranchProducts(branch).catch(() => []),
     getDeliveryZones(branch),
     getNotificationRecipients(branch),
