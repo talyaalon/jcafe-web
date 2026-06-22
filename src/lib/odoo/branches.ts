@@ -34,8 +34,20 @@ export const CATEGORY_HE: Record<string, string> = {
   Sandwiches: "כריכים",
   Sandwich: "כריך",
   Bagels: "בייגלים",
+  "Bagel Toast": "בייגל טוסט",
   Toasts: "טוסטים",
   Toast: "טוסט",
+  Mains: "מנות עיקריות",
+  Main: "מנות עיקריות",
+  Kids: "ילדים",
+  Smoothies: "שייקים",
+  Smoothie: "שייק",
+  "Shawarma & Grill": "שווארמה וגריל",
+  "Mama's Kitchen": "המטבח של אמא",
+  "Challah Club": "מועדון חלה",
+  "Soft Drink": "משקאות קלים",
+  "Soft Drinks": "משקאות קלים",
+  "Small Salad": "סלט קטן",
   Breads: "לחמים",
   Bread: "לחם",
   Hummus: "חומוס",
@@ -174,6 +186,74 @@ async function allowedCategs(configId: number): Promise<number[]> {
   return ids;
 }
 
+// ===== עץ קטגוריות ציבוריות (product.public.category) — נטען פעם וקאש =====
+interface PubCatNode {
+  name: string;
+  parent: number | null;
+}
+const pubTreeCache: { tree: Map<number, PubCatNode> | null; ts: number } = { tree: null, ts: 0 };
+async function loadPublicCatTree(): Promise<Map<number, PubCatNode>> {
+  if (pubTreeCache.tree && Date.now() - pubTreeCache.ts < CACHE_TTL_MS) return pubTreeCache.tree;
+  const rows = await searchRead<{ id: number; name: string; parent_id: [number, string] | false }>(
+    "product.public.category",
+    [],
+    ["id", "name", "parent_id"],
+    { limit: 600 },
+  );
+  const tree = new Map<number, PubCatNode>();
+  for (const r of rows) tree.set(r.id, { name: r.name, parent: r.parent_id ? r.parent_id[0] : null });
+  pubTreeCache.tree = tree;
+  pubTreeCache.ts = Date.now();
+  return tree;
+}
+
+// קטגוריית התפריט (ה"סקשן") של מוצר: הצומת שההורה שלו הוא אחד משורשי התפריט.
+// למשל "J Cafe Menu / Hummus" → 67 (Hummus). מחזיר null אם אין התאמה.
+function menuSectionOf(publicIds: number[], tree: Map<number, PubCatNode>): number | null {
+  const roots = new Set(MENU_ROOT_IDS);
+  for (const start of publicIds ?? []) {
+    let cur: number | null = start;
+    const seen = new Set<number>();
+    while (cur != null && !seen.has(cur)) {
+      seen.add(cur);
+      const node = tree.get(cur);
+      if (!node) break;
+      if (node.parent != null && roots.has(node.parent)) return cur; // צומת ישיר תחת שורש תפריט
+      if (roots.has(cur)) break; // הגענו לשורש ללא תת-קטגוריה
+      cur = node.parent;
+    }
+  }
+  return null;
+}
+
+// בניית קטגוריות תפריט (פילים) משורשי הקטגוריות הציבוריות שבשימוש בפועל.
+async function loadMenuCategories(sectionIds: number[], storeId: string): Promise<Category[]> {
+  if (!sectionIds.length) return [];
+  const [en, he] = await Promise.all([
+    searchRead<{ id: number; name: string; sequence: number }>(
+      "product.public.category",
+      [["id", "in", sectionIds]],
+      ["id", "name", "sequence"],
+    ),
+    searchRead<{ id: number; name: string }>(
+      "product.public.category",
+      [["id", "in", sectionIds]],
+      ["id", "name"],
+      { context: { lang: HE } },
+    ),
+  ]);
+  const heMap = new Map(he.map((c) => [c.id, c.name]));
+  return en
+    .filter((c) => c.name && !isTakeAway(c.name))
+    .sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0) || a.name.localeCompare(b.name))
+    .map((c) => {
+      const heName = heMap.get(c.id);
+      const nameHe =
+        heName && heName !== c.name ? heName : (CATEGORY_HE[c.name.trim()] ?? heName ?? c.name);
+      return { id: String(c.id), slug: String(c.id), nameHe, nameEn: c.name, storeId };
+    });
+}
+
 async function loadCategories(catIds: number[], storeId: string): Promise<Category[]> {
   if (!catIds.length) return [];
   const [en, he] = await Promise.all([
@@ -200,6 +280,7 @@ interface ProdRow {
   list_price: number;
   qty_available: number;
   pos_categ_ids: number[];
+  public_categ_ids: number[];
   categ_id: [number, string] | false;
   attribute_line_ids: number[];
   is_storable: boolean;
@@ -245,15 +326,17 @@ async function loadProducts(
   if (menuOnly) {
     domain.push(["public_categ_ids", "child_of", MENU_ROOT_IDS]);
   }
-  const [rows, pricer] = await Promise.all([
+  const [rows, pricer, pubTree] = await Promise.all([
     searchRead<ProdRow>(
       "product.template",
       domain,
-      ["id", "name", "list_price", "qty_available", "pos_categ_ids", "categ_id", "attribute_line_ids", "is_storable", "allow_out_of_stock_order", "barcode", "default_code", "description_sale"],
+      ["id", "name", "list_price", "qty_available", "pos_categ_ids", "public_categ_ids", "categ_id", "attribute_line_ids", "is_storable", "allow_out_of_stock_order", "barcode", "default_code", "description_sale"],
       // הקשר חברה — qty_available (ON HAND) מחושב לפי מלאי הסניף (החברה) הספציפי
       { limit: 500, order: "name asc", context: { allowed_company_ids: [companyId] } },
     ),
     buildPricer(cfg.pricelistId),
+    // קטגוריות תפריט נשאבות מהקטגוריה הציבורית (רק במצב menuOnly = קפה ללא חנות POS)
+    menuOnly ? loadPublicCatTree() : Promise.resolve(null),
   ]);
 
   // מטבח — מנות מוכנות לפי הזמנה (מוצגות תמיד); מכולת — לפי ON HAND בלבד
@@ -272,7 +355,13 @@ async function loadProducts(
   const isKitchen = cfg.type === "kitchen";
 
   return filtered.map((r) => {
-    const firstCat = (r.pos_categ_ids ?? []).find((id) => effective.includes(id)) ?? r.pos_categ_ids?.[0];
+    // menuOnly: קבץ לפי סקשן הקטגוריה הציבורית (J Cafe Menu / Jdeli Menu …);
+    // אחרת (סניף POS): לפי קטגוריית ה-POS כמקודם.
+    const section = menuOnly && pubTree ? menuSectionOf(r.public_categ_ids, pubTree) : null;
+    const firstCat =
+      section != null
+        ? section
+        : ((r.pos_categ_ids ?? []).find((id) => effective.includes(id)) ?? r.pos_categ_ids?.[0]);
     return {
       id: String(r.id),
       storeId: String(cfg.id),
@@ -513,10 +602,15 @@ export async function getBranchData(companyId: number): Promise<BranchBundle[]> 
     kitchenConfigs.map(async (cfg, idx) => {
       const allowed = await allowedCategs(cfg.id);
       const effective = posMode ? allowed.filter((id) => !shopSet.has(id)) : allowed;
-      const [categories, products] = await Promise.all([
-        loadCategories(effective, String(cfg.id)),
-        loadProducts(companyId, cfg, effective, !posMode),
-      ]);
+      const products = await loadProducts(companyId, cfg, effective, !posMode);
+      // קפה ללא חנות POS: הקטגוריות הן סקשני התפריט הציבוריים שבשימוש בפועל
+      // (J Cafe Menu / Jdeli Menu …). סניף POS: קטגוריות ה-POS כמקודם.
+      const categories = posMode
+        ? await loadCategories(effective, String(cfg.id))
+        : await loadMenuCategories(
+            [...new Set(products.map((p) => Number(p.categoryId)).filter((n) => Number.isFinite(n) && n > 0))],
+            String(cfg.id),
+          );
       const store: Store = {
         id: String(cfg.id),
         slug: String(cfg.id),
@@ -526,7 +620,9 @@ export async function getBranchData(companyId: number): Promise<BranchBundle[]> 
         emoji: "",
         order: idx,
       };
-      return { store, categories: orderKitchenCategories(categories), products };
+      // posMode: סדר לפי היוריסטיקה (פתיחה ראשון, שתייה אחרון).
+      // !posMode: כבר מסודר לפי sequence של הקטגוריה הציבורית ב-ODOO.
+      return { store, categories: posMode ? orderKitchenCategories(categories) : categories, products };
     }),
   );
 
