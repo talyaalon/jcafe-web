@@ -52,7 +52,7 @@ export function Storefront({
   dict,
   data,
   banners = [],
-  branch = 14,
+  branch,
   branding,
   bannerSettings = {},
   theme,
@@ -61,7 +61,7 @@ export function Storefront({
   dict: Dictionary;
   data: StoreBundle[];
   banners?: Banner[];
-  branch?: number;
+  branch: number;
   branding?: StoreBranding | null;
   bannerSettings?: Record<string, boolean>;
   theme?: BranchTheme | null;

@@ -2,7 +2,7 @@ import "server-only";
 import { supabasePublic, supabaseConfigured } from "./server";
 import { DEFAULT_DELIVERY, type DeliverySettings } from "@/lib/delivery";
 
-export async function getDeliverySettings(branch = 14): Promise<DeliverySettings> {
+export async function getDeliverySettings(branch: number): Promise<DeliverySettings> {
   if (!supabaseConfigured) return DEFAULT_DELIVERY;
   const { data } = await supabasePublic
     .from("delivery_settings")
@@ -29,7 +29,7 @@ export interface DeliveryZone {
   fee: number;
   coverage_only: boolean;
 }
-export async function getDeliveryZones(branch = 14): Promise<DeliveryZone[]> {
+export async function getDeliveryZones(branch: number): Promise<DeliveryZone[]> {
   if (!supabaseConfigured) return [];
   const { data } = await supabasePublic
     .from("delivery_zones")
@@ -50,7 +50,7 @@ export interface Banner {
   discount_percent?: number | null;
 }
 
-export async function getActiveBanners(branch = 14): Promise<Banner[]> {
+export async function getActiveBanners(branch: number): Promise<Banner[]> {
   if (!supabaseConfigured) return [];
   const { data } = await supabasePublic
     .from("banners")
@@ -67,7 +67,7 @@ export interface BannerRow extends Banner {
 }
 
 // הגדרות תצוגת באנרים: '*' = כל הסניף; אחרת מזהה חנות. חסר = מופעל (ברירת מחדל).
-export async function getBannerSettings(branch = 14): Promise<Record<string, boolean>> {
+export async function getBannerSettings(branch: number): Promise<Record<string, boolean>> {
   if (!supabaseConfigured) return {};
   const { data } = await supabasePublic
     .from("banner_settings")
@@ -83,7 +83,7 @@ export function bannersVisible(settings: Record<string, boolean>, storeId: strin
   return (settings["*"] ?? true) && (settings[storeId] ?? true);
 }
 
-export async function getAllBanners(branch = 14): Promise<BannerRow[]> {
+export async function getAllBanners(branch: number): Promise<BannerRow[]> {
   if (!supabaseConfigured) return [];
   const { data } = await supabasePublic
     .from("banners")
@@ -101,7 +101,7 @@ export interface BranchBranding {
   logo_url: string | null;
 }
 
-export async function getBranchBranding(branch = 14): Promise<BranchBranding | null> {
+export async function getBranchBranding(branch: number): Promise<BranchBranding | null> {
   if (!supabaseConfigured) return null;
   const { data } = await supabasePublic
     .from("branch_branding")
@@ -119,7 +119,7 @@ export interface StoreBrandingRow {
 }
 
 // מיתוג פר-חנות לסניף — מפתח store_id → {שם, לוגו}
-export async function getStoreBranding(branch = 14): Promise<Record<string, StoreBrandingRow>> {
+export async function getStoreBranding(branch: number): Promise<Record<string, StoreBrandingRow>> {
   if (!supabaseConfigured) return {};
   const { data } = await supabasePublic
     .from("store_branding")
@@ -136,7 +136,7 @@ export interface PaymentSettings {
   qr: boolean;
   cod: boolean;
 }
-export async function getBranchPayment(branch = 14): Promise<PaymentSettings> {
+export async function getBranchPayment(branch: number): Promise<PaymentSettings> {
   const fallback = { card: true, qr: true, cod: true };
   if (!supabaseConfigured) return fallback;
   const { data } = await supabasePublic
@@ -154,7 +154,7 @@ export interface BranchTheme {
   primary_bright: string | null;
   accent_color: string | null;
 }
-export async function getBranchTheme(branch = 14): Promise<BranchTheme | null> {
+export async function getBranchTheme(branch: number): Promise<BranchTheme | null> {
   if (!supabaseConfigured) return null;
   const { data } = await supabasePublic
     .from("branch_theme")
@@ -171,7 +171,7 @@ export interface BlockedProduct {
   name: string | null;
   reference: string | null;
 }
-export async function getBlockedProducts(branch = 14): Promise<BlockedProduct[]> {
+export async function getBlockedProducts(branch: number): Promise<BlockedProduct[]> {
   if (!supabaseConfigured) return [];
   const { data } = await supabasePublic
     .from("blocked_products")
@@ -180,7 +180,7 @@ export async function getBlockedProducts(branch = 14): Promise<BlockedProduct[]>
     .order("created_at", { ascending: false });
   return (data as BlockedProduct[]) ?? [];
 }
-export async function getBlockedProductIds(branch = 14): Promise<Set<string>> {
+export async function getBlockedProductIds(branch: number): Promise<Set<string>> {
   const rows = await getBlockedProducts(branch);
   return new Set(rows.map((r) => String(r.template_id)));
 }
