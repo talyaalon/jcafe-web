@@ -12,14 +12,14 @@ export interface ThemeValue {
 }
 
 const DEFAULTS = {
-  primary_color: "#6c2b8e",
-  primary_hover: "#562272",
-  primary_bright: "#8a3eb0",
-  accent_color: "#6c2b8e",
+  primary_color: "#861e74",
+  primary_hover: "#6d1860",
+  primary_bright: "#a02a8c",
+  accent_color: "#861e74",
 };
 
 const PRESETS: { name: string; c: typeof DEFAULTS }[] = [
-  { name: "סגול מותג", c: { primary_color: "#6c2b8e", primary_hover: "#562272", primary_bright: "#8a3eb0", accent_color: "#6c2b8e" } },
+  { name: "סגול מותג", c: { primary_color: "#861e74", primary_hover: "#6d1860", primary_bright: "#a02a8c", accent_color: "#861e74" } },
   { name: "יין", c: { primary_color: "#9b1c31", primary_hover: "#7a1626", primary_bright: "#c0392b", accent_color: "#9b1c31" } },
   { name: "ירוק", c: { primary_color: "#1f7a4d", primary_hover: "#155c39", primary_bright: "#2ecc71", accent_color: "#1f7a4d" } },
   { name: "כחול", c: { primary_color: "#1e5fa8", primary_hover: "#16487f", primary_bright: "#3b82f6", accent_color: "#1e5fa8" } },

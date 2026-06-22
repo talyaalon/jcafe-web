@@ -7,6 +7,7 @@ import type { Dictionary } from "@/i18n/dictionaries";
 import { FavoritesMenu } from "./FavoritesMenu";
 import { LangMenu } from "./LangMenu";
 import { AccountMenu } from "./AccountMenu";
+import { IconCart } from "./Icons";
 
 export interface HeaderBrand {
   name?: string | null;
@@ -88,10 +89,10 @@ export function Header({
         <AccountMenu locale={locale} loginLabel={dict.header.login} />
         <FavoritesMenu locale={locale} />
         <button onClick={onCartClick} className="relative flex items-center gap-1.5 hover:text-wine">
-          <span className="text-lg">🛒</span>
+          <IconCart className="w-6 h-6" />
           <span className="hidden sm:inline">{locale === "he" ? "עגלה" : "Cart"}</span>
           {cartCount > 0 && (
-            <span className="absolute -top-2 -end-2 min-w-[18px] h-[18px] px-1 rounded-full bg-wine text-white text-[10px] font-bold grid place-items-center">
+            <span className="absolute -top-2 -end-2 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold grid place-items-center">
               {cartCount}
             </span>
           )}

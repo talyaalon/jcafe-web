@@ -9,6 +9,7 @@ import { useCart, type CartStoreRef } from "@/lib/cart/CartContext";
 import { CheckoutFooter } from "./CheckoutFooter";
 import { CartThumb } from "./CartThumb";
 import { AddressAutocomplete } from "./AddressAutocomplete";
+import { IconDelivery, IconPickup, IconAccount, IconCart } from "./Icons";
 import { useStoreStatus, useStoreHours } from "@/lib/store-status";
 import { isOpenAt, minDateTime } from "@/lib/schedule";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -411,18 +412,23 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
                   <button
                     key={m}
                     onClick={() => setMethod(m)}
-                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-bold transition ${
+                    className={`flex-1 flex items-center gap-3 px-5 py-3.5 rounded-xl border-2 text-base font-bold transition ${
                       method === m
                         ? "border-wine bg-wine/5 text-wine"
-                        : "border-line bg-white text-ink/60"
+                        : "border-line bg-white text-ink/70 hover:border-wine/40"
                     }`}
                   >
                     <span
-                      className={`w-4 h-4 rounded-full border-2 grid place-items-center ${method === m ? "border-wine" : "border-line"}`}
+                      className={`w-5 h-5 rounded-full border-2 grid place-items-center flex-none ${method === m ? "border-wine" : "border-line"}`}
                     >
-                      {method === m && <span className="w-2 h-2 rounded-full bg-wine" />}
+                      {method === m && <span className="w-2.5 h-2.5 rounded-full bg-wine" />}
                     </span>
-                    {m === "delivery" ? `🚚 ${t.delivery}` : `🏬 ${t.pickup}`}
+                    {m === "delivery" ? (
+                      <IconDelivery className="w-6 h-6 flex-none" />
+                    ) : (
+                      <IconPickup className="w-6 h-6 flex-none" />
+                    )}
+                    <span>{m === "delivery" ? t.delivery : t.pickup}</span>
                   </button>
                 ))}
               </div>
@@ -734,15 +740,27 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
 }
 
 function CheckoutTopBar({ locale, dict }: { locale: Locale; dict: Dictionary }) {
+  const { count } = useCart();
   return (
     <header className="flex items-center justify-between px-4 sm:px-8 py-3.5 bg-white border-b border-line">
       <Link href={`/${locale}`} className="leading-none">
         <span className="block text-2xl font-extrabold text-ink">{dict.brand.name}</span>
         <span className="block text-[8px] tracking-[3px] text-wine font-bold">{dict.brand.tagline}</span>
       </Link>
-      <Link href={`/${locale}/login`} className="text-sm flex items-center gap-1.5">
-        👤 {dict.header.login}
-      </Link>
+      <div className="flex items-center gap-5 text-ink/80">
+        <Link href={`/${locale}/login`} className="flex items-center gap-1.5 hover:text-wine" aria-label={dict.header.login}>
+          <IconAccount className="w-6 h-6" />
+          <span className="hidden sm:inline text-sm">{dict.header.login}</span>
+        </Link>
+        <Link href={`/${locale}`} className="relative flex items-center hover:text-wine" aria-label="cart">
+          <IconCart className="w-6 h-6" />
+          {count > 0 && (
+            <span className="absolute -top-2 -end-2 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold grid place-items-center">
+              {count}
+            </span>
+          )}
+        </Link>
+      </div>
     </header>
   );
 }

@@ -112,19 +112,19 @@ function receiptHtml(o: ReceiptOrder, branchName: string, logoUrl: string | null
   * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   body { font-family: "Segoe UI", Arial, sans-serif; color: #222; margin: 0; }
   .wrap { max-width: 460px; margin: 0 auto; padding: 6px 10px; }
-  .head { text-align: center; border-bottom: 3px solid #6c2b8e; padding-bottom: 12px; margin-bottom: 12px; }
+  .head { text-align: center; border-bottom: 3px solid #861e74; padding-bottom: 12px; margin-bottom: 12px; }
   .logo { max-height: 78px; max-width: 230px; object-fit: contain; }
-  .wm { font-size: 34px; font-weight: 900; color: #6c2b8e; line-height: 1; }
-  .wmt { font-size: 12px; font-weight: 700; letter-spacing: 4px; color: #6c2b8e; margin-top: 3px; }
+  .wm { font-size: 34px; font-weight: 900; color: #861e74; line-height: 1; }
+  .wmt { font-size: 12px; font-weight: 700; letter-spacing: 4px; color: #861e74; margin-top: 3px; }
   .branch { font-size: 15px; font-weight: 800; color: #2e3333; margin-top: 8px; }
   .meta { display: flex; justify-content: space-between; font-size: 12px; color: #555; margin-bottom: 10px; }
-  .meta b { color: #6c2b8e; font-size: 14px; }
-  .sec { font-size: 13px; font-weight: 800; color: #6c2b8e; margin: 12px 0 4px; }
+  .meta b { color: #861e74; font-size: 14px; }
+  .sec { font-size: 13px; font-weight: 800; color: #861e74; margin: 12px 0 4px; }
   .row { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; padding: 2px 0; border-bottom: 1px dashed #e6e3ea; }
   .row .k { color: #777; }
   .row .v { font-weight: 700; text-align: ${he ? "left" : "right"}; }
   table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 12.5px; }
-  th { background: #f4eef3; color: #6c2b8e; font-size: 11px; text-align: ${he ? "right" : "left"}; padding: 6px; }
+  th { background: #f4eef3; color: #861e74; font-size: 11px; text-align: ${he ? "right" : "left"}; padding: 6px; }
   th.c, th.e, td.c, td.e { text-align: center; white-space: nowrap; }
   th.e, td.e { text-align: ${he ? "left" : "right"}; }
   td { padding: 7px 6px; border-bottom: 1px solid #eee; vertical-align: top; }
@@ -133,7 +133,7 @@ function receiptHtml(o: ReceiptOrder, branchName: string, logoUrl: string | null
   .it .st { font-weight: 400; color: #999; font-size: 10.5px; margin-top: 2px; }
   .tot { margin-top: 8px; }
   .tot .row { border: 0; font-size: 13px; }
-  .tot .grand { border-top: 2px solid #6c2b8e; margin-top: 4px; padding-top: 6px; font-size: 17px; font-weight: 900; color: #6c2b8e; }
+  .tot .grand { border-top: 2px solid #861e74; margin-top: 4px; padding-top: 6px; font-size: 17px; font-weight: 900; color: #861e74; }
   .foot { text-align: center; margin-top: 16px; padding-top: 10px; border-top: 1px dashed #ccc; color: #777; font-size: 12px; }
   .notes { font-size: 12px; color: #555; background: #f7f6f8; border-radius: 6px; padding: 8px; margin-top: 8px; }
 </style></head>

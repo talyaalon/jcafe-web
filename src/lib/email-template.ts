@@ -24,8 +24,8 @@ export interface OrderEmailOpts {
   notes?: string | null;
 }
 
-const WINE = "#6c2b8e";
-const WINE_DK = "#562272";
+const WINE = "#861e74";
+const WINE_DK = "#6d1860";
 const INK = "#2a2a2a";
 
 const esc = (s: unknown) =>
@@ -135,8 +135,8 @@ export function orderEmailHtml(o: OrderEmailOpts): string {
     </tr>`;
 
   return `<!doctype html><html lang="${he ? "he" : "en"}" dir="${dir}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
-<body style="margin:0;padding:0;background:#f2ecf8;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f2ecf8;padding:24px 12px">
+<body style="margin:0;padding:0;background:#f4eef3;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4eef3;padding:24px 12px">
     <tr><td align="center">
       <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border-radius:14px;overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;box-shadow:0 8px 30px rgba(86,34,114,.12)">
         <!-- header -->

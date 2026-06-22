@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
+import { IconAccount } from "./Icons";
 
 // הדר פשוט לדפי Auth / Checkout: לוגו + About ▾ | EN ▾ | Login.
 export function SimpleHeader({
@@ -33,8 +34,8 @@ export function SimpleHeader({
           <Link href={otherHref} className="hover:text-wine font-medium">
             {other === "en" ? "EN" : "עב"} ▾
           </Link>
-          <Link href={`/${locale}/login`} className="flex items-center gap-1.5">
-            <span className="w-7 h-7 rounded-full bg-gold/20 grid place-items-center">👤</span>
+          <Link href={`/${locale}/login`} className="flex items-center gap-1.5 hover:text-wine">
+            <IconAccount className="w-6 h-6" />
             {dict.header.login}
           </Link>
         </nav>

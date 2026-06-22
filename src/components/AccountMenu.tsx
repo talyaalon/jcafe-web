@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Locale } from "@/i18n/config";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { IconAccount } from "./Icons";
 
 export function AccountMenu({ locale, loginLabel }: { locale: Locale; loginLabel: string }) {
   const { user, displayName, signOut } = useAuth();
@@ -15,7 +16,7 @@ export function AccountMenu({ locale, loginLabel }: { locale: Locale; loginLabel
   if (!user) {
     return (
       <Link href={`/${locale}/login`} className="flex items-center gap-1.5 hover:text-wine">
-        <span className="text-lg">👤</span>
+        <IconAccount className="w-6 h-6" />
         <span className="hidden sm:inline">{loginLabel}</span>
       </Link>
     );

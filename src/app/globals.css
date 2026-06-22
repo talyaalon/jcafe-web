@@ -1,15 +1,15 @@
 @import "tailwindcss";
 
-/* ===== J-Cafe — סגול המותג מתוך הלוגו (J Cafe Kosher Shoppe) ===== */
+/* ===== J-Cafe — סגול המותג הראשי #861E74 ===== */
 @theme {
-  --color-wine: #6c2b8e;        /* Primary — סגול הלוגו (כפתורים, פעיל, נבחר) */
-  --color-wine-hover: #562272;  /* סגול כהה (hover) */
+  --color-wine: #861e74;        /* Primary — סגול ראשי (כפתורים, פעיל, נבחר) */
+  --color-wine-hover: #6d1860;  /* סגול כהה (hover) */
   --color-wine-dark: #2e3333;   /* Footer — פחם */
-  --color-wine-bright: #8a3eb0; /* סגול בהיר (גרדיאנט) */
-  --color-gold: #6c2b8e;        /* אקסנט = סגול המותג */
+  --color-wine-bright: #a02a8c; /* סגול בהיר (גרדיאנט) */
+  --color-gold: #861e74;        /* אקסנט = סגול הראשי */
   --color-gold-soft: #d6d2da;   /* אפור בהיר (טקסט Footer) */
   --color-slate: #6e7491;       /* משני — אפור-כחלחל */
-  --color-cream: #f2ecf8;       /* רקע עדין סגלגל */
+  --color-cream: #f4eef3;       /* רקע עדין */
   --color-ink: #2a2a2a;         /* טקסט גוף */
   --color-label: #3c3c43;       /* טקסט תווית (טאב לא-פעיל) */
   --color-soft: #f7f6f8;        /* רקע אפור-בהיר */
