@@ -40,10 +40,10 @@ export function resolveBranchFromRequest(
 }
 
 /**
- * אימות ערך ה-Cookie (jcafe_branch_v2) בצד-שרת → company id חוקי או null.
- * משמש את ה-layout לזריעת CartProvider.initialBranch (2ב). טהור, ללא I/O.
+ * אימות ערך branch (מ-Cookie או מ-query param) מול whitelist → company id חוקי או null.
+ * משמש את ה-layout (Cookie) ואת ה-API routes (?branch=/?company=). טהור, ללא I/O.
  */
-export function parseBranchCookie(
+export function parseBranchId(
   value: string | undefined,
   validCompanyIds: number[],
 ): number | null {

@@ -8,7 +8,7 @@ import { CartProvider } from "@/lib/cart/CartContext";
 import { FavoritesProvider } from "@/lib/favorites/FavoritesContext";
 import { AuthProvider } from "@/lib/auth/AuthContext";
 import { COMPANY_SLUG } from "@/lib/branch-slugs";
-import { parseBranchCookie } from "@/lib/resolve-branch-from-request";
+import { parseBranchId } from "@/lib/resolve-branch-from-request";
 
 const VALID_COMPANY_IDS = Object.keys(COMPANY_SLUG).map(Number);
 
@@ -46,7 +46,7 @@ export default async function RootLayout({
   // 2ב — זריעת הסניף מ-Cookie (שנכתב ע"י proxy על /s/[branch]) ל-CartProvider.
   // additive: אם אין Cookie תקין → undefined → CartProvider נופל ל-14/localStorage כמו היום.
   const branchCookie = (await cookies()).get("jcafe_branch_v2")?.value;
-  const initialBranch = parseBranchCookie(branchCookie, VALID_COMPANY_IDS) ?? undefined;
+  const initialBranch = parseBranchId(branchCookie, VALID_COMPANY_IDS) ?? undefined;
 
   return (
     <html
