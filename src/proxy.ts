@@ -40,6 +40,9 @@ export function proxy(request: NextRequest) {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
+        // סבב 2ג-3a: Cookie persistent (~שנה) — סניף נשמר בין sessions, כך
+        // שמשתמש חוזר עם עגלה שמורה לא נחסם ע"י שומר ה-checkout (2ג-3a-guard).
+        maxAge: 60 * 60 * 24 * 365,
       });
       return res;
     }
