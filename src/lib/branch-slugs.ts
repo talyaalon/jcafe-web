@@ -32,3 +32,11 @@ export function resolveBranch(param: string): number | null {
   if (Number.isFinite(n) && n > 0) return n;
   return BRANCH_SLUGS[param.toLowerCase()] ?? null;
 }
+
+// סבב 2ב-1a — קישור פנימי לחנות הסניף הנוכחי, במקום ל-/he העירום (שיהפוך ל-404).
+// branchCompany מובטח חוקי (∈ COMPANY_SLUG) בכל קרייני הקריאה, לכן ה-fallback
+// `/${locale}` הוא קוד-מת בר-הוכחה (לעולם לא נורה) — נשמר רק כבטחון טיפוסי.
+export function branchHref(locale: string, branchCompany: number): string {
+  const slug = COMPANY_SLUG[branchCompany];
+  return slug ? `/${locale}/s/${slug}` : `/${locale}`;
+}

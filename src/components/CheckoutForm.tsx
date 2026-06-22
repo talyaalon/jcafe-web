@@ -6,6 +6,7 @@ import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { formatTHB } from "@/lib/format";
 import { useCart, type CartStoreRef } from "@/lib/cart/CartContext";
+import { branchHref } from "@/lib/branch-slugs";
 import { CheckoutFooter } from "./CheckoutFooter";
 import { CartThumb } from "./CartThumb";
 import { AddressAutocomplete } from "./AddressAutocomplete";
@@ -352,7 +353,7 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
             <p className="text-ink/60 mt-3">{t.empty}</p>
             <p className="text-ink/50 text-sm">{t.emptyHint}</p>
             <Link
-              href={`/${locale}`}
+              href={branchHref(locale, branchCompany)}
               className="inline-block mt-5 bg-wine text-white font-bold rounded-xl px-6 py-3 hover:bg-wine-hover"
             >
               {t.back}
@@ -390,7 +391,7 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
             )}
             <div className="mt-6">
               <Link
-                href={`/${locale}`}
+                href={branchHref(locale, branchCompany)}
                 className="block bg-wine text-white font-bold rounded-xl py-3 hover:bg-wine-hover"
               >
                 {t.continueShopping}
@@ -817,10 +818,10 @@ function CheckoutTopBar({
   dict: Dictionary;
   branch: BranchInfo | null;
 }) {
-  const { count } = useCart();
+  const { count, branchCompany } = useCart();
   const he = locale === "he";
-  // הלוגו/השם מובילים לחזית הסניף הנוכחי (מסך בחירת החנויות), עם השם והלוגו שהוגדרו בניהול
-  const home = branch?.slug ? `/${locale}/s/${branch.slug}` : `/${locale}`;
+  // הלוגו/השם מובילים לחנות הסניף הנוכחי — קישור דטרמיניסטי (לא תלוי ב-branch שנמשך בצד-לקוח)
+  const home = branchHref(locale, branchCompany);
   const name = (he ? branch?.nameHe : branch?.nameEn) || dict.brand.name;
   const tagline = (he ? branch?.taglineHe : branch?.taglineEn) || dict.brand.tagline;
   return (

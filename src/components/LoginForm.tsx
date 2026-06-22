@@ -6,12 +6,15 @@ import { useRouter } from "next/navigation";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { useCart } from "@/lib/cart/CartContext";
+import { branchHref } from "@/lib/branch-slugs";
 import { SocialButtons } from "./AuthShell";
 
 export function LoginForm({ locale, dict }: { locale: Locale; dict: Dictionary }) {
   const t = dict.auth;
   const router = useRouter();
   const { signIn } = useAuth();
+  const { branchCompany } = useCart();
   const [mode, setMode] = useState<"choose" | "password">("choose");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,8 +30,8 @@ export function LoginForm({ locale, dict }: { locale: Locale; dict: Dictionary }
       setErr(locale === "he" ? "אימייל או סיסמה שגויים" : "Invalid email or password");
       return;
     }
-    // אחרי התחברות — חוזרים לעמוד הבית של החנות (לא לאזור האישי)
-    router.push(`/${locale}`);
+    // אחרי התחברות — חוזרים לחנות הסניף הנוכחי (לא לאזור האישי, לא ל-/he העירום)
+    router.push(branchHref(locale, branchCompany));
   };
 
   return (

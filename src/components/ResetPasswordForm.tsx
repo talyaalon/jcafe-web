@@ -5,9 +5,12 @@ import Link from "next/link";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { useCart } from "@/lib/cart/CartContext";
+import { branchHref } from "@/lib/branch-slugs";
 
 export function ResetPasswordForm({ locale, dict }: { locale: Locale; dict: Dictionary }) {
   const t = dict.auth;
+  const { branchCompany } = useCart();
   const [pw, setPw] = useState("");
   const [confirm, setConfirm] = useState("");
   const [done, setDone] = useState(false);
@@ -35,7 +38,7 @@ export function ResetPasswordForm({ locale, dict }: { locale: Locale; dict: Dict
         <div className="text-wine text-2xl my-3">✓</div>
         <p className="text-ink/60 text-sm mb-5">{t.changedThanks}</p>
         <Link
-          href={`/${locale}`}
+          href={branchHref(locale, branchCompany)}
           className="block bg-wine text-white font-bold rounded-lg py-2.5 hover:bg-wine-hover"
         >
           {t.goToJcafe}

@@ -6,12 +6,15 @@ import { useRouter } from "next/navigation";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { useCart } from "@/lib/cart/CartContext";
+import { branchHref } from "@/lib/branch-slugs";
 import { SocialButtons } from "./AuthShell";
 
 export function RegisterForm({ locale, dict }: { locale: Locale; dict: Dictionary }) {
   const t = dict.auth;
   const router = useRouter();
   const { signIn } = useAuth();
+  const { branchCompany } = useCart();
   const [form, setForm] = useState({ email: "", name: "", password: "", confirm: "" });
   const [alerts, setAlerts] = useState(true);
   const [err, setErr] = useState("");
@@ -36,8 +39,8 @@ export function RegisterForm({ locale, dict }: { locale: Locale; dict: Dictionar
       if (!res.ok || !data.ok) throw new Error(data.error || "Registration failed");
       const { error } = await signIn(form.email.trim(), form.password);
       if (error) throw new Error(error);
-      // אחרי הרשמה והתחברות — לעמוד הבית של החנות (לא לאזור האישי)
-      router.push(`/${locale}`);
+      // אחרי הרשמה והתחברות — לחנות הסניף הנוכחי (לא לאזור האישי, לא ל-/he העירום)
+      router.push(branchHref(locale, branchCompany));
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {

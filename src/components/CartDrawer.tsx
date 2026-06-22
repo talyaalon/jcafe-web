@@ -6,6 +6,7 @@ import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { formatTHB } from "@/lib/format";
 import { useCart, type CartStoreRef } from "@/lib/cart/CartContext";
+import { branchHref } from "@/lib/branch-slugs";
 import { useStoreStatus } from "@/lib/store-status";
 import { CartThumb } from "./CartThumb";
 
@@ -157,7 +158,7 @@ export function CartDrawer({
                 {dict.cart.checkout}
               </Link>
               <Link
-                href={`/${locale}`}
+                href={branchHref(locale, branchCompany)}
                 onClick={onClose}
                 className="block text-center border border-line text-ink/70 rounded-lg py-2.5 text-sm mt-2 hover:border-wine"
               >

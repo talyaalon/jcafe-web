@@ -7,6 +7,8 @@ import type { Dictionary } from "@/i18n/dictionaries";
 import { formatTHB } from "@/lib/format";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useFavorites } from "@/lib/favorites/FavoritesContext";
+import { useCart } from "@/lib/cart/CartContext";
+import { branchHref } from "@/lib/branch-slugs";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
 type Section = "dashboard" | "orders" | "favorites" | "details";
@@ -25,6 +27,7 @@ export function AccountView({ locale, dict }: { locale: Locale; dict: Dictionary
   const router = useRouter();
   const { user, displayName, loading, signOut } = useAuth();
   const { favorites, toggle } = useFavorites();
+  const { branchCompany } = useCart();
   const [section, setSection] = useState<Section>("dashboard");
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const he = locale === "he";
@@ -65,7 +68,7 @@ export function AccountView({ locale, dict }: { locale: Locale; dict: Dictionary
 
   const logout = async () => {
     await signOut();
-    router.push(`/${locale}`);
+    router.push(branchHref(locale, branchCompany));
   };
 
   return (

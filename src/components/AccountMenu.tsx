@@ -5,10 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Locale } from "@/i18n/config";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { useCart } from "@/lib/cart/CartContext";
+import { branchHref } from "@/lib/branch-slugs";
 import { IconAccount } from "./Icons";
 
 export function AccountMenu({ locale, loginLabel }: { locale: Locale; loginLabel: string }) {
   const { user, displayName, signOut } = useAuth();
+  const { branchCompany } = useCart();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const he = locale === "he";
@@ -46,7 +49,7 @@ export function AccountMenu({ locale, loginLabel }: { locale: Locale; loginLabel
               onClick={async () => {
                 await signOut();
                 setOpen(false);
-                router.push(`/${locale}`);
+                router.push(branchHref(locale, branchCompany));
               }}
               className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-soft text-ink/80 border-t border-line"
             >

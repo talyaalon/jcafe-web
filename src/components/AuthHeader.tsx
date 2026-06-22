@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { useCart } from "@/lib/cart/CartContext";
+import { branchHref } from "@/lib/branch-slugs";
 import { LangMenu } from "./LangMenu";
 import { AccountMenu } from "./AccountMenu";
 import { FavoritesMenu } from "./FavoritesMenu";
@@ -40,7 +41,8 @@ export function AuthHeader({ locale, dict }: { locale: Locale; dict: Dictionary 
 
   const brandName = (he ? info?.nameHe : info?.nameEn)?.trim() || dict.brand.name;
   const brandTagline = (he ? info?.taglineHe : info?.taglineEn)?.trim() || dict.brand.tagline;
-  const homeHref = branchCompany === 14 || !info?.slug ? `/${locale}` : `/${locale}/s/${info.slug}`;
+  // לוגו → חנות הסניף הנוכחי (דטרמיניסטי לפי branchCompany, לא תלוי ב-info שנמשך בצד-לקוח)
+  const homeHref = branchHref(locale, branchCompany);
 
   return (
     <>
