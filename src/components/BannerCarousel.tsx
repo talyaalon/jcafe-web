@@ -6,17 +6,16 @@ import type { Banner } from "./Storefront";
 function BannerItem({
   b,
   onProductClick,
-  heightCls,
 }: {
   b: Banner;
   onProductClick: (id: string, discount?: number) => void;
-  heightCls: string;
 }) {
   const inner = (
     <>
-      {/* object-contain — תמונה מלאה בלי חיתוך */}
+      {/* object-cover על יחס קבוע 12/5 (=2.4:1) — ממלא את כל המלבן בלי פסים אפורים.
+          התמונה האידאלית: 1200×500 (אותו יחס) → נכנסת מלאה בלי חיתוך. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={b.image_url} alt={b.title ?? ""} className="w-full h-full object-contain" />
+      <img src={b.image_url} alt={b.title ?? ""} className="w-full h-full object-cover" />
       {b.title && (
         <span className="absolute bottom-2 start-3 bg-black/45 text-white text-xs font-bold px-2.5 py-1 rounded-md">
           {b.title}
@@ -24,7 +23,8 @@ function BannerItem({
       )}
     </>
   );
-  const cls = `relative block w-full text-start ${heightCls} rounded-2xl overflow-hidden border border-line bg-soft`;
+  const cls =
+    "relative block w-full text-start aspect-[12/5] rounded-2xl overflow-hidden border border-line bg-soft";
   return b.product_id ? (
     <button onClick={() => onProductClick(b.product_id!, b.discount_percent ?? 0)} className={cls}>
       {inner}
@@ -77,7 +77,7 @@ export function BannerCarousel({
         >
           {items.map((b) => (
             <div key={b.id} className="snap-center shrink-0 w-full">
-              <BannerItem b={b} onProductClick={onProductClick} heightCls="h-32" />
+              <BannerItem b={b} onProductClick={onProductClick} />
             </div>
           ))}
         </div>
@@ -98,7 +98,7 @@ export function BannerCarousel({
       {/* desktop — 3 across */}
       <div className="hidden sm:grid grid-cols-3 gap-4">
         {banners.slice(0, 3).map((b) => (
-          <BannerItem key={b.id} b={b} onProductClick={onProductClick} heightCls="h-44" />
+          <BannerItem key={b.id} b={b} onProductClick={onProductClick} />
         ))}
       </div>
     </>

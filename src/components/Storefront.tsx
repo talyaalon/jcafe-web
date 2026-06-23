@@ -324,7 +324,7 @@ export function Storefront({
               {[0, 1, 2].map((i) => (
                 <div
                   key={i}
-                  className="h-28 sm:h-44 rounded-2xl bg-[#ece9f1] grid place-items-center text-white border border-line"
+                  className="aspect-[12/5] rounded-2xl bg-[#ece9f1] grid place-items-center text-white border border-line"
                 >
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor" className="opacity-80">
                     <path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2ZM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-4.5Z" />
