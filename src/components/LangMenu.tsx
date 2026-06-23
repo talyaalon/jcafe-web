@@ -19,9 +19,8 @@ export function LangMenu({ locale }: { locale: Locale }) {
   return (
     <div className="relative">
       <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-1.5 hover:text-wine">
-        {/* קוד EN/HE + המילה בעברית, בלי דגלים — בטלפון ובמחשב */}
+        {/* כפתור סגור — רק הקיצור EN/HE (המילים מופיעות בתפריט הנפתח) */}
         <span className="font-bold text-[13px]">{current.short}</span>
-        <span>{current.label}</span>
         <span className="text-[10px]">▾</span>
       </button>
       {open && (
