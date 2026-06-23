@@ -8,6 +8,7 @@ interface P {
   id: string;
   isKitchen: boolean;
   allowOutOfStock?: boolean;
+  qtyAvailable?: number | null;
 }
 const prod = (id: string, over: Partial<P> = {}): P => ({ id, isKitchen: false, ...over });
 const bundle = (products: P[]) => ({ store: { id: "s" }, products });
@@ -40,6 +41,23 @@ test("אין נתון מלאי חי (id לא במפה) → נשאר (לא מסת
 test("מזהה עם וריאנט (10|opt) → נבדק לפי ה-template (10)", () => {
   const out = overlayAvailability([bundle([prod("10|cheese")])], new Map([[10, 0]]));
   assert.deepEqual(out[0].products, []);
+});
+
+test("ממלא qtyAvailable למצרך מנוהל-מלאי (לאכיפת מקסימום)", () => {
+  const out = overlayAvailability([bundle([prod("10")])], new Map([[10, 3]]));
+  assert.equal(out[0].products[0].qtyAvailable, 3);
+});
+
+test("מטבח / allow_out → qtyAvailable לא מוגבל (נשאר כפי שהוא)", () => {
+  const out = overlayAvailability(
+    [bundle([prod("10", { isKitchen: true }), prod("20", { allowOutOfStock: true })])],
+    new Map([
+      [10, 2],
+      [20, 2],
+    ]),
+  );
+  assert.equal(out[0].products[0].qtyAvailable, undefined);
+  assert.equal(out[0].products[1].qtyAvailable, undefined);
 });
 
 test("מסנן רק את שאזל ומשאיר את השאר", () => {

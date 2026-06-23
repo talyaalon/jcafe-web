@@ -6,22 +6,32 @@ interface WithStock {
   id: string;
   isKitchen: boolean;
   allowOutOfStock?: boolean;
+  qtyAvailable?: number | null;
 }
 
 /**
- * מסנן מכל בָּאנדל את המצרכים שאזלו לפי מפת המלאי החיה (templateId → qty).
+ * שכבת המלאי החיה: (1) מסתירה מצרך שאזל (qty 0), (2) ממלאת את הכמות החיה
+ * (qtyAvailable) למצרכים מנוהלי-מלאי — כדי שאפשר יהיה להגביל הוספה-לסל למקסימום.
+ * מטבח ("מוכן לפי הזמנה") ו"המשך מכירה כשאזל" — תמיד מוצגים, ללא הגבלת כמות (qty נשאר null).
  * מזהה "templateId" או "templateId|variant" → נבדק לפי ה-template.
  */
 export function overlayAvailability<B extends { products: P[] }, P extends WithStock>(
   bundles: B[],
   avail: Map<number, number>,
 ): B[] {
+  const qtyOf = (id: string) => avail.get(Number(String(id).split("|")[0]));
   return bundles.map((b) => ({
     ...b,
-    products: b.products.filter((p) => {
-      if (p.isKitchen || p.allowOutOfStock) return true; // מטבח / המשך-מכירה — תמיד מוצג
-      const q = avail.get(Number(String(p.id).split("|")[0]));
-      return q == null ? true : q > 0; // חוסר נתון חי → לא מסתירים (fail-open לתצוגה בלבד)
-    }),
+    products: b.products
+      .filter((p) => {
+        if (p.isKitchen || p.allowOutOfStock) return true; // תמיד מוצג
+        const q = qtyOf(p.id);
+        return q == null ? true : q > 0; // חוסר נתון חי → לא מסתירים (fail-open לתצוגה)
+      })
+      .map((p) => {
+        if (p.isKitchen || p.allowOutOfStock) return p; // ללא הגבלת כמות
+        const q = qtyOf(p.id);
+        return q == null ? p : { ...p, qtyAvailable: q };
+      }),
   }));
 }

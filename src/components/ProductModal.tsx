@@ -30,6 +30,9 @@ export function ProductModal({
   const name = locale === "he" ? product.nameHe : product.nameEn;
   const desc = locale === "he" ? product.descHe : product.descEn;
   const outOfStock = product.qtyAvailable === 0;
+  // תקרת כמות לפי המלאי החי (מצרך מנוהל-מלאי); מטבח/"המשך מכירה כשאזל" → ללא הגבלה.
+  const maxQty =
+    product.allowOutOfStock || product.qtyAvailable == null ? Infinity : product.qtyAvailable;
 
   const [qty, setQty] = useState(1);
   const [groups, setGroups] = useState<ModGroup[]>([]);
@@ -150,6 +153,11 @@ export function ProductModal({
             ) : null}
           </div>
           {product.weight && <div className="text-ink/55 text-sm">{product.weight}</div>}
+          {Number.isFinite(maxQty) && (
+            <div className="text-amber-600 text-[12px] font-semibold mt-0.5">
+              {locale === "he" ? `נשארו ${maxQty} במלאי` : `Only ${maxQty} left in stock`}
+            </div>
+          )}
         </div>
 
         {/* scrollable: description + modifier groups */}
@@ -205,7 +213,11 @@ export function ProductModal({
                   −
                 </button>
                 <span className="w-5 text-center font-bold">{qty}</span>
-                <button onClick={() => setQty((q) => q + 1)} className="text-lg leading-none font-bold w-5">
+                <button
+                  onClick={() => setQty((q) => Math.min(maxQty, q + 1))}
+                  disabled={qty >= maxQty}
+                  className="text-lg leading-none font-bold w-5 disabled:opacity-30"
+                >
                   +
                 </button>
               </div>

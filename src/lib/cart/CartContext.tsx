@@ -54,6 +54,12 @@ interface CartContextValue {
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
+
+// תקרת כמות פר-מוצר: מצרך מנוהל-מלאי → עד הכמות החיה (qtyAvailable). מטבח/"המשך מכירה
+// כשאזל" → ללא הגבלה. ה-snapshot הוא רמז-UX; האכיפה האמיתית היא בדיקת המלאי ב-checkout (שלב A).
+function maxQtyFor(p: Product): number {
+  return p.allowOutOfStock || p.qtyAvailable == null ? Infinity : p.qtyAvailable;
+}
 // בידוד סל פר-סניף: כל סניף קורא/כותב למפתח jcafe_cart_v2:<branch> שלו בלבד
 // (ראה cart-storage.ts). הסל הפעיל נגזר מ-branchCompany האמין.
 
@@ -141,19 +147,22 @@ export function CartProvider({
     // (שם branchCompany תמיד נקבע מה-URL), לכן ה-guard לעולם לא נורה בפועל.
     if (branchCompany == null) return;
     const branch = branchCompany; // צמצום ל-number עבור CartItem.branch
+    const max = maxQtyFor(product);
     setItems((prev) => {
       const ex = prev.find((i) => i.product.id === product.id);
       if (ex)
         return prev.map((i) =>
-          i.product.id === product.id ? { ...i, qty: i.qty + qty, branch } : i,
+          i.product.id === product.id ? { ...i, qty: Math.min(max, i.qty + qty), branch } : i,
         );
-      return [...prev, { product, qty, store, branch }];
+      return [...prev, { product, qty: Math.min(max, qty), store, branch }];
     });
   };
 
   const inc = (id: string) =>
     setItems((prev) =>
-      prev.map((i) => (i.product.id === id ? { ...i, qty: i.qty + 1 } : i)),
+      prev.map((i) =>
+        i.product.id === id ? { ...i, qty: Math.min(maxQtyFor(i.product), i.qty + 1) } : i,
+      ),
     );
 
   const dec = (id: string) =>
