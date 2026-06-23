@@ -379,14 +379,24 @@ const groceryCatRank = (id: string): number => {
   return i === -1 ? 500 : i;
 };
 
-// סדר קטגוריות מטבח: מנות פתיחה ראשונות, שתייה אחרונה, השאר באמצע (סדר ODOO נשמר).
-const STARTER_RE = /starter|מנות פתיחה|פתיחה|ראשונות|appetizer/i;
-const DRINK_RE = /drink|beverage|soft.?drink|smoothie|coffee|משקא|שתי|שייק|קפה|מיץ|juice/i;
+// סדר תצוגה מועדף לתפריט מסעדה (קפה/דלי):
+// קודם פתיחה → חומוס → עיקריות, ואז שאר הקטגוריות לפי סדר ODOO,
+// ובסוף קינוחים → משקאות → לחמים. השאר ("אמצע") שומר על סדר ODOO המקורי.
+const MENU_START_ORDER: RegExp[] = [
+  /starter|appetizer|מנות פתיחה|פתיחה|ראשונות|מתאבנ/i, // 1 — מנות פתיחה/ראשונות
+  /hummus|חומוס/i,                                        // 2 — חומוס
+  /\bmains?\b|main dish|עיקרי/i,                          // 3 — עיקריות
+];
+const MENU_END_ORDER: RegExp[] = [
+  /dessert|pastr|bakery|קינוח|מאפ/i,                                      // קינוחים/מאפים
+  /drink|beverage|soft.?drink|smoothie|coffee|juice|משקא|שתי|שייק|קפה|מיץ/i, // משקאות
+  /\bbreads?\b|challah|לחם|לחמים|חלה/i,                                   // לחמים
+];
 export function orderKitchenCategories(cats: Category[]): Category[] {
   const rank = (c: Category) => {
     const n = `${c.nameEn} ${c.nameHe}`;
-    if (STARTER_RE.test(n)) return -1;
-    if (DRINK_RE.test(n)) return 1;
+    for (let i = 0; i < MENU_START_ORDER.length; i++) if (MENU_START_ORDER[i].test(n)) return -100 + i;
+    for (let i = 0; i < MENU_END_ORDER.length; i++) if (MENU_END_ORDER[i].test(n)) return 100 + i;
     return 0;
   };
   return cats.map((c, i) => ({ c, i })).sort((a, b) => rank(a.c) - rank(b.c) || a.i - b.i).map((x) => x.c);
@@ -593,9 +603,9 @@ export async function getBranchData(companyId: number): Promise<BranchBundle[]> 
         emoji: "",
         order: idx,
       };
-      // posMode: סדר לפי היוריסטיקה (פתיחה ראשון, שתייה אחרון).
-      // !posMode: כבר מסודר לפי sequence של הקטגוריה הציבורית ב-ODOO.
-      return { store, categories: posMode ? orderKitchenCategories(categories) : categories, products };
+      // סדר תצוגה מועדף בשני המצבים: פתיחה→חומוס→עיקריות→…→קינוחים→משקאות→לחמים
+      // (קטגוריות "אמצע" שומרות על סדר ODOO/sequence המקורי).
+      return { store, categories: orderKitchenCategories(categories), products };
     }),
   );
 
