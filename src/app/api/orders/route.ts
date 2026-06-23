@@ -4,6 +4,7 @@ import { findOrCreatePartner, createOrder, type OrderItem } from "@/lib/odoo/ord
 import { getBranches, BRANCH_TAG } from "@/lib/odoo/branches";
 import { resolveOrderCompany, OrderCompanyError } from "@/lib/odoo/resolve-order-company";
 import { priceOrderItems } from "@/lib/odoo/pricelist";
+import { buildDiscountMap, discountForItem, discountedUnit } from "@/lib/odoo/banner-discount";
 import { serverDeliveryFee } from "@/lib/delivery-server";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "");
@@ -92,18 +93,11 @@ export async function POST(req: Request) {
     }
     // הנחות באנר פעילות לסניף — מקור-אמת בצד-שרת (לא סומכים על אחוז ההנחה מהלקוח)
     const activeBanners = await getActiveBanners(companyId).catch(() => []);
-    const discountMap = new Map<string, number>();
-    for (const b of activeBanners) {
-      if (b.product_id && b.discount_percent && b.discount_percent > 0) {
-        discountMap.set(String(b.product_id), Math.min(90, Number(b.discount_percent)));
-      }
-    }
-    const discountAt = (idx: number) =>
-      discountMap.get(String(body.items[idx].id).split("|")[0]) ?? 0;
+    const discountMap = buildDiscountMap(activeBanners);
+    const discountAt = (idx: number) => discountForItem(String(body.items[idx].id), discountMap);
     // מחיר בסיס מהשרת (ל-ODOO price_unit) ומחיר אפקטיבי אחרי הנחה (לסכומים ולקבלה)
     const baseUnitAt = (idx: number) => priced[idx]?.unitPrice ?? body.items[idx].price;
-    const unitPriceAt = (idx: number) =>
-      Math.round(baseUnitAt(idx) * (1 - discountAt(idx) / 100) * 100) / 100;
+    const unitPriceAt = (idx: number) => discountedUnit(baseUnitAt(idx), discountAt(idx));
     const productsTotal = body.items.reduce(
       (s, _i, idx) => s + unitPriceAt(idx) * (priced[idx]?.qty ?? body.items[idx].qty),
       0,

@@ -3,6 +3,8 @@ import Stripe from "stripe";
 import { getBranches } from "@/lib/odoo/branches";
 import { resolveOrderCompany, OrderCompanyError } from "@/lib/odoo/resolve-order-company";
 import { priceOrderItems, type OrderItemIn } from "@/lib/odoo/pricelist";
+import { getActiveBanners } from "@/lib/supabase/data";
+import { buildDiscountMap, discountedTotal } from "@/lib/odoo/banner-discount";
 import { serverDeliveryFee } from "@/lib/delivery-server";
 import { PHUKET_COMPANY_ID, PHUKET_PRICELIST_ID } from "@/lib/odoo/phuket";
 
@@ -50,17 +52,25 @@ export async function POST(req: Request) {
         const branch = branches.find((b) => b.companyId === companyId);
         pricelistId = branch?.configs.find((c) => c.pricelistId)?.pricelistId ?? PHUKET_PRICELIST_ID;
       }
-      const { total } = await priceOrderItems(pricelistId, body.items);
+      const { priced } = await priceOrderItems(pricelistId, body.items);
+      // הנחת באנר — מקור-אמת בצד-שרת, זהה ל-/api/orders, כדי שהחיוב יהיה במחיר המוזל
+      // (אחרת הלקוח מחויב מלא בעוד ODOO רושם מוזל).
+      const banners = await getActiveBanners(companyId).catch(() => []);
+      const productsTotal = discountedTotal(
+        priced,
+        body.items.map((i) => String(i.id)),
+        buildDiscountMap(banners),
+      );
       const { fee, blocked } = await serverDeliveryFee(
         companyId,
         body.method,
         { city: body.city, address: body.address },
-        total,
+        productsTotal,
       );
       if (blocked) {
         return NextResponse.json({ ok: false, error: "Delivery not available" }, { status: 400 });
       }
-      baht = total + fee;
+      baht = productsTotal + fee;
     } else {
       // נתיב ישן (ללא פריטים) — לא מאובטח; נשמר רק לתאימות.
       baht = Number(body.amount) || 0;
