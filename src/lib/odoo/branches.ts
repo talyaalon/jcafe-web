@@ -536,7 +536,8 @@ export interface BranchProduct {
   reference?: string;
 }
 export async function getBranchProducts(companyId: number): Promise<BranchProduct[]> {
-  const bundles = await getBranchData(companyId);
+  // B-3 (מנהל): אותו קטלוג שמור כמו החנות — חולק cache, חוסך את שליפת 1500 המוצרים החיה.
+  const bundles = await getBranchDataCached(companyId);
   const seen = new Set<string>();
   const out: BranchProduct[] = [];
   for (const b of bundles) {

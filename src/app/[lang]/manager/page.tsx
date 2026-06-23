@@ -15,7 +15,12 @@ import {
 } from "@/lib/supabase/data";
 import { getPosOrders, getNotificationRecipients } from "@/lib/supabase/pos";
 import { getWebsiteCustomers } from "@/lib/odoo/orders";
-import { getBranches, getBranchProducts, getBranchStores, COMPANY_SLUG } from "@/lib/odoo/branches";
+import {
+  getBranchesCached,
+  getBranchProducts,
+  getBranchStores,
+  COMPANY_SLUG,
+} from "@/lib/odoo/branches";
 import { PHUKET_COMPANY_ID } from "@/lib/odoo/phuket";
 import { CopyLink } from "@/components/manager/CopyLink";
 import { ManagerLogin } from "@/components/manager/ManagerLogin";
@@ -43,7 +48,7 @@ export default async function ManagerPage({
     );
   }
 
-  const branches = await getBranches();
+  const branches = await getBranchesCached();
   const { company } = await searchParams;
   const requested = Number(company);
   const branch =
