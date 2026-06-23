@@ -5,6 +5,7 @@ import { resolveOrderCompany, OrderCompanyError } from "@/lib/odoo/resolve-order
 import { priceOrderItems, type OrderItemIn } from "@/lib/odoo/pricelist";
 import { getActiveBanners } from "@/lib/supabase/data";
 import { buildDiscountMap, discountedTotal } from "@/lib/odoo/banner-discount";
+import { checkStock } from "@/lib/odoo/stock-check-server";
 import { serverDeliveryFee } from "@/lib/delivery-server";
 import { PHUKET_COMPANY_ID, PHUKET_PRICELIST_ID } from "@/lib/odoo/phuket";
 
@@ -51,6 +52,14 @@ export async function POST(req: Request) {
       if (companyId !== PHUKET_COMPANY_ID) {
         const branch = branches.find((b) => b.companyId === companyId);
         pricelistId = branch?.configs.find((c) => c.pricelistId)?.pricelistId ?? PHUKET_PRICELIST_ID;
+      }
+      // שלב A — שער מלאי לפני חיוב: מוצר שאזל מול ODOO חוסם לפני יצירת ה-PI (אין חיוב).
+      const stockShort = await checkStock(companyId, body.items);
+      if (stockShort.length) {
+        return NextResponse.json(
+          { ok: false, error: "OUT_OF_STOCK", shortages: stockShort },
+          { status: 409 },
+        );
       }
       const { priced } = await priceOrderItems(pricelistId, body.items);
       // הנחת באנר — מקור-אמת בצד-שרת, זהה ל-/api/orders, כדי שהחיוב יהיה במחיר המוזל

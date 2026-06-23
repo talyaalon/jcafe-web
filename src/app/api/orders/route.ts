@@ -5,6 +5,7 @@ import { getBranches, BRANCH_TAG } from "@/lib/odoo/branches";
 import { resolveOrderCompany, OrderCompanyError } from "@/lib/odoo/resolve-order-company";
 import { priceOrderItems } from "@/lib/odoo/pricelist";
 import { buildDiscountMap, discountForItem, discountedUnit } from "@/lib/odoo/banner-discount";
+import { checkStock } from "@/lib/odoo/stock-check-server";
 import { serverDeliveryFee } from "@/lib/delivery-server";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "");
@@ -81,6 +82,30 @@ export async function POST(req: Request) {
     if (companyId !== PHUKET_COMPANY_ID && branch) {
       if (!BRANCH_TAG[companyId]) branchName = branch.name;
       pricelistId = branch.configs.find((c) => c.pricelistId)?.pricelistId ?? PHUKET_PRICELIST_ID;
+    }
+
+    // שלב A — רשת ביטחון: בדיקת מלאי לפני יצירת ההזמנה. אם אזל → חוסמים.
+    // COD: חסימה נקייה (אין חיוב). כרטיס (כבר חויב בצד-לקוח): refund אוטומטי + לוג מפורש.
+    const stockShort = await checkStock(companyId, body.items);
+    if (stockShort.length) {
+      let refunded = false;
+      if (body.payment === "card" && body.paymentIntentId) {
+        try {
+          await stripe.refunds.create({ payment_intent: body.paymentIntentId });
+          refunded = true;
+          console.warn(
+            `[orders] STOCK-RACE refund pi=${body.paymentIntentId} items=${stockShort
+              .map((s) => s.templateId)
+              .join(",")}`,
+          );
+        } catch (e) {
+          console.error("[orders] STOCK-RACE refund FAILED", body.paymentIntentId, e);
+        }
+      }
+      return NextResponse.json(
+        { ok: false, error: "OUT_OF_STOCK", shortages: stockShort, refunded },
+        { status: 409 },
+      );
     }
 
     // מחיר מהימן מצד-שרת (מ-ODOO + Pricelist הסניף) — מונע תרמית מחירים מהלקוח.

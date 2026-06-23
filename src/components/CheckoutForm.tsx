@@ -14,6 +14,7 @@ import { IconDelivery, IconPickup, IconAccount, IconCart } from "./Icons";
 import { FavoritesMenu } from "./FavoritesMenu";
 import { LangMenu } from "./LangMenu";
 import { useStoreStatus, useStoreHours } from "@/lib/store-status";
+import type { Shortage } from "@/lib/odoo/stock-check";
 import { isOpenAt, minDateTime } from "@/lib/schedule";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -65,6 +66,10 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
   const [orderNo, setOrderNo] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  // שלב A — פריטים שאזלו (מ-409 OUT_OF_STOCK): מציג אזהרה ומאפשר הסר-והמשך / בטל.
+  const [stockIssue, setStockIssue] = useState<{ shortages: Shortage[]; refunded?: boolean } | null>(
+    null,
+  );
   const [scheduleMode, setScheduleMode] = useState(false);
   const [scheduledAt, setScheduledAt] = useState("");
   const [scheduleError, setScheduleError] = useState("");
@@ -231,6 +236,11 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
           }),
         });
         const piData = await piRes.json();
+        // שלב A — מוצר אזל (לפני חיוב): הצג אזהרה, אל תחייב, תן ללקוח להחליט.
+        if (piRes.status === 409 && piData.error === "OUT_OF_STOCK") {
+          setStockIssue({ shortages: piData.shortages ?? [], refunded: piData.refunded });
+          return;
+        }
         if (!piRes.ok || !piData.ok) throw new Error(piData.error || "Payment init failed");
         const card = elements.getElement(CardElement);
         if (!card) throw new Error("Please enter card details");
@@ -290,6 +300,11 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
         body: JSON.stringify(payload),
       });
       const data = await res.json();
+      // שלב A — מוצר אזל ב-race (אחרי חיוב): refunded=true → התשלום הוחזר; הצג אזהרה.
+      if (res.status === 409 && data.error === "OUT_OF_STOCK") {
+        setStockIssue({ shortages: data.shortages ?? [], refunded: data.refunded });
+        return;
+      }
       if (!res.ok || !data.ok) throw new Error(data.error || "Order failed");
       setOrderNo(data.orderNo);
       // מייל אישור הזמנה (אם מוגדר Resend) — fire-and-forget
@@ -340,6 +355,15 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
     } finally {
       setSubmitting(false);
     }
+  }
+
+  // שלב A — הסרת הפריטים שאזלו מהעגלה, כדי שהלקוח ימשיך עם השאר.
+  function removeShortages(shortages: Shortage[]) {
+    const ids = new Set(shortages.map((s) => String(s.templateId)));
+    items
+      .filter((i) => ids.has(String(i.product.id).split("|")[0]))
+      .forEach((i) => remove(i.product.id));
+    setStockIssue(null);
   }
 
   // ===== עגלה ריקה =====
@@ -801,6 +825,50 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {stockIssue && (
+        <div className="fixed inset-0 z-[100] bg-black/40 grid place-items-center p-4">
+          <div className="bg-white rounded-2xl p-5 max-w-md w-full shadow-2xl">
+            <h3 className="font-extrabold text-lg text-ink mb-2">
+              {he ? "מוצרים אזלו מהמלאי" : "Out of stock"}
+            </h3>
+            <p className="text-sm text-ink/70 mb-3">
+              {he
+                ? "הפריטים הבאים אזלו ולא ניתן להזמינם כעת:"
+                : "These items just sold out and can't be ordered now:"}
+            </p>
+            <ul className="text-sm space-y-1 mb-3">
+              {stockIssue.shortages.map((s) => (
+                <li key={s.templateId} className="flex justify-between gap-2 border-b border-line py-1">
+                  <span className="truncate">{s.name}</span>
+                  <span className="text-ink/50 flex-none">
+                    {s.available > 0 ? (he ? `נשארו ${s.available}` : `${s.available} left`) : he ? "אזל" : "out"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            {stockIssue.refunded && (
+              <p className="text-sm text-brand-green font-semibold mb-3">
+                {he ? "התשלום שלך הוחזר במלואו." : "Your payment was fully refunded."}
+              </p>
+            )}
+            <div className="flex gap-2">
+              <button
+                onClick={() => removeShortages(stockIssue.shortages)}
+                className="flex-1 bg-wine text-white font-bold rounded-lg py-2.5 hover:bg-wine-hover"
+              >
+                {he ? "הסר מהעגלה והמשך" : "Remove & continue"}
+              </button>
+              <button
+                onClick={() => setStockIssue(null)}
+                className="px-4 border border-line rounded-lg text-ink/70"
+              >
+                {he ? "ביטול" : "Cancel"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
