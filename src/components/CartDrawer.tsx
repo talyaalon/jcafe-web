@@ -106,7 +106,7 @@ export function CartDrawer({
                           </button>
                         </div>
                         <div className="flex items-center justify-between mt-1.5">
-                          <div className="flex items-center gap-2.5 border border-wine rounded-lg px-2 py-0.5 text-wine">
+                          <div dir="ltr" className="flex items-center gap-2.5 border border-wine rounded-lg px-2 py-0.5 text-wine">
                             <button onClick={() => dec(product.id)} className="font-bold w-4">−</button>
                             <span className="text-xs font-bold w-4 text-center">{qty}</span>
                             <button onClick={() => inc(product.id)} className="font-bold w-4">+</button>

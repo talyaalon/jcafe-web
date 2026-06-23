@@ -199,7 +199,7 @@ export function ProductModal({
             <span className="text-red-600 font-semibold text-sm">{dict.product.outOfStock}</span>
           ) : (
             <>
-              <div className="flex items-center gap-3 border-2 border-wine rounded-lg px-3 py-2 text-wine flex-none">
+              <div dir="ltr" className="flex items-center gap-3 border-2 border-wine rounded-lg px-3 py-2 text-wine flex-none">
                 <button onClick={() => setQty((q) => Math.max(1, q - 1))} className="text-lg leading-none font-bold w-5">
                   −
                 </button>

@@ -85,7 +85,7 @@ export function ProductRowCard({
               {dict.product.add}
             </button>
           ) : qty > 0 ? (
-            <div className="flex items-center gap-3 border border-wine rounded-lg px-2.5 py-1 text-wine">
+            <div dir="ltr" className="flex items-center gap-3 border border-wine rounded-lg px-2.5 py-1 text-wine">
               <button onClick={() => dec(product.id)} className="text-lg leading-none font-bold w-5">
                 −
               </button>
