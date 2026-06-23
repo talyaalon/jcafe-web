@@ -33,10 +33,10 @@ export function FavoritesMenu({ locale }: { locale: Locale }) {
         {/* לב SVG עם קו עבה — בולט יותר מתו היוניקוד הדק */}
         <svg
           viewBox="0 0 24 24"
-          className={`w-6 h-6 ${count > 0 ? "text-wine" : "text-ink/70"}`}
+          className={`w-5 h-5 ${count > 0 ? "text-wine" : "text-ink/70"}`}
           fill={count > 0 ? "currentColor" : "none"}
           stroke="currentColor"
-          strokeWidth="2.75"
+          strokeWidth="2.5"
           strokeLinecap="round"
           strokeLinejoin="round"
           aria-hidden
