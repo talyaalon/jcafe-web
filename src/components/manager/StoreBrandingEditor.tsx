@@ -14,6 +14,7 @@ export interface StoreBrandingValue {
   name_he: string | null;
   name_en: string | null;
   logo_url: string | null;
+  tab_logo_url: string | null;
 }
 
 export function StoreBrandingEditor({
@@ -27,29 +28,33 @@ export function StoreBrandingEditor({
   store: StoreBrandingInfo;
   value: StoreBrandingValue | null;
 }) {
+  // logo = תמונת הקובייה במסך הבית · tabLogo = אייקון הלשונית בראש האתר
   const [logo, setLogo] = useState(value?.logo_url ?? "");
-  const [uploading, setUploading] = useState(false);
+  const [tabLogo, setTabLogo] = useState(value?.tab_logo_url ?? "");
+  const [uploading, setUploading] = useState<"logo" | "tab" | null>(null);
   const [err, setErr] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const homeRef = useRef<HTMLInputElement>(null);
+  const tabRef = useRef<HTMLInputElement>(null);
 
-  async function upload(file: File) {
+  async function upload(file: File, which: "logo" | "tab") {
     setErr("");
-    setUploading(true);
+    setUploading(which);
     try {
       const fd = new FormData();
       fd.append("file", file);
       const res = await fetch("/api/admin/upload", { method: "POST", body: fd });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || "upload failed");
-      setLogo(data.url);
+      (which === "logo" ? setLogo : setTabLogo)(data.url);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
-      setUploading(false);
+      setUploading(null);
     }
   }
 
   const defaultName = he ? store.nameHe : store.nameEn;
+  const fallbackEmoji = store.type === "grocery" ? "🛒" : "🍳";
 
   return (
     <form
@@ -59,51 +64,40 @@ export function StoreBrandingEditor({
       <input type="hidden" name="branch" value={branch} />
       <input type="hidden" name="store_id" value={store.id} />
       <input type="hidden" name="logo_url" value={logo} />
+      <input type="hidden" name="tab_logo_url" value={tabLogo} />
 
-      <div className="flex items-center gap-3">
-        <div
-          onClick={() => inputRef.current?.click()}
-          className="h-12 w-12 rounded-lg bg-soft border border-line grid place-items-center cursor-pointer overflow-hidden flex-none hover:border-wine"
-        >
-          {logo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={logo} alt="" className="w-full h-full object-cover" />
-          ) : (
-            <span className="text-lg">{store.type === "grocery" ? "🛒" : "🍳"}</span>
-          )}
-        </div>
-        <div className="flex-1">
-          <div className="font-bold text-ink text-sm">
-            {(he ? value?.name_he : value?.name_en) || defaultName}
-          </div>
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            className="text-xs font-bold text-wine"
-          >
-            {uploading ? (he ? "מעלה…" : "Uploading…") : he ? "העלאת לוגו" : "Upload logo"}
-          </button>
-          {logo && (
-            <button
-              type="button"
-              onClick={() => setLogo("")}
-              className="text-xs font-bold text-red-500 ms-2"
-            >
-              {he ? "הסר" : "Remove"}
-            </button>
-          )}
-        </div>
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/*"
-          hidden
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) upload(f);
-          }}
-        />
+      <div className="font-bold text-ink text-sm">
+        {(he ? value?.name_he : value?.name_en) || defaultName}
       </div>
+
+      {/* תמונת הקובייה במסך הבית */}
+      <ImagePicker
+        he={he}
+        label={he ? "תמונה במסך הבית (קובייה)" : "Home page image (tile)"}
+        url={logo}
+        uploading={uploading === "logo"}
+        fallbackEmoji={fallbackEmoji}
+        previewClass="h-16 w-24"
+        inputRef={homeRef}
+        onUpload={(f) => upload(f, "logo")}
+        onRemove={() => setLogo("")}
+      />
+
+      {/* אייקון הלשונית בראש האתר */}
+      <ImagePicker
+        he={he}
+        label={he ? "אייקון בלשונית הניווט (ראש האתר)" : "Tab icon (top navigation)"}
+        hint={he ? "אם ריק — תוצג תמונת הבית" : "If empty, the home image is used"}
+        url={tabLogo}
+        uploading={uploading === "tab"}
+        fallbackEmoji={fallbackEmoji}
+        previewClass="h-12 w-12"
+        previewRound
+        inputRef={tabRef}
+        onUpload={(f) => upload(f, "tab")}
+        onRemove={() => setTabLogo("")}
+      />
+
       {err && <p className="text-red-500 text-xs">{err}</p>}
 
       <div className="grid grid-cols-2 gap-2">
@@ -138,5 +132,79 @@ export function StoreBrandingEditor({
         {he ? "שמירה" : "Save"}
       </SubmitButton>
     </form>
+  );
+}
+
+function ImagePicker({
+  he,
+  label,
+  hint,
+  url,
+  uploading,
+  fallbackEmoji,
+  previewClass,
+  previewRound,
+  inputRef,
+  onUpload,
+  onRemove,
+}: {
+  he: boolean;
+  label: string;
+  hint?: string;
+  url: string;
+  uploading: boolean;
+  fallbackEmoji: string;
+  previewClass: string;
+  previewRound?: boolean;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  onUpload: (file: File) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div>
+      <label className="block text-[11px] text-ink/55 mb-1">{label}</label>
+      <div className="flex items-center gap-3">
+        <div
+          onClick={() => inputRef.current?.click()}
+          className={`${previewClass} ${previewRound ? "rounded-full" : "rounded-lg"} bg-soft border border-line grid place-items-center cursor-pointer overflow-hidden flex-none hover:border-wine`}
+        >
+          {url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={url} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-lg">{fallbackEmoji}</span>
+          )}
+        </div>
+        <div className="flex-1">
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            className="text-xs font-bold text-wine"
+          >
+            {uploading ? (he ? "מעלה…" : "Uploading…") : he ? "העלאת תמונה" : "Upload image"}
+          </button>
+          {url && (
+            <button
+              type="button"
+              onClick={onRemove}
+              className="text-xs font-bold text-red-500 ms-2"
+            >
+              {he ? "הסר" : "Remove"}
+            </button>
+          )}
+          {hint && <p className="text-[10px] text-ink/40 mt-0.5">{hint}</p>}
+        </div>
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) onUpload(f);
+          }}
+        />
+      </div>
+    </div>
   );
 }

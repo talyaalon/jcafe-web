@@ -1,7 +1,13 @@
 import { notFound } from "next/navigation";
 import { getDictionary } from "@/i18n/dictionaries";
 import { isLocale, type Locale } from "@/i18n/config";
-import { getBranches, getBranchData, resolveBranch } from "@/lib/odoo/branches";
+import {
+  getBranches,
+  getBranchDataCached,
+  getAvailability,
+  resolveBranch,
+} from "@/lib/odoo/branches";
+import { overlayAvailability } from "@/lib/odoo/availability";
 import { applyStoreBranding } from "@/lib/odoo/branding";
 import {
   getActiveBanners,
@@ -32,7 +38,12 @@ export default async function BranchStore({
   if (!branches.find((b) => b.companyId === companyId)) notFound();
 
   const dict = await getDictionary(locale);
-  const raw = await getBranchData(companyId);
+  // Stage B — קטלוג מ-cache (מהיר) + מלאי חי שמסנן את מה שאזל (overlay).
+  const [rawCached, avail] = await Promise.all([
+    getBranchDataCached(companyId),
+    getAvailability(companyId),
+  ]);
+  const raw = overlayAvailability(rawCached, avail);
   const [data0, banners, storeBranding] = await Promise.all([
     Promise.all(
       raw.map(async (b) => ({ ...b, open: (await getStoreOpenStatus(b.store.id)).open })),

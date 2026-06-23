@@ -578,12 +578,12 @@ export function ManagerDashboard({
 
             {/* מיתוג לכל חנות — לשוניות החנויות */}
             <h3 className="font-bold text-ink mt-7 mb-1">
-              {he ? "לוגו לכל חנות (לשוניות)" : "Per-store logo (tabs)"}
+              {he ? "שם ותמונות לכל חנות" : "Per-store name & images"}
             </h3>
             <p className="text-ink/55 text-sm mb-3">
               {he
-                ? "שם ולוגו לכל חנות בסניף — מוצגים בלשונית החנות בחזית. השאירו ריק לשם המקורי."
-                : "Name and logo per store — shown on the store's tab in the storefront. Leave blank to keep the original name."}
+                ? "לכל חנות אפשר להגדיר תמונה לקובייה במסך הבית, ואייקון נפרד ללשונית הניווט בראש האתר. השאירו ריק לערך המקורי."
+                : "For each store set a home-page tile image and a separate tab icon for the top navigation. Leave blank to keep the original."}
             </p>
             {brandStores.length === 0 ? (
               <p className="text-ink/40 text-sm">{he ? "אין חנויות." : "No stores."}</p>

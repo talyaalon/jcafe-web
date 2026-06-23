@@ -289,9 +289,9 @@ export function Storefront({
                 : "text-label/60 border-transparent hover:text-label"
             }`}
           >
-            {s.logo && (
+            {(s.tabLogo ?? s.logo) && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={s.logo} alt="" className="h-6 w-6 rounded object-cover" />
+              <img src={s.tabLogo ?? s.logo ?? undefined} alt="" className="h-6 w-6 rounded object-cover" />
             )}
             {sName(s)}
             {openMap.get(s.id) === false && (

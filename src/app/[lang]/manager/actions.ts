@@ -292,6 +292,7 @@ export async function saveStoreBrandingAction(formData: FormData) {
         name_he: txt("name_he"),
         name_en: txt("name_en"),
         logo_url: txt("logo_url"),
+        tab_logo_url: txt("tab_logo_url"),
         updated_at: new Date().toISOString(),
       },
       { onConflict: "branch,store_id" },

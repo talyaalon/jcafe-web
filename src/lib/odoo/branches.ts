@@ -1,4 +1,5 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
 import type { Store, Category, Product } from "./types";
 import { searchRead } from "./client";
 import { buildPricer } from "./pricelist";
@@ -345,6 +346,7 @@ async function loadProducts(
       descEn: stripHtml(r.description_sale) || undefined,
       price: pricer(r.id, r.categ_id ? r.categ_id[0] : null, r.list_price ?? 0),
       qtyAvailable: isKitchen ? null : typeof r.qty_available === "number" ? r.qty_available : null,
+      allowOutOfStock: !!r.allow_out_of_stock_order,
       isKitchen,
       isFeatured: false,
       hasOptions: (r.attribute_line_ids?.length ?? 0) > 0,
@@ -489,6 +491,7 @@ export async function getGroceryBundle(
         price: pricer(r.id, r.categ_id ? r.categ_id[0] : null, r.list_price ?? 0),
         // מוצר שמוצג ניתן להזמנה (אם אזל אבל "המשך מכירה" — לא חוסמים)
         qtyAvailable: null,
+        allowOutOfStock: !!r.allow_out_of_stock_order,
         isKitchen: false,
         isFeatured: false,
         hasOptions: (r.attribute_line_ids?.length ?? 0) > 0,
@@ -614,4 +617,31 @@ export async function getBranchData(companyId: number): Promise<BranchBundle[]> 
   const grocery = await getGroceryBundle(companyId, pricelistId, !posMode);
 
   return grocery ? [...kitchenBundles, grocery] : kitchenBundles;
+}
+
+// Stage B — מלאי חי (qty_available פר-סניף), קליל: id+qty בלבד. נמשך בכל טעינה,
+// לא נשמר ב-cache, ומסנן את הקטלוג השמור דרך overlayAvailability (availability.ts).
+export async function getAvailability(companyId: number): Promise<Map<number, number>> {
+  const rows = await searchRead<{ id: number; qty_available: number }>(
+    "product.template",
+    [
+      ["company_id", "in", [companyId, false]],
+      ["sale_ok", "=", true],
+    ],
+    ["id", "qty_available"],
+    { context: { allowed_company_ids: [companyId] }, limit: 5000 },
+  );
+  const m = new Map<number, number>();
+  for (const r of rows) m.set(r.id, typeof r.qty_available === "number" ? r.qty_available : 0);
+  return m;
+}
+
+// Stage B — גרסת cache של getBranchData: הקטלוג הכבד (שמות/מחירים/קטגוריות/תמונות)
+// נשמר ל-2 דקות (revalidate=120) — זה מקור המהירות. המלאי לא נשמר כאן; הוא חי דרך
+// getAvailability + overlayAvailability. tag לרענון יזום בעת הצורך.
+export function getBranchDataCached(companyId: number): Promise<BranchBundle[]> {
+  return unstable_cache(() => getBranchData(companyId), ["branch-catalog", String(companyId)], {
+    revalidate: 120,
+    tags: [`catalog-${companyId}`],
+  })();
 }

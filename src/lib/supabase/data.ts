@@ -116,14 +116,16 @@ export interface StoreBrandingRow {
   name_he: string | null;
   name_en: string | null;
   logo_url: string | null;
+  /** אייקון לשונית הניווט (נופל ל-logo_url אם ריק) */
+  tab_logo_url: string | null;
 }
 
-// מיתוג פר-חנות לסניף — מפתח store_id → {שם, לוגו}
+// מיתוג פר-חנות לסניף — מפתח store_id → {שם, לוגו בית, אייקון טאב}
 export async function getStoreBranding(branch: number): Promise<Record<string, StoreBrandingRow>> {
   if (!supabaseConfigured) return {};
   const { data } = await supabasePublic
     .from("store_branding")
-    .select("store_id,name_he,name_en,logo_url")
+    .select("store_id,name_he,name_en,logo_url,tab_logo_url")
     .eq("branch", branch);
   const map: Record<string, StoreBrandingRow> = {};
   for (const r of (data as StoreBrandingRow[]) ?? []) map[r.store_id] = r;

@@ -10,8 +10,10 @@ export interface Store {
   type: StoreType; // grocery = ליקוט בסריקה · kitchen = KDS
   emoji: string;
   order: number;
-  /** לוגו מותאם לחנות (מצד מנהל) — מוצג בלשונית החנות */
+  /** תמונת החנות (מצד מנהל) — הקובייה במסך הבית */
   logo?: string | null;
+  /** אייקון החנות בלשונית הניווט בראש האתר (נופל ל-logo אם ריק) */
+  tabLogo?: string | null;
   /** kitchen tag ב-ODOO לניתוב ל-KDS (רק לחנויות מטבח) */
   kitchenTag?: string;
 }
@@ -40,6 +42,8 @@ export interface Product {
   weight?: string;
   /** מלאי אמיתי מ-ODOO; null = מנת מטבח (ללא מלאי מספרי) */
   qtyAvailable: number | null;
+  /** "המשך מכירה גם כשאזל" (ODOO) — לא מוסתר ע"י שכבת המלאי החיה (Stage B) */
+  allowOutOfStock?: boolean;
   isKitchen: boolean;
   isFeatured: boolean;
   /** למוצר יש אפשרויות בחירה (סוג לחם / תוספות) — נפתח חלון בחירה לפני הוספה לסל */
