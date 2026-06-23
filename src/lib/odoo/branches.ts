@@ -621,15 +621,24 @@ export async function getBranchData(companyId: number): Promise<BranchBundle[]> 
 
 // Stage B — מלאי חי (qty_available פר-סניף), קליל: id+qty בלבד. נמשך בכל טעינה,
 // לא נשמר ב-cache, ומסנן את הקטלוג השמור דרך overlayAvailability (availability.ts).
-export async function getAvailability(companyId: number): Promise<Map<number, number>> {
+export async function getAvailability(
+  companyId: number,
+  ids?: number[],
+): Promise<Map<number, number>> {
+  // B-3: ממקדים לפי מזהי המוצרים המוצגים בלבד (לא כל הסניף) — קריאה קלה בהרבה.
+  const uniq = ids ? [...new Set(ids.filter((n) => Number.isInteger(n) && n > 0))] : null;
+  if (uniq && !uniq.length) return new Map();
+  const domain: unknown[] = uniq
+    ? [["id", "in", uniq]]
+    : [
+        ["company_id", "in", [companyId, false]],
+        ["sale_ok", "=", true],
+      ];
   const rows = await searchRead<{ id: number; qty_available: number }>(
     "product.template",
-    [
-      ["company_id", "in", [companyId, false]],
-      ["sale_ok", "=", true],
-    ],
+    domain,
     ["id", "qty_available"],
-    { context: { allowed_company_ids: [companyId] }, limit: 5000 },
+    { context: { allowed_company_ids: [companyId] }, limit: uniq ? uniq.length : 5000 },
   );
   const m = new Map<number, number>();
   for (const r of rows) m.set(r.id, typeof r.qty_available === "number" ? r.qty_available : 0);
@@ -643,5 +652,13 @@ export function getBranchDataCached(companyId: number): Promise<BranchBundle[]> 
   return unstable_cache(() => getBranchData(companyId), ["branch-catalog", String(companyId)], {
     revalidate: 120,
     tags: [`catalog-${companyId}`],
+  })();
+}
+
+// B-3 — רשימת הסניפים (pos.config) כמעט לא משתנה → cache ל-5 דקות, חוסך קריאת ODOO חיה.
+export function getBranchesCached(): Promise<Branch[]> {
+  return unstable_cache(() => getBranches(), ["branches-list"], {
+    revalidate: 300,
+    tags: ["branches"],
   })();
 }

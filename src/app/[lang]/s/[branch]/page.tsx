@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { getDictionary } from "@/i18n/dictionaries";
 import { isLocale, type Locale } from "@/i18n/config";
 import {
-  getBranches,
+  getBranchesCached,
   getBranchDataCached,
   getAvailability,
   resolveBranch,
@@ -34,29 +34,35 @@ export default async function BranchStore({
   const companyId = resolveBranch(branch);
   if (!companyId) notFound();
 
-  const branches = await getBranches();
+  // B-3 — כל הקריאות הבלתי-תלויות במקביל (במקום בטור): קטלוג מ-cache + 7 קריאות Supabase/ODOO.
+  const [branches, dict, rawCached, banners, storeBranding, bannerSettings, blocked, theme, bb] =
+    await Promise.all([
+      getBranchesCached(),
+      getDictionary(locale),
+      getBranchDataCached(companyId),
+      getActiveBanners(companyId),
+      getStoreBranding(companyId),
+      getBannerSettings(companyId),
+      getBlockedProductIds(companyId),
+      getBranchTheme(companyId),
+      getBranchBranding(companyId),
+    ]);
   if (!branches.find((b) => b.companyId === companyId)) notFound();
 
-  const dict = await getDictionary(locale);
-  // Stage B — קטלוג מ-cache (מהיר) + מלאי חי שמסנן את מה שאזל (overlay).
-  const [rawCached, avail] = await Promise.all([
-    getBranchDataCached(companyId),
-    getAvailability(companyId),
-  ]);
-  const raw = overlayAvailability(rawCached, avail);
-  const [data0, banners, storeBranding] = await Promise.all([
+  // תלויים בקטלוג: מלאי חי (ממוקד למוצרים המוצגים) + סטטוס פתיחה לכל חנות — במקביל.
+  const ids = rawCached.flatMap((b) => b.products.map((p) => Number(String(p.id).split("|")[0])));
+  const [avail, openEntries] = await Promise.all([
+    getAvailability(companyId, ids),
     Promise.all(
-      raw.map(async (b) => ({ ...b, open: (await getStoreOpenStatus(b.store.id)).open })),
-    ) as Promise<StoreBundle[]>,
-    getActiveBanners(companyId),
-    getStoreBranding(companyId),
+      rawCached.map(async (b) => [b.store.id, (await getStoreOpenStatus(b.store.id)).open] as const),
+    ),
   ]);
-  const bannerSettings = await getBannerSettings(companyId);
+  const openMap = new Map(openEntries);
+  const data0 = overlayAvailability(rawCached, avail).map((b) => ({
+    ...b,
+    open: openMap.get(b.store.id) ?? true,
+  })) as StoreBundle[];
   const dataBranded = applyStoreBranding(data0, storeBranding, locale);
-  const [blocked, theme] = await Promise.all([
-    getBlockedProductIds(companyId),
-    getBranchTheme(companyId),
-  ]);
   const data = blocked.size
     ? dataBranded.map((d) => ({
         ...d,
@@ -64,7 +70,7 @@ export default async function BranchStore({
       }))
     : dataBranded;
 
-  const bb = await getBranchBranding(companyId);
+
   const branding = bb
     ? {
         name: locale === "he" ? bb.name_he : bb.name_en,
