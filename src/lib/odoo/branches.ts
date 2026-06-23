@@ -388,9 +388,10 @@ const MENU_START_ORDER: RegExp[] = [
   /\bmains?\b|main dish|עיקרי/i,                          // 3 — עיקריות
 ];
 const MENU_END_ORDER: RegExp[] = [
-  /dessert|pastr|bakery|קינוח|מאפ/i,                                      // קינוחים/מאפים
-  /drink|beverage|soft.?drink|smoothie|coffee|juice|משקא|שתי|שייק|קפה|מיץ/i, // משקאות
-  /\bbreads?\b|challah|לחם|לחמים|חלה/i,                                   // לחמים
+  /dessert|pastr|bakery|קינוח|מאפ/i,                              // קינוחים/מאפים
+  /smoothie|שייק/i,                                               // שייקים (לפני משקאות)
+  /drink|beverage|soft.?drink|coffee|juice|משקא|שתי|קפה|מיץ/i,    // משקאות
+  /\bbreads?\b|לחם|לחמים/i,                                       // לחמים (מועדון חלה נשאר באמצע)
 ];
 export function orderKitchenCategories(cats: Category[]): Category[] {
   const rank = (c: Category) => {
