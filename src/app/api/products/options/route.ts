@@ -21,11 +21,26 @@ function fetchGroups(tmplId: number, lang: "he" | "en"): Promise<Group[]> {
   return unstable_cache(
     async () => {
       const opts = lang === "he" ? { context: { lang: HE } } : {};
-      const lines = await searchRead<{ id: number; attribute_id: [number, string] }>(
-        "product.template.attribute.line",
-        [["product_tmpl_id", "=", tmplId]],
-        ["id", "attribute_id"],
-      );
+      // lines (לפי tmplId) ו-tavs (לפי tmplId) אינם תלויים זה בזה → במקביל. attrs תלוי
+      // ב-attrIds מ-lines → אחריהם. כך 2 סבבים במקום 3 (מהיר יותר בפתיחה ראשונה).
+      const [lines, tavs] = await Promise.all([
+        searchRead<{ id: number; attribute_id: [number, string] }>(
+          "product.template.attribute.line",
+          [["product_tmpl_id", "=", tmplId]],
+          ["id", "attribute_id"],
+        ),
+        searchRead<{
+          id: number;
+          name: string;
+          price_extra: number;
+          attribute_line_id: [number, string];
+        }>(
+          "product.template.attribute.value",
+          [["product_tmpl_id", "=", tmplId]],
+          ["id", "name", "price_extra", "attribute_line_id"],
+          opts,
+        ),
+      ]);
       if (!lines.length) return [];
 
       const attrIds = [...new Set(lines.map((l) => l.attribute_id[0]))];
@@ -36,18 +51,6 @@ function fetchGroups(tmplId: number, lang: "he" | "en"): Promise<Group[]> {
         opts,
       );
       const attrMap = new Map(attrs.map((a) => [a.id, a]));
-
-      const tavs = await searchRead<{
-        id: number;
-        name: string;
-        price_extra: number;
-        attribute_line_id: [number, string];
-      }>(
-        "product.template.attribute.value",
-        [["product_tmpl_id", "=", tmplId]],
-        ["id", "name", "price_extra", "attribute_line_id"],
-        opts,
-      );
 
       return lines
         .map((line) => {
@@ -63,7 +66,9 @@ function fetchGroups(tmplId: number, lang: "he" | "en"): Promise<Group[]> {
         .filter((g) => g.options.length > 0);
     },
     ["product-options", String(tmplId), lang],
-    { revalidate: 3600, tags: [`options-${tmplId}`] },
+    // cache קצר (דקה) כדי שתרגומים שתזיני ב-ODOO יופיעו מהר. ניתן להעלות חזרה ל-1h
+    // אחרי שהתרגומים יציבים — למהירות מקסימלית.
+    { revalidate: 60, tags: [`options-${tmplId}`] },
   )();
 }
 
