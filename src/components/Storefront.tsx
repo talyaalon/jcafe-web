@@ -291,7 +291,7 @@ export function Storefront({
           >
             {(s.tabLogo ?? s.logo) && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={s.tabLogo ?? s.logo ?? undefined} alt="" className="h-8 w-8 rounded object-cover" />
+              <img src={s.tabLogo ?? s.logo ?? undefined} alt="" className="h-8 w-8 rounded border border-wine object-cover" />
             )}
             {sName(s)}
             {openMap.get(s.id) === false && (
