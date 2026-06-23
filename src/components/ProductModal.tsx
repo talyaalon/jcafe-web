@@ -47,10 +47,11 @@ export function ProductModal({
     };
   }, [onClose]);
 
-  // שליפת תוספות אמיתיות מ-ODOO (רק אם המוצר מוגדר כך).
+  // שליפת תוספות אמיתיות מ-ODOO (רק אם המוצר מוגדר כך). שמורות ב-cache → מיידי;
+  // lang מבקש את השמות בשפת הממשק (עברית/אנגלית).
   useEffect(() => {
     let active = true;
-    fetch(`/api/products/options?tmplId=${baseId}`)
+    fetch(`/api/products/options?tmplId=${baseId}&lang=${locale}`)
       .then((r) => r.json())
       .then((d: { groups?: ModGroup[] }) => {
         if (!active) return;
@@ -64,7 +65,7 @@ export function ProductModal({
     return () => {
       active = false;
     };
-  }, [baseId]);
+  }, [baseId, locale]);
 
   function toggle(g: ModGroup, optId: string) {
     setSel((prev) => {
