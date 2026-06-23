@@ -489,7 +489,7 @@ function WelcomeTiles({
 
   return (
     <main className="flex-1 flex flex-col bg-soft">
-      <div className="flex flex-col flex-1 min-h-[calc(100svh-76px)] w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
+      <div className="flex flex-col flex-1 min-h-[calc(100svh-150px)] max-h-[calc(100svh-120px)] sm:min-h-[calc(100svh-76px)] sm:max-h-none w-full max-w-7xl mx-auto px-4 sm:px-6 pt-2 pb-4 sm:py-12">
         <div className="shrink-0 text-center">
           <h1 className="font-tabs font-extrabold text-2xl sm:text-4xl text-ink">
             {he ? "ברוכים הבאים" : "Welcome"}
@@ -500,14 +500,14 @@ function WelcomeTiles({
           <span className="mt-3 inline-block h-1 w-14 rounded-full bg-wine/80" />
         </div>
 
-        <div className="flex-1 min-h-0 mt-5 sm:mt-10 flex flex-col gap-3 sm:grid sm:grid-cols-3 sm:gap-6">
+        <div className="flex-1 min-h-0 mt-2 sm:mt-10 flex flex-col gap-3 sm:grid sm:grid-cols-3 sm:gap-8">
           {ordered.map((s) => {
             const name = he ? s.nameHe : s.nameEn;
             return (
               <button
                 key={s.id}
                 onClick={() => onPick(s.id)}
-                className="group flex-1 min-h-0 sm:flex-none sm:h-80 flex flex-col rounded-2xl overflow-hidden border border-line bg-white shadow-sm hover:shadow-xl hover:border-wine/40 transition text-start"
+                className="group flex-1 min-h-0 sm:flex-none sm:h-96 flex flex-col rounded-2xl overflow-hidden border border-line bg-white shadow-sm hover:shadow-xl hover:border-wine/40 transition text-start"
               >
                 {/* תמונה נקייה — ללא שכבת כהות מעל */}
                 <div className="relative flex-1 min-h-0 bg-white">
