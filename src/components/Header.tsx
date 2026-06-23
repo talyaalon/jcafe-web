@@ -58,7 +58,7 @@ export function Header({
           />
         )}
         <span>
-          <span className="block text-2xl font-extrabold text-ink leading-none">{brandName}</span>
+          <span className="block font-brand text-2xl font-bold text-ink leading-none">{brandName}</span>
           <span className="block text-[11px] tracking-[2px] text-wine font-bold mt-0.5">
             {brandTagline}
           </span>

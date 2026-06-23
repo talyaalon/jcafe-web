@@ -19,6 +19,7 @@
 
   --font-sans: var(--font-heebo), "Segoe UI", Arial, sans-serif;
   --font-tabs: var(--font-nunito), var(--font-heebo), "Segoe UI", sans-serif;
+  --font-brand: var(--font-varela), var(--font-heebo), "Segoe UI", sans-serif;
 }
 
 html,

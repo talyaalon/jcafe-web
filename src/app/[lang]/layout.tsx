@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Heebo, Nunito_Sans } from "next/font/google";
+import { Heebo, Nunito_Sans, Varela_Round } from "next/font/google";
 import "../globals.css";
 import { i18n, isLocale, dir, type Locale } from "@/i18n/config";
 import { notFound } from "next/navigation";
@@ -21,6 +21,13 @@ const nunito = Nunito_Sans({
   subsets: ["latin"],
   weight: ["600", "700", "800"],
   variable: "--font-nunito",
+});
+
+// פונט מותג עגול ומקצועי לשם הסניף (תומך עברית+לטינית); משקל יחיד 400
+const varela = Varela_Round({
+  subsets: ["hebrew", "latin"],
+  weight: "400",
+  variable: "--font-varela",
 });
 
 export const metadata: Metadata = {
@@ -52,7 +59,7 @@ export default async function RootLayout({
     <html
       lang={locale}
       dir={dir(locale)}
-      className={`${heebo.variable} ${nunito.variable} h-full antialiased`}
+      className={`${heebo.variable} ${nunito.variable} ${varela.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans bg-soft text-ink">
         <AuthProvider>
