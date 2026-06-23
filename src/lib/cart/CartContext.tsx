@@ -4,10 +4,19 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 import type { Product } from "@/lib/odoo/types";
+import {
+  cartStorageKey,
+  schedStorageKey,
+  groupCartByBranch,
+  LEGACY_CART_KEY,
+  LEGACY_SCHED_KEY,
+  LEGACY_BRANCH_KEY,
+} from "./cart-storage";
 
 export interface CartStoreRef {
   id: string;
@@ -45,12 +54,8 @@ interface CartContextValue {
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
-// v2 — פריטים מתויגים כעת בסניף (branch). עגלות ישנות (ללא תיוג) נזרקות.
-const STORAGE_KEY = "jcafe_cart_v2";
-
-const SCHED_KEY = "jcafe_schedules";
-// 2ד: מפתח legacy. כבר לא מקור-אמת לסניף (URL+Cookie הם ה-SSOT) — רק מנקים שארית.
-const BRANCH_KEY = "jcafe_branch";
+// בידוד סל פר-סניף: כל סניף קורא/כותב למפתח jcafe_cart_v2:<branch> שלו בלבד
+// (ראה cart-storage.ts). הסל הפעיל נגזר מ-branchCompany האמין.
 
 export function CartProvider({
   children,
@@ -65,33 +70,67 @@ export function CartProvider({
   const [schedules, setSchedules] = useState<Record<string, string>>({});
   // 2ג-3b: אין יותר ברירת-מחדל שקטה ל-14. בלי סניף מפורש (URL/Cookie) → null.
   const [branchCompany, setBranchCompanyState] = useState<number | null>(initialBranch ?? null);
-  // 2ד: הסניף נקבע מ-URL (Storefront) או Cookie (initialBranch) בלבד — אין יותר
-  // מקור localStorage מתחרה, לכן אין צורך ב-flag "מפורש" שהגן מפני דריסה.
+  // 2ד: הסניף נקבע מ-URL (Storefront) או Cookie (initialBranch) בלבד.
   const setBranchCompany = (n: number) => setBranchCompanyState(n);
   const [hydrated, setHydrated] = useState(false);
+  // הסניף שאליו שייך מערך ה-items הנוכחי — קובע לאיזה מפתח לשמור (מונע דליפה בין סניפים).
+  const loadedBranchRef = useRef<number | null>(initialBranch ?? null);
+  // מיגרציה חד-פעמית של הסל הגלובלי הישן → סלים פר-סניף.
+  const migratedRef = useRef(false);
 
-  // טעינה מ-localStorage אחרי mount (מונע אי-התאמת hydration).
+  // טוען את הסל של הסניף הפעיל בכל החלפת סניף (+ מיגרציה חד-פעמית מהסל הגלובלי הישן).
   useEffect(() => {
+    // מיגרציה חד-פעמית: הסל הגלובלי הישן → סלים פר-סניף (lossless, לפי item.branch).
+    if (!migratedRef.current) {
+      migratedRef.current = true;
+      try {
+        const legacy = localStorage.getItem(LEGACY_CART_KEY);
+        if (legacy) {
+          for (const [b, group] of groupCartByBranch(JSON.parse(legacy) as CartItem[])) {
+            // לא לדרוס סל-סניף קיים — רק לזרוע מהישן.
+            if (!localStorage.getItem(cartStorageKey(b))) {
+              localStorage.setItem(cartStorageKey(b), JSON.stringify(group));
+            }
+          }
+          localStorage.removeItem(LEGACY_CART_KEY);
+        }
+        // תזמונים גלובליים ישנים — storeId="grocery" מתנגש בין סניפים, והם ארעיים → ניקוי נקי.
+        localStorage.removeItem(LEGACY_SCHED_KEY);
+        localStorage.removeItem(LEGACY_BRANCH_KEY); // שארית 2ד
+      } catch {
+        /* ignore */
+      }
+    }
+
+    // טעינת הסל של הסניף הפעיל (ריק אם אין סניף / אין סל לסניף הזה).
+    loadedBranchRef.current = branchCompany;
+    if (branchCompany == null) {
+      setItems([]);
+      setSchedules({});
+      setHydrated(true);
+      return;
+    }
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setItems(JSON.parse(raw) as CartItem[]);
-      const s = localStorage.getItem(SCHED_KEY);
-      if (s) setSchedules(JSON.parse(s) as Record<string, string>);
-      // 2ד: ניקוי שארית מקור-האמת המתחרה הישן. הסניף מגיע כעת אך ורק מ-URL/Cookie.
-      localStorage.removeItem(BRANCH_KEY);
+      const raw = localStorage.getItem(cartStorageKey(branchCompany));
+      setItems(raw ? (JSON.parse(raw) as CartItem[]) : []);
+      const s = localStorage.getItem(schedStorageKey(branchCompany));
+      setSchedules(s ? (JSON.parse(s) as Record<string, string>) : {});
     } catch {
-      /* ignore */
+      setItems([]);
+      setSchedules({});
     }
     setHydrated(true);
-  }, []);
+  }, [branchCompany]);
 
-  // שמירה בכל שינוי (אחרי הידרציה).
+  // שמירה לסל של הסניף שאליו ה-items שייכים (loadedBranchRef) — לא לסניף שאליו אולי
+  // עוברים כרגע. כך מעבר בין סניפים לא מערבב ולא מוחק.
   useEffect(() => {
     if (!hydrated) return;
+    const b = loadedBranchRef.current;
+    if (b == null) return; // אין סניף פעיל → אין מה לשמור
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-      localStorage.setItem(SCHED_KEY, JSON.stringify(schedules));
-      // 2ד: לא כותבים יותר את הסניף ל-localStorage — ה-Cookie (persistent) מחזיק את ההמשכיות.
+      localStorage.setItem(cartStorageKey(b), JSON.stringify(items));
+      localStorage.setItem(schedStorageKey(b), JSON.stringify(schedules));
     } catch {
       /* ignore */
     }
