@@ -43,3 +43,22 @@ export function discountedTotal(
     return sum + discountedUnit(p.unitPrice, pct) * p.qty;
   }, 0);
 }
+
+/**
+ * מחיל הנחת באנר על מוצר לתצוגה: price→מוזל, originalPrice=המקורי, discountPercent=האחוז.
+ * מוצר ללא הנחה מוחזר כמות שהוא. כך כל מסלול תצוגה (גריד/חיפוש/מודל) מראה את המבצע
+ * ומוסיף לסל את המחיר המוזל — לא רק בלחיצה על הבאנר.
+ */
+export function applyBannerDiscount<T extends { id: string; price: number }>(
+  product: T,
+  map: Map<string, number>,
+): T & { originalPrice?: number; discountPercent?: number } {
+  const pct = discountForItem(product.id, map);
+  if (pct <= 0) return product;
+  return {
+    ...product,
+    price: discountedUnit(product.price, pct),
+    originalPrice: product.price,
+    discountPercent: pct,
+  };
+}

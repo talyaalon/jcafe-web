@@ -15,6 +15,7 @@ import { SiteFooter } from "./SiteFooter";
 import { StickyCartBar } from "./StickyCartBar";
 import { CartDrawer } from "./CartDrawer";
 import { useCart, type CartStoreRef } from "@/lib/cart/CartContext";
+import { buildDiscountMap, applyBannerDiscount } from "@/lib/odoo/banner-discount";
 
 export interface StoreBundle {
   store: Store;
@@ -101,17 +102,17 @@ export function Storefront({
   const [sort, setSort] = useState<SortKey>("nameAsc");
   const [selected, setSelected] = useState<Product | null>(null);
 
-  // פתיחת חלון המוצר המקושר לבאנר (לפי מזהה בסיס) — עם הנחת הבאנר אם הוגדרה
-  const openBannerProduct = (pid: string, discount = 0) => {
+  // מפת הנחות הבאנר (מוצר→אחוז) — מקור-אמת אחד לתצוגה, זהה לזה של החיוב/ההזמנה.
+  const discountMap = useMemo(() => buildDiscountMap(banners), [banners]);
+  // מחיל את הנחת הבאנר על מוצר בכל מסלול תצוגה (גריד/חיפוש/מודל), לא רק מהבאנר.
+  const withDiscount = (p: Product): Product => applyBannerDiscount(p, discountMap);
+
+  // פתיחת חלון המוצר המקושר לבאנר (לפי מזהה בסיס) — ההנחה מגיעה מהמפה המשותפת.
+  const openBannerProduct = (pid: string) => {
     for (const d of data) {
       const p = d.products.find((x) => String(x.id).split("|")[0] === pid);
       if (p) {
-        if (discount > 0) {
-          const newPrice = Math.round(p.price * (1 - discount / 100) * 100) / 100;
-          setSelected({ ...p, price: newPrice, originalPrice: p.price, discountPercent: discount });
-        } else {
-          setSelected(p);
-        }
+        setSelected(withDiscount(p));
         return;
       }
     }
@@ -143,7 +144,7 @@ export function Storefront({
   const cName = (c: Category) => (locale === "he" ? c.nameHe : c.nameEn);
 
   const products = useMemo(() => {
-    let list = bundle ? [...bundle.products] : [];
+    let list = bundle ? bundle.products.map((p) => applyBannerDiscount(p, discountMap)) : [];
     if (activeCat) list = list.filter((p) => p.categoryId === activeCat);
     if (search.trim()) {
       const q = search.trim().toLowerCase();
@@ -172,7 +173,7 @@ export function Storefront({
         break;
     }
     return list;
-  }, [bundle, activeCat, search, sort, locale]);
+  }, [bundle, activeCat, search, sort, locale, discountMap]);
 
   // חיפוש בכל חנויות הסניף (לא רק החנות הפעילה)
   const searching = search.trim().length > 0;
@@ -188,7 +189,8 @@ export function Storefront({
         if (seen.has(p.id)) return false; // מניעת כפילות (מוצר משותף בכמה חנויות)
         seen.add(p.id);
         return true;
-      });
+      })
+      .map((p) => applyBannerDiscount(p, discountMap));
     switch (sort) {
       case "priceLow":
         list.sort((a, b) => a.price - b.price);
@@ -207,7 +209,7 @@ export function Storefront({
         );
     }
     return list;
-  }, [searching, search, data, sort, locale]);
+  }, [searching, search, data, sort, locale, discountMap]);
 
   function switchStore(id: string) {
     setActiveStoreId(id);

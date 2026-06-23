@@ -59,7 +59,19 @@ export function ProductCard({
 
       {/* info — fixed structure for uniform height */}
       <div className="px-3 pb-3 pt-2 flex flex-col flex-1">
-        <div className="font-extrabold text-[15px] text-ink">{formatTHB(product.price)}</div>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="font-extrabold text-[15px] text-ink">{formatTHB(product.price)}</span>
+          {product.discountPercent ? (
+            <>
+              <span className="text-ink/40 line-through text-[12px]">
+                {formatTHB(product.originalPrice ?? product.price)}
+              </span>
+              <span className="bg-red-500 text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">
+                -{product.discountPercent}%
+              </span>
+            </>
+          ) : null}
+        </div>
         <button
           onClick={() => onOpen(product)}
           className="text-[13px] text-ink/85 leading-snug mt-1 line-clamp-2 min-h-[2.6em] text-start hover:text-wine"

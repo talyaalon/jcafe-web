@@ -7,6 +7,7 @@ import {
   discountForItem,
   discountedUnit,
   discountedTotal,
+  applyBannerDiscount,
 } from "./banner-discount.ts";
 
 // ===== buildDiscountMap =====
@@ -73,4 +74,29 @@ test("discountedTotal: עגלה מעורבת (מוזל + מלא) עם כמויו
 test("discountedTotal: בלי הנחות כלל → כמו הסכום הרגיל", () => {
   const priced = [{ unitPrice: 100, qty: 1 }];
   assert.equal(discountedTotal(priced, ["7"], new Map()), 100);
+});
+
+// ===== applyBannerDiscount (תצוגה — מחיר מקורי + מוזל + אחוז) =====
+test("applyBannerDiscount: מוצר עם הנחה → price מוזל + originalPrice + discountPercent", () => {
+  const map = buildDiscountMap([{ product_id: "1518", discount_percent: 20 }]);
+  const out = applyBannerDiscount({ id: "1518", price: 100, nameHe: "פיצה" }, map);
+  assert.equal(out.price, 80);
+  assert.equal(out.originalPrice, 100);
+  assert.equal(out.discountPercent, 20);
+  assert.equal(out.nameHe, "פיצה"); // שאר השדות נשמרים
+});
+
+test("applyBannerDiscount: מוצר ללא הנחה → ללא שינוי (בלי originalPrice/discountPercent)", () => {
+  const map = buildDiscountMap([{ product_id: "1518", discount_percent: 20 }]);
+  const out = applyBannerDiscount({ id: "999", price: 100 }, map);
+  assert.equal(out.price, 100);
+  assert.equal(out.originalPrice, undefined);
+  assert.equal(out.discountPercent, undefined);
+});
+
+test("applyBannerDiscount: אותו עיגול כמו החיוב (365 ב-15% → 310.25)", () => {
+  const map = buildDiscountMap([{ product_id: "1518", discount_percent: 15 }]);
+  const out = applyBannerDiscount({ id: "1518", price: 365 }, map);
+  assert.equal(out.price, 310.25);
+  assert.equal(out.originalPrice, 365);
 });

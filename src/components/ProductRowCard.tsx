@@ -61,7 +61,19 @@ export function ProductRowCard({
         {desc && <div className="text-ink/55 text-[12px] mt-1 line-clamp-2">{desc}</div>}
 
         <div className="mt-auto pt-2 flex items-center justify-between">
-          <span className="font-extrabold text-ink text-sm">{formatTHB(product.price)}</span>
+          <span className="flex items-center gap-1.5 flex-wrap">
+            <span className="font-extrabold text-ink text-sm">{formatTHB(product.price)}</span>
+            {product.discountPercent ? (
+              <>
+                <span className="text-ink/40 line-through text-[11px]">
+                  {formatTHB(product.originalPrice ?? product.price)}
+                </span>
+                <span className="bg-red-500 text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">
+                  -{product.discountPercent}%
+                </span>
+              </>
+            ) : null}
+          </span>
           {product.qtyAvailable === 0 ? (
             <span className="text-red-600 font-semibold text-xs">{dict.product.outOfStock}</span>
           ) : product.hasOptions ? (
