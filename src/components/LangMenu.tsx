@@ -6,8 +6,8 @@ import { usePathname } from "next/navigation";
 import type { Locale } from "@/i18n/config";
 
 const LANGS = [
-  { code: "en", flag: "🇺🇸", short: "EN", label: "English (US)" },
-  { code: "he", flag: "🇮🇱", short: "HE", label: "עברית" },
+  { code: "en", short: "EN", label: "אנגלית" },
+  { code: "he", short: "HE", label: "עברית" },
 ];
 
 export function LangMenu({ locale }: { locale: Locale }) {
@@ -19,10 +19,9 @@ export function LangMenu({ locale }: { locale: Locale }) {
   return (
     <div className="relative">
       <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-1.5 hover:text-wine">
-        {/* מובייל — קוד קצר EN/HE בלי דגל; דסקטופ — דגל + שם מלא */}
-        <span className="sm:hidden font-bold text-[13px]">{current.short}</span>
-        <span className="hidden sm:inline">{current.flag}</span>
-        <span className="hidden sm:inline">{current.label}</span>
+        {/* קוד EN/HE + המילה בעברית, בלי דגלים — בטלפון ובמחשב */}
+        <span className="font-bold text-[13px]">{current.short}</span>
+        <span>{current.label}</span>
         <span className="text-[10px]">▾</span>
       </button>
       {open && (
@@ -38,9 +37,8 @@ export function LangMenu({ locale }: { locale: Locale }) {
                   l.code === locale ? "bg-wine/5 text-wine font-bold" : "text-ink/80"
                 }`}
               >
-                <span className="sm:hidden font-bold">{l.short}</span>
-                <span className="hidden sm:inline">{l.flag}</span>
-                <span className="hidden sm:inline">{l.label}</span>
+                <span className="font-bold">{l.short}</span>
+                <span>{l.label}</span>
               </Link>
             ))}
           </div>
