@@ -63,19 +63,25 @@ export function PosFloor({
     if (!ctx) return;
     if (ctx.state === "suspended") ctx.resume().catch(() => {});
     const t0 = ctx.currentTime;
-    // צמד צלילים קצר ובולט
-    [0, 0.18].forEach((offset, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.value = i === 0 ? 880 : 1175;
-      gain.gain.setValueAtTime(0.0001, t0 + offset);
-      gain.gain.exponentialRampToValueAtTime(0.35, t0 + offset + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + offset + 0.16);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(t0 + offset);
-      osc.stop(t0 + offset + 0.17);
-    });
+    // פעמון דלת "דינג-דונג": צליל גבוה ואז נמוך, כל אחד עם דעיכה ארוכה כמו פעמון.
+    // הרמוניה שנייה עדינה מוסיפה עושר צליל; עוצמה גבוהה כדי שיהיה בולט.
+    const ring = (freq: number, start: number, dur: number) => {
+      [1, 2].forEach((harmonic, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq * harmonic;
+        const peak = idx === 0 ? 0.6 : 0.18;
+        gain.gain.setValueAtTime(0.0001, t0 + start);
+        gain.gain.exponentialRampToValueAtTime(peak, t0 + start + 0.012);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + start + dur);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t0 + start);
+        osc.stop(t0 + start + dur + 0.02);
+      });
+    };
+    ring(659, 0, 0.7); // דינג (E5)
+    ring(523, 0.42, 0.95); // דונג (C5)
   }, [getCtx]);
 
   // "שחרור" האודיו בלחיצה/הקלדה ראשונה: יוצרים ומפעילים את ה-AudioContext בתוך
