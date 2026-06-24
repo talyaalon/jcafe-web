@@ -208,10 +208,9 @@ export function GroceryScanner({
             >
               {it.scanned}/{it.qty}
             </span>
-            {/* איפוס ידני זמין תמיד (רק מבטל ירוק, לתיקון טעות סריקה).
-                סימון ידני (✓) זמין אך ורק למוצרים ללא ברקוד — מוצר עם ברקוד הופך
-                לירוק רק ע"י סריקה או הקלדת הברקוד בשורת הסריקה. */}
-            {it.done ? (
+            {/* אין סימון ידני — מוצר הופך לירוק אך ורק ע"י סריקה/הקלדת הברקוד.
+                כפתור האיפוס ↺ נשאר לתיקון טעות סריקה (רק מבטל ירוק, לא יוצר אותו). */}
+            {it.done && (
               <button
                 disabled={busy}
                 onClick={() => send({ index: it.index, action: "reset" })}
@@ -220,16 +219,7 @@ export function GroceryScanner({
               >
                 ↺
               </button>
-            ) : !it.hasBarcode ? (
-              <button
-                disabled={busy}
-                onClick={() => send({ index: it.index, action: "set" })}
-                className="text-xs font-bold rounded-lg px-2.5 py-1 border border-line text-ink/60 hover:border-wine"
-                title={he ? "סמן ידנית (ללא ברקוד)" : "Mark manually (no barcode)"}
-              >
-                ✓
-              </button>
-            ) : null}
+            )}
           </li>
         ))}
       </ul>
