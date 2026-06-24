@@ -48,68 +48,75 @@ export function PosFloor({
   // לזכור אילו הזמנות כבר נראו ולזהות חדשות שנכנסו בין רענון לרענון.
   const [pendingNew, setPendingNew] = useState<FloorOrder[]>([]);
   const seenRef = useRef<Set<string> | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  // ניגון הצלצול דרך Web Audio (AudioContext) — אמין יותר מ-<audio> מול חסימת autoplay,
+  // ובאותה שיטה שכבר עבדה. טוענים ומפענחים את ה-MP3 פעם אחת ומנגנים בלולאה על 6→20.
+  const ctxRef = useRef<AudioContext | null>(null);
+  const bufferRef = useRef<AudioBuffer | null>(null);
+  const sourceRef = useRef<AudioBufferSourceNode | null>(null);
   const wantRingRef = useRef(false);
 
-  const getAudio = useCallback(() => {
+  const getCtx = useCallback(() => {
     if (typeof window === "undefined") return null;
-    if (!audioRef.current) {
-      const a = new Audio("/new-order.mp3");
-      a.preload = "auto";
-      // לולאה על הקטע המבוקש: חזרה ל-START כשמגיעים ל-END (וגם אם מתחילים לפניו).
-      a.addEventListener("timeupdate", () => {
-        if (a.currentTime >= RING_END || a.currentTime < RING_START) {
-          a.currentTime = RING_START;
-        }
-      });
-      audioRef.current = a;
+    if (!ctxRef.current) {
+      const AC =
+        window.AudioContext ??
+        (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AC) return null;
+      ctxRef.current = new AC();
     }
-    return audioRef.current;
+    return ctxRef.current;
+  }, []);
+
+  const ensureBuffer = useCallback(async (ctx: AudioContext) => {
+    if (bufferRef.current) return bufferRef.current;
+    const res = await fetch("/new-order.mp3");
+    const buf = await ctx.decodeAudioData(await res.arrayBuffer());
+    bufferRef.current = buf;
+    return buf;
   }, []);
 
   const startRing = useCallback(() => {
-    const a = getAudio();
-    if (!a) return;
     wantRingRef.current = true;
-    try {
-      a.currentTime = RING_START;
-    } catch {
-      /* metadata עוד לא נטען — ה-timeupdate יתקן */
-    }
-    a.play().catch(() => {});
-  }, [getAudio]);
+    const ctx = getCtx();
+    if (!ctx) return;
+    if (ctx.state === "suspended") ctx.resume().catch(() => {});
+    const play = () => {
+      if (!wantRingRef.current || sourceRef.current || !bufferRef.current) return;
+      const src = ctx.createBufferSource();
+      src.buffer = bufferRef.current;
+      src.loop = true;
+      src.loopStart = RING_START;
+      src.loopEnd = Math.min(RING_END, bufferRef.current.duration);
+      src.connect(ctx.destination);
+      src.start(0, RING_START);
+      sourceRef.current = src;
+    };
+    if (bufferRef.current) play();
+    else ensureBuffer(ctx).then(play).catch(() => {});
+  }, [getCtx, ensureBuffer]);
 
   const stopRing = useCallback(() => {
     wantRingRef.current = false;
-    const a = audioRef.current;
-    if (a) {
-      a.pause();
+    const src = sourceRef.current;
+    if (src) {
       try {
-        a.currentTime = RING_START;
+        src.stop();
       } catch {
-        /* ignore */
+        /* כבר נעצר */
       }
+      src.disconnect();
+      sourceRef.current = null;
     }
   }, []);
 
   // "שחרור" האודיו בלחיצה/הקלדה ראשונה (דפדפנים חוסמים השמעה אוטומטית עד מחווה):
-  // מנגנים-ומשהים מיד כדי לקבל הרשאה, אלא אם כבר אמורים לצלצל.
+  // מפעילים את ה-AudioContext וטוענים מראש את הקובץ כדי שיהיה מוכן לנגן.
   useEffect(() => {
     const unlock = () => {
-      const a = getAudio();
-      if (!a || wantRingRef.current) return;
-      a.play()
-        .then(() => {
-          if (!wantRingRef.current) {
-            a.pause();
-            try {
-              a.currentTime = RING_START;
-            } catch {
-              /* ignore */
-            }
-          }
-        })
-        .catch(() => {});
+      const ctx = getCtx();
+      if (!ctx) return;
+      if (ctx.state === "suspended") ctx.resume().catch(() => {});
+      ensureBuffer(ctx).catch(() => {});
     };
     window.addEventListener("pointerdown", unlock);
     window.addEventListener("keydown", unlock);
@@ -117,7 +124,7 @@ export function PosFloor({
       window.removeEventListener("pointerdown", unlock);
       window.removeEventListener("keydown", unlock);
     };
-  }, [getAudio]);
+  }, [getCtx, ensureBuffer]);
 
   // זיהוי הזמנות חדשות בכל עדכון של רשימת ההזמנות הפעילות
   useEffect(() => {
