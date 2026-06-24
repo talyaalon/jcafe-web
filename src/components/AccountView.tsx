@@ -137,7 +137,7 @@ export function AccountView({ locale, dict }: { locale: Locale; dict: Dictionary
     <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 py-8">
       <div className="flex items-end justify-between gap-3 mb-6 flex-wrap">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-wine">{a.title}</h1>
+          <h1 className="font-brand text-2xl sm:text-3xl font-extrabold text-wine">{a.title}</h1>
           {branchName && (
             <p className="text-sm text-ink/55 mt-1 flex items-center gap-1.5">
               <IconStore className="w-4 h-4 text-wine/70" /> {branchName}

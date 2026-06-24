@@ -48,7 +48,7 @@ export function LoginForm({
 
   return (
     <div className="bg-white border border-line rounded-2xl p-6 w-full max-w-md shadow-sm">
-      <h1 className="text-lg font-extrabold text-ink mb-4">{t.loginTitle}</h1>
+      <h1 className="font-brand text-lg font-extrabold text-ink mb-4">{t.loginTitle}</h1>
 
       {mode === "choose" ? (
         <>

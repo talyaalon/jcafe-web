@@ -67,7 +67,7 @@ export function RegisterForm({
 
   return (
     <div className="bg-white border border-line rounded-2xl p-6 w-full max-w-md shadow-sm">
-      <h1 className="text-lg font-extrabold text-ink mb-4">{t.registerTitle}</h1>
+      <h1 className="font-brand text-lg font-extrabold text-ink mb-4">{t.registerTitle}</h1>
 
       <SocialButtons dict={dict} />
       <div className="flex items-center gap-3 my-4 text-ink/40 text-xs">

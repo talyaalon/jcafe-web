@@ -469,7 +469,7 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
             <div className="w-16 h-16 rounded-full bg-brand-green text-white text-3xl grid place-items-center mx-auto mb-3">
               ✓
             </div>
-            <h1 className="text-xl font-extrabold text-ink">{t.placed}</h1>
+            <h1 className="font-brand text-xl font-extrabold text-ink">{t.placed}</h1>
             <p className="text-ink/55 text-sm mt-2">
               {t.orderNo}: <b className="text-wine">{orderNo}</b>
             </p>
@@ -511,7 +511,7 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
         <div className="space-y-4">
           {step === "contact" ? (
             <section className="bg-white border border-line rounded-2xl p-6 max-w-lg">
-              <h1 className="text-xl font-extrabold text-ink">
+              <h1 className="font-brand text-xl font-extrabold text-ink">
                 {user ? (he ? "פרטי קשר" : "Contact details") : t.guestTitle}
               </h1>
               <p className="text-ink/55 text-sm mt-1 mb-5">{t.guestSub}</p>
@@ -996,7 +996,7 @@ function CheckoutTopBar({
           <img src={branch.logoUrl} alt={name} className="h-10 w-10 rounded-lg object-cover flex-none" />
         )}
         <span>
-          <span className="block text-xl font-extrabold text-ink leading-none">{name}</span>
+          <span className="block font-brand text-lg sm:text-xl font-bold text-ink leading-none">{name}</span>
           <span className="block text-[9px] tracking-[2px] text-wine font-bold mt-0.5">{tagline}</span>
         </span>
       </Link>

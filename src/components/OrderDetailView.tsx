@@ -137,7 +137,7 @@ export function OrderDetailView({
       <div className="border border-line rounded-2xl bg-white overflow-hidden">
         <div className="bg-wine text-white px-5 py-4 flex items-end justify-between gap-3 flex-wrap">
           <div>
-            <h1 className="text-xl font-extrabold">{order.order_name || "—"}</h1>
+            <h1 className="font-brand text-xl font-extrabold">{order.order_name || "—"}</h1>
             <p className="text-white/70 text-sm mt-0.5">{fmtDate(order.created_at)}</p>
           </div>
           <div className="text-end text-sm">

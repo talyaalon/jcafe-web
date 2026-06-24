@@ -25,7 +25,7 @@ export function ForgotPasswordForm({ locale, dict }: { locale: Locale; dict: Dic
   if (sent) {
     return (
       <div className="w-full max-w-md text-center pt-4">
-        <h1 className="text-lg font-extrabold text-ink">{t.forgotTitle}</h1>
+        <h1 className="font-brand text-lg font-extrabold text-ink">{t.forgotTitle}</h1>
         <div className="text-wine text-3xl my-4">➤</div>
         <p className="text-ink/65 text-sm">{t.sentLine1}</p>
         <p className="text-ink/55 text-sm mt-3">{t.sentLine2}</p>
@@ -35,7 +35,7 @@ export function ForgotPasswordForm({ locale, dict }: { locale: Locale; dict: Dic
 
   return (
     <div className="bg-white border border-line rounded-2xl p-6 w-full max-w-md shadow-sm">
-      <h1 className="text-lg font-extrabold text-ink">{t.forgotTitle}</h1>
+      <h1 className="font-brand text-lg font-extrabold text-ink">{t.forgotTitle}</h1>
       <p className="text-ink/55 text-sm mt-1 mb-4">{t.forgotSub}</p>
 
       <label className="block text-sm text-ink/80 mb-1">{t.email}</label>

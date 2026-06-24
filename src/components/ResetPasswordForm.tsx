@@ -34,7 +34,7 @@ export function ResetPasswordForm({ locale, dict }: { locale: Locale; dict: Dict
   if (done) {
     return (
       <div className="bg-white border border-line rounded-2xl p-8 w-full max-w-md text-center shadow-sm">
-        <h1 className="text-lg font-extrabold text-ink">{t.passwordChanged}</h1>
+        <h1 className="font-brand text-lg font-extrabold text-ink">{t.passwordChanged}</h1>
         <div className="text-wine text-2xl my-3">✓</div>
         <p className="text-ink/60 text-sm mb-5">{t.changedThanks}</p>
         <Link
@@ -49,7 +49,7 @@ export function ResetPasswordForm({ locale, dict }: { locale: Locale; dict: Dict
 
   return (
     <div className="bg-white border border-line rounded-2xl p-6 w-full max-w-md shadow-sm">
-      <h1 className="text-lg font-extrabold text-ink mb-4">{t.resetTitle}</h1>
+      <h1 className="font-brand text-lg font-extrabold text-ink mb-4">{t.resetTitle}</h1>
       <label className="block text-sm text-ink/80 mb-1">{t.newPassword}</label>
       <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} className={input} />
       <label className="block text-sm text-ink/80 mb-1 mt-3">{t.confirmNewPassword}</label>

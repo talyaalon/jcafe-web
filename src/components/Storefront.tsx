@@ -502,10 +502,10 @@ function WelcomeTiles({
     <main className="flex-1 flex flex-col bg-soft">
       <div className="flex flex-col flex-1 min-h-[calc(100svh-150px)] max-h-[calc(100svh-120px)] sm:min-h-[calc(100svh-76px)] sm:max-h-none w-full max-w-7xl mx-auto px-4 sm:px-6 pt-2 pb-4 sm:py-12">
         <div className="shrink-0 text-center">
-          <h1 className="font-tabs font-extrabold text-2xl sm:text-4xl text-ink">
+          <h1 className="font-brand font-extrabold text-2xl sm:text-4xl text-ink">
             {he ? "ברוכים הבאים" : "Welcome"}
           </h1>
-          <p className="text-ink/50 mt-1.5 text-sm sm:text-base">
+          <p className="font-brand text-ink/50 mt-1.5 text-sm sm:text-base">
             {he ? "בחרו חנות כדי להתחיל בהזמנה" : "Choose a store to start your order"}
           </p>
           <span className="mt-3 inline-block h-1 w-14 rounded-full bg-wine/80" />
