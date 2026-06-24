@@ -7,6 +7,7 @@ import { releaseDueOrders } from "@/lib/odoo/release-scheduled";
 import { getBranches } from "@/lib/odoo/branches";
 import { ManagerLogin } from "@/components/manager/ManagerLogin";
 import { BranchSelect } from "@/components/manager/BranchSelect";
+import { LangMenu } from "@/components/LangMenu";
 import { PosFloor, type FloorOrder } from "@/components/staff/PosFloor";
 import { AutoRefresh } from "@/components/AutoRefresh";
 
@@ -77,6 +78,7 @@ export default async function PickerPage({
           <span className="text-sm opacity-85">
             {he ? "שולחנות פעילים" : "Active"}: {summaries.length}
           </span>
+          <LangMenu locale={locale} />
         </div>
       </header>
       <PosFloor locale={locale} orders={summaries} future={future} />

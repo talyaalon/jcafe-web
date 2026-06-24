@@ -5,6 +5,7 @@ import { getPosOrders, isKitchen, itemStatus } from "@/lib/supabase/pos";
 import { getBranches } from "@/lib/odoo/branches";
 import { ManagerLogin } from "@/components/manager/ManagerLogin";
 import { BranchSelect } from "@/components/manager/BranchSelect";
+import { LangMenu } from "@/components/LangMenu";
 import { KdsBoard, type KdsOrder } from "@/components/staff/KdsBoard";
 import { AutoRefresh } from "@/components/AutoRefresh";
 
@@ -73,6 +74,7 @@ export default async function KitchenPage({
           <span className="text-sm opacity-85">
             {he ? "בתור" : "In queue"}: {inQueue}
           </span>
+          <LangMenu locale={locale} />
         </div>
       </header>
       <KdsBoard locale={locale} orders={kds} />

@@ -4,7 +4,8 @@ import { useState } from "react";
 
 export function CopyLink({ locale, slug }: { locale: string; slug: string | number }) {
   const [copied, setCopied] = useState(false);
-  const path = `/${locale}/s/${slug}`;
+  // קישור ציבורי ניטרלי-שפה: נוחת באנגלית (ברירת המחדל) דרך ה-redirect, והלקוח יכול להחליף לעברית.
+  const path = `/s/${slug}`;
   const copy = () => {
     const url = typeof window !== "undefined" ? window.location.origin + path : path;
     navigator.clipboard?.writeText(url).then(() => {

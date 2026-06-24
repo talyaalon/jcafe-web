@@ -26,6 +26,7 @@ import { CopyLink } from "@/components/manager/CopyLink";
 import { ManagerLogin } from "@/components/manager/ManagerLogin";
 import { ManagerDashboard, type StoreHours } from "@/components/manager/ManagerDashboard";
 import { BranchSelect } from "@/components/manager/BranchSelect";
+import { LangMenu } from "@/components/LangMenu";
 import { logoutAction } from "./actions";
 
 export default async function ManagerPage({
@@ -127,6 +128,7 @@ export default async function ManagerPage({
           />
         </div>
         <div className="flex items-center gap-2">
+          <LangMenu locale={locale} />
           <a
             href={`/${locale}/manager/preview?company=${branch}`}
             className="text-sm border border-gold-soft rounded-lg px-3 py-1 hover:bg-white/10"

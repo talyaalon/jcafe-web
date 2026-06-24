@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import type { Locale } from "@/i18n/config";
 import { loginAction } from "@/app/[lang]/manager/actions";
+import { LangMenu } from "@/components/LangMenu";
 
 export function ManagerLogin({
   locale,
@@ -17,6 +18,9 @@ export function ManagerLogin({
   const he = locale === "he";
   return (
     <form action={action} className="bg-white border border-line rounded-2xl p-6 w-full max-w-sm shadow-sm">
+      <div className="flex items-center justify-end -mt-1 mb-1 text-ink/70">
+        <LangMenu locale={locale} />
+      </div>
       <h1 className="text-lg font-extrabold text-wine">
         {title ?? (he ? "כניסת מנהל" : "Manager login")}
       </h1>
