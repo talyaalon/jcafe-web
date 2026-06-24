@@ -82,6 +82,20 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
   const pName = (p: { nameHe: string; nameEn: string }) => (he ? p.nameHe : p.nameEn);
   const t = dict.checkout;
 
+  // משתמש מחובר — מילוי שם/אימייל/טלפון מהפרופיל פעם אחת, כדי שלא יראה את בורר האורח
+  // ולא ייווצר לופ של "אורח/התחברות" אחרי שכבר התחבר. דפוס React לעדכון state כשתלות
+  // משתנה (בזמן רינדור, עם state-שומר) — לא ב-effect, כדי למנוע רינדור-מדורג.
+  const [prefilledFor, setPrefilledFor] = useState<string | null>(null);
+  if (user && prefilledFor !== user.id) {
+    setPrefilledFor(user.id);
+    setForm((f) => ({
+      ...f,
+      name: f.name || (user.user_metadata?.name as string | undefined) || "",
+      email: f.email || user.email || "",
+      phone: f.phone || (user.user_metadata?.phone as string | undefined) || "",
+    }));
+  }
+
   // דמי משלוח לפי הכתובת שנבחרה — מחושב בשרת (Geocoding + מרחק מהסניף).
   const [deliveryQuote, setDeliveryQuote] = useState<{ fee: number; blocked: boolean } | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
@@ -442,7 +456,9 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
         <div className="space-y-4">
           {step === "contact" ? (
             <section className="bg-white border border-line rounded-2xl p-6 max-w-lg">
-              <h1 className="text-xl font-extrabold text-ink">{t.guestTitle}</h1>
+              <h1 className="text-xl font-extrabold text-ink">
+                {user ? (he ? "פרטי קשר" : "Contact details") : t.guestTitle}
+              </h1>
               <p className="text-ink/55 text-sm mt-1 mb-5">{t.guestSub}</p>
 
               <Label>{t.recipientName}*</Label>
@@ -461,15 +477,20 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
                 onClick={continueGuest}
                 className="w-full bg-wine text-white font-bold rounded-xl py-3 mt-6 hover:bg-wine-hover"
               >
-                {t.continueAsGuest}
+                {user ? (he ? "המשך" : "Continue") : t.continueAsGuest}
               </button>
-              <p className="text-center text-sm text-ink/60 mt-4">{t.haveAccount}</p>
-              <Link
-                href={`/${locale}/login`}
-                className="block text-center border-2 border-gold text-wine font-bold rounded-xl py-2.5 mt-2"
-              >
-                {t.login}
-              </Link>
+              {/* בורר אורח/התחברות — רק אם לא מחובר. משתמש מחובר ממשיך ישירות. */}
+              {!user && (
+                <>
+                  <p className="text-center text-sm text-ink/60 mt-4">{t.haveAccount}</p>
+                  <Link
+                    href={`/${locale}/login?next=${encodeURIComponent(`/${locale}/checkout`)}`}
+                    className="block text-center border-2 border-gold text-wine font-bold rounded-xl py-2.5 mt-2"
+                  >
+                    {t.login}
+                  </Link>
+                </>
+              )}
             </section>
           ) : (
             <>

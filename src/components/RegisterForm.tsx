@@ -8,9 +8,18 @@ import type { Dictionary } from "@/i18n/dictionaries";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useCart } from "@/lib/cart/CartContext";
 import { branchHref } from "@/lib/branch-slugs";
+import { safeNextPath } from "@/lib/auth/safe-next";
 import { SocialButtons } from "./AuthShell";
 
-export function RegisterForm({ locale, dict }: { locale: Locale; dict: Dictionary }) {
+export function RegisterForm({
+  locale,
+  dict,
+  next,
+}: {
+  locale: Locale;
+  dict: Dictionary;
+  next?: string;
+}) {
   const t = dict.auth;
   const router = useRouter();
   const { signIn } = useAuth();
@@ -19,6 +28,9 @@ export function RegisterForm({ locale, dict }: { locale: Locale; dict: Dictionar
   const [alerts, setAlerts] = useState(true);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  // ?next= (למשל חזרה לתשלום אם הגיעו מה-checkout), מאומת כנתיב פנימי
+  const safe = safeNextPath(next, locale);
+  const loginHref = `/${locale}/login${safe ? `?next=${encodeURIComponent(safe)}` : ""}`;
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
   const input =
     "w-full border border-line rounded-lg px-3 py-2.5 text-sm outline-none focus:border-wine";
@@ -39,8 +51,8 @@ export function RegisterForm({ locale, dict }: { locale: Locale; dict: Dictionar
       if (!res.ok || !data.ok) throw new Error(data.error || "Registration failed");
       const { error } = await signIn(form.email.trim(), form.password);
       if (error) throw new Error(error);
-      // אחרי הרשמה והתחברות — לחנות הסניף הנוכחי (לא לאזור האישי, לא ל-/he העירום)
-      router.push(branchHref(locale, branchCompany));
+      // אחרי הרשמה והתחברות — חוזרים ל-next (אם תקף) אחרת לחנות הסניף הנוכחי
+      router.push(safe ?? branchHref(locale, branchCompany));
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
@@ -92,7 +104,7 @@ export function RegisterForm({ locale, dict }: { locale: Locale; dict: Dictionar
       <p className="text-[12px] text-ink/55 mt-3 text-center">{t.terms}</p>
       <p className="text-center text-sm text-ink/60 mt-2">
         {t.haveAccount}{" "}
-        <Link href={`/${locale}/login`} className="text-wine font-bold">
+        <Link href={loginHref} className="text-wine font-bold">
           {t.loginBtn}
         </Link>
       </p>

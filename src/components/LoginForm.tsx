@@ -8,9 +8,18 @@ import type { Dictionary } from "@/i18n/dictionaries";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useCart } from "@/lib/cart/CartContext";
 import { branchHref } from "@/lib/branch-slugs";
+import { safeNextPath } from "@/lib/auth/safe-next";
 import { SocialButtons } from "./AuthShell";
 
-export function LoginForm({ locale, dict }: { locale: Locale; dict: Dictionary }) {
+export function LoginForm({
+  locale,
+  dict,
+  next,
+}: {
+  locale: Locale;
+  dict: Dictionary;
+  next?: string;
+}) {
   const t = dict.auth;
   const router = useRouter();
   const { signIn } = useAuth();
@@ -20,6 +29,9 @@ export function LoginForm({ locale, dict }: { locale: Locale; dict: Dictionary }
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  // ?next= (למשל חזרה לתשלום אם הגיעו מה-checkout), מאומת כנתיב פנימי
+  const safe = safeNextPath(next, locale);
+  const registerHref = `/${locale}/register${safe ? `?next=${encodeURIComponent(safe)}` : ""}`;
 
   const submit = async () => {
     setErr("");
@@ -30,8 +42,8 @@ export function LoginForm({ locale, dict }: { locale: Locale; dict: Dictionary }
       setErr(locale === "he" ? "אימייל או סיסמה שגויים" : "Invalid email or password");
       return;
     }
-    // אחרי התחברות — חוזרים לחנות הסניף הנוכחי (לא לאזור האישי, לא ל-/he העירום)
-    router.push(branchHref(locale, branchCompany));
+    // אחרי התחברות — חוזרים ל-next (אם תקף) אחרת לחנות הסניף הנוכחי (לא לאזור האישי)
+    router.push(safe ?? branchHref(locale, branchCompany));
   };
 
   return (
@@ -61,7 +73,7 @@ export function LoginForm({ locale, dict }: { locale: Locale; dict: Dictionary }
           </button>
           <p className="text-center text-sm text-ink/60 mt-4">
             {t.noAccount}{" "}
-            <Link href={`/${locale}/register`} className="text-wine font-bold">
+            <Link href={registerHref} className="text-wine font-bold">
               {t.signup}
             </Link>
           </p>
