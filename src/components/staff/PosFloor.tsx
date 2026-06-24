@@ -109,17 +109,37 @@ export function PosFloor({
       const add = fresh.filter((o) => !existing.has(o.id));
       return add.length ? [...prev, ...add] : prev;
     });
-  }, [orders]);
+    beep(); // צפצוף מיידי על כל כניסה חדשה
+  }, [orders, beep]);
 
-  // צפצוף כשנכנסות חדשות, וחזרה כל 7 שניות עד שמאשרים
+  // חזרת צפצוף כל 7 שניות כל עוד יש התרעה פתוחה. שומרים את מזהה ה-interval ב-ref
+  // כדי שאפשר יהיה לעצור אותו מיידית בלחיצה על "אישור", בלי תלות בתזמון אפקטים.
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const stopBeeping = useCallback(() => {
+    if (intervalRef.current !== null) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }, []);
+
   useEffect(() => {
-    if (!pendingNew.length) return;
-    beep();
-    const id = setInterval(beep, 7000);
-    return () => clearInterval(id);
-  }, [pendingNew.length, beep]);
+    if (pendingNew.length === 0) {
+      stopBeeping();
+      return;
+    }
+    if (intervalRef.current === null) {
+      intervalRef.current = setInterval(beep, 7000);
+    }
+    return stopBeeping;
+  }, [pendingNew.length, beep, stopBeeping]);
 
-  const dismissAlert = () => setPendingNew([]);
+  // ניקוי בעת הסרת הקומפוננטה
+  useEffect(() => stopBeeping, [stopBeeping]);
+
+  const dismissAlert = () => {
+    stopBeeping();
+    setPendingNew([]);
+  };
 
   const tabs: { key: Tab; label: string; badge?: number }[] = [
     { key: "all", label: he ? "הכל" : "All" },
