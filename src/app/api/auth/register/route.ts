@@ -14,10 +14,11 @@ export async function POST(req: Request) {
     );
   }
   try {
-    const { email, password, name } = (await req.json()) as {
+    const { email, password, name, phone } = (await req.json()) as {
       email?: string;
       password?: string;
       name?: string;
+      phone?: string;
     };
     if (!email || !EMAIL_RE.test(String(email)) || !password || String(password).length < 6) {
       return NextResponse.json(
@@ -26,11 +27,15 @@ export async function POST(req: Request) {
       );
     }
     const cleanName = name ? String(name).slice(0, 80) : undefined;
+    const cleanPhone = phone ? String(phone).slice(0, 40) : undefined;
+    const meta: Record<string, string> = {};
+    if (cleanName) meta.name = cleanName;
+    if (cleanPhone) meta.phone = cleanPhone;
     const { error } = await supabaseAdmin().auth.admin.createUser({
       email: String(email).toLowerCase().trim(),
       password: String(password),
       email_confirm: true,
-      user_metadata: cleanName ? { name: cleanName } : undefined,
+      user_metadata: Object.keys(meta).length ? meta : undefined,
     });
     if (error) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 400 });

@@ -90,10 +90,16 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
     setPrefilledFor(user.id);
     setForm((f) => ({
       ...f,
-      name: f.name || (user.user_metadata?.name as string | undefined) || "",
+      name:
+        f.name ||
+        (user.user_metadata?.name as string | undefined) ||
+        user.email?.split("@")[0] ||
+        "",
       email: f.email || user.email || "",
       phone: f.phone || (user.user_metadata?.phone as string | undefined) || "",
     }));
+    // משתמש מחובר מדלג על בורר האורח — ישר לעמוד השילוח/תשלום
+    setStep((s) => (s === "contact" ? "review" : s));
   }
 
   // דמי משלוח לפי הכתובת שנבחרה — מחושב בשרת (Geocoding + מרחק מהסניף).
@@ -213,6 +219,7 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
       return;
     }
     const e: Record<string, boolean> = {};
+    if (!form.phone.trim()) e.phone = true;
     if (method === "delivery") {
       if (!form.addr1.trim()) e.addr1 = true;
     }
@@ -494,6 +501,25 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
             </section>
           ) : (
             <>
+              {/* פרטי קשר למשתמש מחובר — שם/אימייל מהפרופיל + טלפון (להזמנה/משלוח) */}
+              {user && (
+                <section className="bg-white border border-line rounded-2xl p-5">
+                  <h2 className="font-bold text-ink">{he ? "פרטי קשר" : "Contact details"}</h2>
+                  <p className="text-ink/55 text-xs mb-3">
+                    {he ? "מזמין/ה" : "Ordering as"}: <b className="text-ink/80">{form.name}</b>
+                    {form.email ? ` · ${form.email}` : ""}
+                  </p>
+                  <Label>{t.phone}*</Label>
+                  <input
+                    value={form.phone}
+                    onChange={(e) => set("phone", e.target.value)}
+                    inputMode="tel"
+                    className={inputCls("phone")}
+                  />
+                  {errors.phone && <Err>{t.required}</Err>}
+                </section>
+              )}
+
               {/* method toggle */}
               <div className="flex gap-3">
                 {(["delivery", "pickup"] as Method[]).map((m) => (
@@ -908,6 +934,7 @@ function CheckoutTopBar({
   branch: BranchInfo | null;
 }) {
   const { count, branchCompany } = useCart();
+  const { user, displayName } = useAuth();
   const he = locale === "he";
   // הלוגו/השם מובילים לחנות הסניף הנוכחי — קישור דטרמיניסטי (לא תלוי ב-branch שנמשך בצד-לקוח)
   const home = branchHref(locale, branchCompany);
@@ -927,10 +954,25 @@ function CheckoutTopBar({
       </Link>
       <div className="flex items-center gap-4 sm:gap-5 text-ink/80">
         <LangMenu locale={locale} />
-        <Link href={`/${locale}/login`} className="flex items-center gap-1.5 hover:text-wine" aria-label={dict.header.login}>
-          <IconAccount className="w-6 h-6" />
-          <span className="hidden sm:inline text-sm">{dict.header.login}</span>
-        </Link>
+        {user ? (
+          <Link
+            href={`/${locale}/account`}
+            className="flex items-center gap-1.5 hover:text-wine"
+            aria-label={displayName || dict.account.title}
+          >
+            <IconAccount className="w-6 h-6" />
+            <span className="hidden sm:inline text-sm">{displayName || dict.account.title}</span>
+          </Link>
+        ) : (
+          <Link
+            href={`/${locale}/login`}
+            className="flex items-center gap-1.5 hover:text-wine"
+            aria-label={dict.header.login}
+          >
+            <IconAccount className="w-6 h-6" />
+            <span className="hidden sm:inline text-sm">{dict.header.login}</span>
+          </Link>
+        )}
         <FavoritesMenu locale={locale} />
         <Link href={home} className="relative flex items-center hover:text-wine" aria-label="cart">
           <IconCart className="w-6 h-6" />

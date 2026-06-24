@@ -24,7 +24,7 @@ export function RegisterForm({
   const router = useRouter();
   const { signIn } = useAuth();
   const { branchCompany } = useCart();
-  const [form, setForm] = useState({ email: "", name: "", password: "", confirm: "" });
+  const [form, setForm] = useState({ email: "", name: "", phone: "", password: "", confirm: "" });
   const [alerts, setAlerts] = useState(true);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
@@ -45,7 +45,12 @@ export function RegisterForm({
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: form.email.trim(), password: form.password, name: form.name.trim() }),
+        body: JSON.stringify({
+          email: form.email.trim(),
+          password: form.password,
+          name: form.name.trim(),
+          phone: form.phone.trim(),
+        }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || "Registration failed");
@@ -79,6 +84,15 @@ export function RegisterForm({
         value={form.name}
         onChange={(e) => set("name", e.target.value)}
         placeholder={t.namePlaceholder}
+        className={input}
+      />
+
+      <label className="block text-sm text-ink/80 mb-1 mt-3">{he ? "טלפון" : "Phone"}</label>
+      <input
+        value={form.phone}
+        onChange={(e) => set("phone", e.target.value)}
+        inputMode="tel"
+        placeholder={he ? "מספר טלפון" : "Phone number"}
         className={input}
       />
 
