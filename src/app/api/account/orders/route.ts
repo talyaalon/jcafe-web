@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabasePublic, supabaseAdmin, supabaseConfigured } from "@/lib/supabase/server";
 import type { PosOrder } from "@/lib/supabase/pos";
+import { productImageUrl } from "@/lib/odoo/image";
 
 // GET /api/account/orders — הזמנות המשתמש המחובר, מועשרות מ-pos_orders (פריטים + סניף).
 // אימות: Authorization: Bearer <access_token> (מ-supabaseBrowser.auth.getSession()).
@@ -60,7 +61,7 @@ export async function GET(req: Request) {
     status: o.pos_status,
     scheduled_for: o.scheduled_for ?? null,
     notes: o.notes ?? null,
-    items: o.items ?? [],
+    items: (o.items ?? []).map((it) => ({ ...it, image: productImageUrl(it.templateId) })),
   }));
 
   return NextResponse.json({ orders });

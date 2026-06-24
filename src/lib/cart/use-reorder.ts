@@ -13,6 +13,7 @@ export interface ReorderItem {
   storeName: string;
   storeId: string;
   templateId?: number;
+  image?: string;
 }
 export interface ReorderOrder {
   company: number | null;
@@ -49,6 +50,7 @@ export function useReorder(locale: Locale) {
         qtyAvailable: null,
         isKitchen: it.storeId !== "grocery",
         isFeatured: false,
+        image: it.image,
       },
       qty: it.qty,
       store: { id: it.storeId, nameHe: it.storeName, nameEn: it.storeName, emoji: "" },

@@ -1005,11 +1005,13 @@ function CheckoutTopBar({
         {user ? (
           <Link
             href={`/${locale}/account`}
-            className="flex items-center gap-1.5 hover:text-wine"
+            className="flex items-center gap-2 hover:text-wine"
             aria-label={displayName || dict.account.title}
           >
-            <IconAccount className="w-6 h-6" />
-            <span className="hidden sm:inline text-sm">{displayName || dict.account.title}</span>
+            <span className="w-7 h-7 rounded-full bg-wine text-white grid place-items-center text-xs font-bold">
+              {(displayName[0] || "U").toUpperCase()}
+            </span>
+            <span className="hidden sm:inline max-w-[120px] truncate text-sm">{displayName}</span>
           </Link>
         ) : (
           <Link

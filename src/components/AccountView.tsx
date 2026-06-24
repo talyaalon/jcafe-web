@@ -27,6 +27,7 @@ interface AcctItem {
   storeName: string;
   storeId: string;
   templateId?: number;
+  image?: string;
 }
 interface AcctOrder {
   order_name: string | null;
