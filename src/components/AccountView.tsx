@@ -1,24 +1,21 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { formatTHB } from "@/lib/format";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useFavorites } from "@/lib/favorites/FavoritesContext";
-import { useCart, type CartItem, type CartStoreRef } from "@/lib/cart/CartContext";
+import { useCart, type CartStoreRef } from "@/lib/cart/CartContext";
+import { useReorder } from "@/lib/cart/use-reorder";
 import { branchHref, COMPANY_SLUG } from "@/lib/branch-slugs";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { findPhuketStore } from "@/lib/odoo/phuket";
 import type { Product } from "@/lib/odoo/types";
-import {
-  getBranchProfile,
-  withBranchProfile,
-  type SavedAddress,
-} from "@/lib/account/profile";
+import { getBranchProfile, withBranchProfile, type SavedAddress } from "@/lib/account/profile";
 import { AddressAutocomplete } from "./AddressAutocomplete";
-import { PrintReceiptButton } from "./staff/PrintReceiptButton";
 import { IconBox, IconGear, IconStore, IconCart } from "./Icons";
 
 type Section = "dashboard" | "orders" | "favorites" | "details";
@@ -37,14 +34,6 @@ interface AcctOrder {
   company: number | null;
   method: string | null;
   total: number;
-  delivery_fee?: number | null;
-  address?: string | null;
-  customer_name: string | null;
-  phone: string | null;
-  email: string | null;
-  status: string;
-  scheduled_for?: string | null;
-  notes?: string | null;
   items: AcctItem[];
 }
 
@@ -59,20 +48,19 @@ export function AccountView({ locale, dict }: { locale: Locale; dict: Dictionary
   const a = dict.account;
   const he = locale === "he";
   const router = useRouter();
+  const reorder = useReorder(locale);
   const { user, displayName, loading, signOut } = useAuth();
   const { favorites, toggle } = useFavorites();
-  const { branchCompany, addItem, replaceCart } = useCart();
+  const { branchCompany, addItem } = useCart();
   const [section, setSection] = useState<Section>("dashboard");
   const [orders, setOrders] = useState<AcctOrder[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
-  const [openOrder, setOpenOrder] = useState<AcctOrder | null>(null);
 
   const branchName =
     branchCompany != null
       ? (COMPANY_SLUG[branchCompany] ?? "").replace(/^\w/, (c) => c.toUpperCase())
       : "";
 
-  // לשונית מבוקשת מה-URL (?tab=favorites) — בלי useSearchParams כדי לא לאלץ רינדור-לקוח לעמוד
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("tab");
     if (t === "favorites" || t === "orders" || t === "details" || t === "dashboard") {
@@ -80,12 +68,10 @@ export function AccountView({ locale, dict }: { locale: Locale; dict: Dictionary
     }
   }, []);
 
-  // הגנה: לא מחובר → לכניסה
   useEffect(() => {
     if (!loading && !user) router.replace(`/${locale}/login`);
   }, [loading, user, locale, router]);
 
-  // הזמנות המשתמש, מסוננות לסניף הנוכחי (endpoint מאובטח שמעשיר מ-pos_orders)
   useEffect(() => {
     if (!user) return;
     let alive = true;
@@ -131,7 +117,6 @@ export function AccountView({ locale, dict }: { locale: Locale; dict: Dictionary
     router.push(branchHref(locale, branchCompany));
   };
 
-  // הוספת מועדף לסל (בסניף הנוכחי)
   const addFav = (p: Product) => {
     if (branchCompany == null) {
       router.push(branchHref(locale, branchCompany));
@@ -140,30 +125,7 @@ export function AccountView({ locale, dict }: { locale: Locale; dict: Dictionary
     addItem(p, storeRefFor(p), 1);
   };
 
-  // הזמנה חוזרת — עגלה חדשה של אותו סניף עם פריטי ההזמנה
-  const reorder = (o: AcctOrder) => {
-    if (o.company == null) return;
-    const items: CartItem[] = o.items.map((it) => ({
-      product: {
-        id: String(it.templateId ?? it.name),
-        storeId: it.storeId,
-        categoryId: "",
-        nameHe: it.name,
-        nameEn: it.name,
-        price: it.price ?? 0,
-        qtyAvailable: null,
-        isKitchen: it.storeId !== "grocery",
-        isFeatured: false,
-      },
-      qty: it.qty,
-      store: { id: it.storeId, nameHe: it.storeName, nameEn: it.storeName, emoji: "" },
-      branch: o.company as number,
-    }));
-    replaceCart(o.company, items);
-    router.push(branchHref(locale, o.company));
-  };
-
-  const nav: { key: Section; label: string; Icon: typeof IconStore }[] = [
+  const nav: { key: Section; label: string; Icon: (p: { className?: string }) => ReactNode }[] = [
     { key: "dashboard", label: a.dashboard, Icon: IconStore },
     { key: "orders", label: a.orders, Icon: IconBox },
     { key: "favorites", label: he ? "מועדפים" : "Favorites", Icon: HeartIcon },
@@ -187,16 +149,13 @@ export function AccountView({ locale, dict }: { locale: Locale; dict: Dictionary
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-[230px_1fr] gap-6">
-        {/* sidebar */}
         <aside className="border border-line rounded-2xl overflow-hidden h-fit bg-white">
           {nav.map((n) => (
             <button
               key={n.key}
               onClick={() => setSection(n.key)}
               className={`w-full flex items-center gap-3 text-start px-4 py-3 text-sm border-b border-line transition ${
-                section === n.key
-                  ? "bg-wine/5 text-wine font-bold"
-                  : "text-ink/70 hover:bg-soft/60"
+                section === n.key ? "bg-wine/5 text-wine font-bold" : "text-ink/70 hover:bg-soft/60"
               }`}
             >
               <n.Icon className="w-[18px] h-[18px]" />
@@ -212,7 +171,6 @@ export function AccountView({ locale, dict }: { locale: Locale; dict: Dictionary
           </button>
         </aside>
 
-        {/* content */}
         <section className="min-w-0">
           {section === "dashboard" && (
             <div className="grid sm:grid-cols-2 gap-4">
@@ -245,33 +203,32 @@ export function AccountView({ locale, dict }: { locale: Locale; dict: Dictionary
               ) : (
                 <ul className="divide-y divide-line">
                   {orders.map((o) => (
-                    <li
-                      key={o.order_name}
-                      className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3.5 flex-wrap"
-                    >
-                      <div className="min-w-0">
-                        <button
-                          onClick={() => setOpenOrder(o)}
-                          className="font-extrabold text-wine hover:underline"
-                        >
-                          {o.order_name || "—"}
-                        </button>
-                        <div className="text-[12px] text-ink/55 mt-0.5">
-                          {fmtDate(o.created_at)} · {methodLabel(o.method)} ·{" "}
-                          {o.items.reduce((s, i) => s + i.qty, 0)} {he ? "פריטים" : "items"}
+                    <li key={o.order_name} className="p-4 sm:px-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <Link
+                            href={`/${locale}/account/orders/${encodeURIComponent(o.order_name ?? "")}`}
+                            className="font-extrabold text-wine hover:underline"
+                          >
+                            {o.order_name || "—"}
+                          </Link>
+                          <div className="text-[12px] text-ink/55 mt-0.5">
+                            {fmtDate(o.created_at)} · {methodLabel(o.method)} ·{" "}
+                            {o.items.reduce((s, i) => s + i.qty, 0)} {he ? "פריטים" : "items"}
+                          </div>
                         </div>
+                        <span className="font-bold text-ink whitespace-nowrap">{formatTHB(o.total)}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-ink">{formatTHB(o.total)}</span>
-                        <button
-                          onClick={() => setOpenOrder(o)}
-                          className="text-xs font-bold border border-line rounded-lg px-3 py-1.5 hover:border-wine text-ink/70"
+                      <div className="flex gap-2 mt-3">
+                        <Link
+                          href={`/${locale}/account/orders/${encodeURIComponent(o.order_name ?? "")}`}
+                          className="flex-1 text-center text-xs font-bold border border-line rounded-lg py-2 hover:border-wine text-ink/70"
                         >
                           {a.view}
-                        </button>
+                        </Link>
                         <button
                           onClick={() => reorder(o)}
-                          className="text-xs font-bold rounded-lg px-3 py-1.5 bg-wine text-white hover:bg-wine-hover inline-flex items-center gap-1.5"
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-bold rounded-lg py-2 bg-wine text-white hover:bg-wine-hover"
                         >
                           <IconCart className="w-4 h-4" />
                           {he ? "הזמנה חוזרת" : "Reorder"}
@@ -297,23 +254,23 @@ export function AccountView({ locale, dict }: { locale: Locale; dict: Dictionary
                       key={p.id}
                       className="border border-line rounded-2xl overflow-hidden bg-white flex flex-col"
                     >
-                      <div className="h-28 bg-soft grid place-items-center p-2">
+                      <div className="aspect-square w-full bg-soft overflow-hidden grid place-items-center">
                         {p.image ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={p.image} alt="" className="max-h-full max-w-full object-contain" />
+                          <img src={p.image} alt="" className="w-full h-full object-cover" />
                         ) : (
                           <IconStore className="w-8 h-8 text-wine/25" />
                         )}
                       </div>
                       <div className="p-3 flex flex-col flex-1">
-                        <div className="text-[13px] leading-tight line-clamp-2 min-h-[2.4em]">
+                        <div className="text-[13px] leading-snug line-clamp-2 min-h-[2.5em] text-ink">
                           {he ? p.nameHe : p.nameEn}
                         </div>
                         <div className="font-bold text-wine text-sm mt-1">{formatTHB(p.price)}</div>
-                        <div className="mt-2 flex items-center gap-2">
+                        <div className="mt-2.5 flex items-center gap-2">
                           <button
                             onClick={() => addFav(p)}
-                            className="flex-1 inline-flex items-center justify-center gap-1.5 bg-wine text-white text-[12px] font-bold rounded-lg py-1.5 hover:bg-wine-hover"
+                            className="flex-1 inline-flex items-center justify-center gap-1.5 bg-wine text-white text-[12px] font-bold rounded-lg py-2 hover:bg-wine-hover"
                           >
                             <IconCart className="w-4 h-4" />
                             {he ? "לסל" : "Add"}
@@ -321,7 +278,7 @@ export function AccountView({ locale, dict }: { locale: Locale; dict: Dictionary
                           <button
                             onClick={() => toggle(p)}
                             aria-label={he ? "הסר ממועדפים" : "Remove favorite"}
-                            className="w-8 h-8 grid place-items-center rounded-lg border border-line text-wine hover:bg-soft"
+                            className="w-9 h-9 grid place-items-center rounded-lg border border-line text-wine hover:bg-soft flex-none"
                           >
                             <HeartIcon className="w-4 h-4" filled />
                           </button>
@@ -344,151 +301,6 @@ export function AccountView({ locale, dict }: { locale: Locale; dict: Dictionary
             />
           )}
         </section>
-      </div>
-
-      {openOrder && (
-        <OrderModal
-          he={he}
-          a={a}
-          order={openOrder}
-          branchName={branchName}
-          locale={locale}
-          methodLabel={methodLabel}
-          fmtDate={fmtDate}
-          onClose={() => setOpenOrder(null)}
-          onReorder={() => {
-            reorder(openOrder);
-            setOpenOrder(null);
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-// ===== order detail modal =====
-function OrderModal({
-  he,
-  a,
-  order,
-  branchName,
-  locale,
-  methodLabel,
-  fmtDate,
-  onClose,
-  onReorder,
-}: {
-  he: boolean;
-  a: Dictionary["account"];
-  order: AcctOrder;
-  branchName: string;
-  locale: Locale;
-  methodLabel: (m: string | null) => string;
-  fmtDate: (iso: string) => string;
-  onClose: () => void;
-  onReorder: () => void;
-}) {
-  const subtotal = order.items.reduce((s, i) => s + (i.price ?? 0) * i.qty, 0);
-  return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div
-        className="w-full max-w-lg max-h-[88vh] overflow-y-auto rounded-2xl bg-white shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between gap-3 bg-wine text-white px-5 py-3 sticky top-0">
-          <span className="font-extrabold">
-            {order.order_name || "—"}{" "}
-            <span className="text-white/70 text-sm font-normal">· {fmtDate(order.created_at)}</span>
-          </span>
-          <button onClick={onClose} aria-label={he ? "סגירה" : "Close"} className="text-2xl leading-none px-2">
-            ✕
-          </button>
-        </div>
-
-        <div className="p-5">
-          <div className="text-sm text-ink/70 mb-3 space-y-0.5">
-            <div>
-              {he ? "אופן" : "Method"}: <b className="text-ink">{methodLabel(order.method)}</b>
-            </div>
-            {order.method === "delivery" && order.address && (
-              <div>
-                {he ? "כתובת" : "Address"}: <b className="text-ink">{order.address}</b>
-              </div>
-            )}
-            {branchName && (
-              <div>
-                {he ? "סניף" : "Branch"}: <b className="text-ink">{branchName}</b>
-              </div>
-            )}
-          </div>
-
-          <ul className="divide-y divide-line border-y border-line">
-            {order.items.map((it, idx) => (
-              <li key={idx} className="flex items-center justify-between gap-3 py-2.5 text-sm">
-                <span className="min-w-0">
-                  <span className="text-ink">{it.name}</span>{" "}
-                  <span className="text-ink/45">×{it.qty}</span>
-                  <span className="block text-[11px] text-ink/45">{it.storeName}</span>
-                </span>
-                <span className="font-semibold text-ink whitespace-nowrap">
-                  {formatTHB((it.price ?? 0) * it.qty)}
-                </span>
-              </li>
-            ))}
-          </ul>
-
-          <div className="text-sm mt-3 space-y-1">
-            <div className="flex justify-between text-ink/70">
-              <span>{he ? "סכום ביניים" : "Subtotal"}</span>
-              <span>{formatTHB(subtotal)}</span>
-            </div>
-            {!!order.delivery_fee && (
-              <div className="flex justify-between text-ink/70">
-                <span>{he ? "דמי משלוח" : "Delivery"}</span>
-                <span>{formatTHB(order.delivery_fee)}</span>
-              </div>
-            )}
-            <div className="flex justify-between font-extrabold text-wine text-base pt-1">
-              <span>{a.total}</span>
-              <span>{formatTHB(order.total)}</span>
-            </div>
-          </div>
-
-          <div className="flex gap-2 mt-5">
-            <button
-              onClick={onReorder}
-              className="flex-1 inline-flex items-center justify-center gap-2 bg-wine text-white font-bold rounded-xl py-3 hover:bg-wine-hover"
-            >
-              <IconCart className="w-5 h-5" />
-              {he ? "הזמנה חוזרת" : "Reorder"}
-            </button>
-            <PrintReceiptButton
-              order={{
-                order_name: order.order_name,
-                created_at: order.created_at,
-                customer_name: order.customer_name,
-                phone: order.phone,
-                email: order.email,
-                method: order.method,
-                address: order.address,
-                scheduled_for: order.scheduled_for,
-                notes: order.notes,
-                total: order.total,
-                delivery_fee: order.delivery_fee,
-                items: order.items.map((i) => ({
-                  name: i.name,
-                  qty: i.qty,
-                  price: i.price,
-                  storeName: i.storeName,
-                })),
-              }}
-              branchName={branchName || "J Cafe"}
-              logoUrl={null}
-              locale={locale}
-              className="inline-flex items-center justify-center gap-2 border-2 border-wine text-wine font-bold rounded-xl px-4 py-3 text-sm hover:bg-wine hover:text-white transition"
-            />
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -513,41 +325,53 @@ function DetailsTab({
   const [name, setName] = useState(defaultName);
   const [phone, setPhone] = useState(initial.phone ?? "");
   const [addresses, setAddresses] = useState<SavedAddress[]>(initial.addresses ?? []);
-  const [draft, setDraft] = useState<SavedAddress>({ id: "", addr1: "", addr2: "", city: "", postcode: "" });
+  const emptyDraft: SavedAddress = { id: "", addr1: "", addr2: "", city: "", postcode: "" };
+  const [draft, setDraft] = useState<SavedAddress>(emptyDraft);
+  // טופס הוספה פתוח רק כשאין כתובות עדיין, או כשלוחצים "הוסף כתובת נוספת"
+  const [showAddForm, setShowAddForm] = useState((initial.addresses ?? []).length === 0);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
   const field = "w-full border border-line rounded-lg px-3 py-2.5 text-sm outline-none focus:border-wine";
   const label = "block text-sm text-ink/70 mb-1";
 
-  const addDraft = () => {
-    if (!draft.addr1.trim()) return;
-    const id = (globalThis.crypto?.randomUUID?.() ?? String(Date.now()));
-    setAddresses((prev) => [
-      ...prev,
-      { ...draft, id, isDefault: prev.length === 0 },
-    ]);
-    setDraft({ id: "", addr1: "", addr2: "", city: "", postcode: "" });
+  // שמירה מיידית ל-user_metadata (פר-סניף) — כך נשמר בין מכשירים לפי החשבון
+  const persist = async (addrs: SavedAddress[], ph: string, nm: string) => {
+    const baseMeta = (user?.user_metadata ?? {}) as Record<string, unknown>;
+    let data: Record<string, unknown> = { ...baseMeta, name: nm };
+    if (branchCompany != null) {
+      data = withBranchProfile(data, branchCompany, { phone: ph, addresses: addrs });
+    }
+    await supabaseBrowser.auth.updateUser({ data });
   };
-  const removeAddr = (id: string) =>
-    setAddresses((prev) => {
-      const next = prev.filter((x) => x.id !== id);
-      if (next.length && !next.some((x) => x.isDefault)) next[0].isDefault = true;
-      return [...next];
-    });
-  const setDefault = (id: string) =>
-    setAddresses((prev) => prev.map((x) => ({ ...x, isDefault: x.id === id })));
 
-  const save = async () => {
+  const commitAddress = async () => {
+    if (!draft.addr1.trim()) return;
+    const id = globalThis.crypto?.randomUUID?.() ?? String(Date.now());
+    const next = [...addresses, { ...draft, id, isDefault: addresses.length === 0 }];
+    setAddresses(next);
+    setDraft(emptyDraft);
+    setShowAddForm(false);
+    await persist(next, phone, name);
+  };
+  const removeAddr = async (id: string) => {
+    const next = addresses.filter((x) => x.id !== id);
+    if (next.length && !next.some((x) => x.isDefault)) next[0].isDefault = true;
+    setAddresses([...next]);
+    if (next.length === 0) setShowAddForm(true);
+    await persist(next, phone, name);
+  };
+  const setDefault = async (id: string) => {
+    const next = addresses.map((x) => ({ ...x, isDefault: x.id === id }));
+    setAddresses(next);
+    await persist(next, phone, name);
+  };
+
+  const savePhoneName = async () => {
     setSaving(true);
     setSaved(false);
     try {
-      const baseMeta = (user?.user_metadata ?? {}) as Record<string, unknown>;
-      let data: Record<string, unknown> = { ...baseMeta, name };
-      if (branchCompany != null) {
-        data = withBranchProfile(data, branchCompany, { phone, addresses });
-      }
-      await supabaseBrowser.auth.updateUser({ data });
+      await persist(addresses, phone, name);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } finally {
@@ -573,37 +397,46 @@ function DetailsTab({
       </div>
       <div>
         <label className={label}>{he ? "טלפון" : "Phone"}</label>
-        <input
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          inputMode="tel"
-          className={field}
-        />
+        <input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" className={field} />
+      </div>
+
+      <div className="flex items-center gap-3">
+        <button
+          onClick={savePhoneName}
+          disabled={saving}
+          className="bg-wine text-white font-bold rounded-xl px-6 py-2.5 hover:bg-wine-hover disabled:opacity-60"
+        >
+          {saving ? "…" : a.saveChanges}
+        </button>
+        {saved && <span className="text-sm font-bold text-brand-green">✓ {he ? "נשמר" : "Saved"}</span>}
       </div>
 
       {/* addresses */}
-      <div>
+      <div className="border-t border-line pt-5">
         <h3 className="font-bold text-ink mb-2">{he ? "הכתובות שלי" : "My addresses"}</h3>
-        {addresses.length === 0 ? (
-          <p className="text-sm text-ink/50 mb-3">{he ? "אין כתובות שמורות." : "No saved addresses."}</p>
-        ) : (
+
+        {addresses.length > 0 && (
           <ul className="space-y-2 mb-3">
             {addresses.map((ad) => (
               <li
                 key={ad.id}
-                className="flex items-start justify-between gap-3 border border-line rounded-xl p-3"
+                className={`flex items-start justify-between gap-3 border rounded-xl p-3 ${
+                  ad.isDefault ? "border-wine bg-wine/5" : "border-line"
+                }`}
               >
                 <div className="text-sm min-w-0">
-                  <div className="text-ink">
+                  <div className="text-ink font-medium">
                     {ad.addr1}
                     {ad.addr2 ? `, ${ad.addr2}` : ""}
                   </div>
-                  <div className="text-[12px] text-ink/50">
-                    {[ad.city, ad.postcode].filter(Boolean).join(" · ")}
-                  </div>
+                  {(ad.city || ad.postcode) && (
+                    <div className="text-[12px] text-ink/50">
+                      {[ad.city, ad.postcode].filter(Boolean).join(" · ")}
+                    </div>
+                  )}
                   {ad.isDefault && (
-                    <span className="inline-block mt-1 text-[11px] font-bold text-brand-green">
-                      ✓ {he ? "ברירת מחדל" : "Default"}
+                    <span className="inline-block mt-1 text-[11px] font-bold text-wine">
+                      ✓ {he ? "כתובת ברירת מחדל" : "Default address"}
                     </span>
                   )}
                 </div>
@@ -628,49 +461,68 @@ function DetailsTab({
           </ul>
         )}
 
-        {/* add address */}
-        <div className="border border-dashed border-line rounded-xl p-3 space-y-2">
-          <label className={label}>{he ? "הוסף כתובת" : "Add address"}</label>
-          <AddressAutocomplete
-            value={draft.addr1}
-            onChange={(v) => setDraft((d) => ({ ...d, addr1: v }))}
-            placeholder={he ? "התחילי להקליד כתובת…" : "Start typing an address…"}
-            className={field}
-          />
-          <div className="grid grid-cols-2 gap-2">
-            <input
-              value={draft.addr2 ?? ""}
-              onChange={(e) => setDraft((d) => ({ ...d, addr2: e.target.value }))}
-              placeholder={he ? "דירה / קומה" : "Apt / floor"}
+        {showAddForm ? (
+          <div className="border border-dashed border-line rounded-xl p-3 space-y-2">
+            <label className={label}>
+              {addresses.length === 0
+                ? he
+                  ? "הוסף כתובת"
+                  : "Add address"
+                : he
+                  ? "כתובת נוספת"
+                  : "Another address"}
+            </label>
+            <AddressAutocomplete
+              value={draft.addr1}
+              onChange={(v) => setDraft((d) => ({ ...d, addr1: v }))}
+              placeholder={he ? "התחילי להקליד כתובת…" : "Start typing an address…"}
               className={field}
             />
-            <input
-              value={draft.postcode ?? ""}
-              onChange={(e) => setDraft((d) => ({ ...d, postcode: e.target.value }))}
-              placeholder={he ? "מיקוד" : "Postcode"}
-              className={field}
-            />
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                value={draft.addr2 ?? ""}
+                onChange={(e) => setDraft((d) => ({ ...d, addr2: e.target.value }))}
+                placeholder={he ? "דירה / קומה" : "Apt / floor"}
+                className={field}
+              />
+              <input
+                value={draft.postcode ?? ""}
+                onChange={(e) => setDraft((d) => ({ ...d, postcode: e.target.value }))}
+                placeholder={he ? "מיקוד" : "Postcode"}
+                className={field}
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={commitAddress}
+                disabled={!draft.addr1.trim()}
+                className="text-sm font-bold bg-wine text-white rounded-lg px-4 py-2 hover:bg-wine-hover disabled:opacity-40"
+              >
+                {he ? "שמור כתובת" : "Save address"}
+              </button>
+              {addresses.length > 0 && (
+                <button
+                  onClick={() => {
+                    setDraft(emptyDraft);
+                    setShowAddForm(false);
+                  }}
+                  className="text-sm text-ink/60 rounded-lg px-3 py-2 hover:text-ink"
+                >
+                  {he ? "ביטול" : "Cancel"}
+                </button>
+              )}
+            </div>
           </div>
+        ) : (
           <button
-            onClick={addDraft}
-            disabled={!draft.addr1.trim()}
-            className="text-sm font-bold border border-wine text-wine rounded-lg px-4 py-2 hover:bg-wine hover:text-white transition disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-wine"
+            onClick={() => setShowAddForm(true)}
+            className="text-sm font-bold border border-wine text-wine rounded-lg px-4 py-2 hover:bg-wine hover:text-white transition"
           >
-            + {he ? "הוסף כתובת" : "Add address"}
+            + {he ? "הוסף כתובת נוספת" : "Add another address"}
           </button>
-        </div>
+        )}
       </div>
 
-      <div className="flex items-center gap-3">
-        <button
-          onClick={save}
-          disabled={saving}
-          className="bg-wine text-white font-bold rounded-xl px-6 py-2.5 hover:bg-wine-hover disabled:opacity-60"
-        >
-          {saving ? "…" : a.saveChanges}
-        </button>
-        {saved && <span className="text-sm font-bold text-brand-green">✓ {he ? "נשמר" : "Saved"}</span>}
-      </div>
       {branchCompany == null && (
         <p className="text-[12px] text-amber-700">
           {he

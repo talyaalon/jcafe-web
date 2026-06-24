@@ -124,6 +124,15 @@ export function Storefront({
   useEffect(() => {
     setBranchCompany(branch);
   }, [branch, setBranchCompany]);
+  // פתיחת העגלה אוטומטית אחרי "הזמנה חוזרת" (?cart=1) — מנקה את הפרמטר מה-URL
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("cart") === "1") {
+      setDrawerOpen(true);
+      const u = new URL(window.location.href);
+      u.searchParams.delete("cart");
+      window.history.replaceState({}, "", u.toString());
+    }
+  }, []);
   const stores = data.map((d) => d.store);
   const openMap = new Map(data.map((d) => [d.store.id, d.open ?? true]));
   const bundle = data.find((d) => d.store.id === activeStoreId) ?? data[0];

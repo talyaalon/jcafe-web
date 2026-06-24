@@ -31,7 +31,13 @@ const esc = (s: unknown) =>
     .replace(/"/g, "&quot;");
 const baht = (n: number) => "฿" + (Math.round(n * 100) / 100).toLocaleString("en-US");
 
-function receiptHtml(o: ReceiptOrder, branchName: string, logoUrl: string | null, he: boolean) {
+function receiptHtml(
+  o: ReceiptOrder,
+  branchName: string,
+  logoUrl: string | null,
+  he: boolean,
+  docType: "receipt" | "invoice" = "receipt",
+) {
   const subtotal = o.items.reduce((s, i) => s + (Number(i.price) || 0) * i.qty, 0);
   const delivery =
     o.delivery_fee != null ? Number(o.delivery_fee) : Math.max(0, Number(o.total) - subtotal);
@@ -87,6 +93,9 @@ function receiptHtml(o: ReceiptOrder, branchName: string, logoUrl: string | null
         thanks: "Thank you for your order!",
       };
 
+  // כותרת המסמך — קבלה או חשבונית
+  const docLabel = docType === "invoice" ? (he ? "חשבונית" : "INVOICE") : L.receipt;
+
   const rows = o.items
     .map(
       (i) => `<tr>
@@ -106,7 +115,7 @@ function receiptHtml(o: ReceiptOrder, branchName: string, logoUrl: string | null
     v ? `<div class="row"><span class="k">${k}</span><span class="v">${esc(v)}</span></div>` : "";
 
   return `<!doctype html><html lang="${he ? "he" : "en"}" dir="${he ? "rtl" : "ltr"}"><head>
-<meta charset="utf-8"><title>${esc(o.order_name || L.receipt)}</title>
+<meta charset="utf-8"><title>${esc(o.order_name || docLabel)}</title>
 <style>
   @page { margin: 8mm; }
   * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -140,7 +149,7 @@ function receiptHtml(o: ReceiptOrder, branchName: string, logoUrl: string | null
 <body onload="setTimeout(function(){window.focus();window.print();},250)">
   <div class="wrap">
     <div class="head">${head}<div class="branch">${esc(branchName)}</div></div>
-    <div class="meta"><span><b>${esc(o.order_name || "—")}</b><br>${L.receipt}</span><span>${L.date}<br><b style="color:#222;font-size:12px">${dateStr}</b></span></div>
+    <div class="meta"><span><b>${esc(o.order_name || "—")}</b><br>${docLabel}</span><span>${L.date}<br><b style="color:#222;font-size:12px">${dateStr}</b></span></div>
 
     <div class="sec">${L.customer}</div>
     ${infoRow(L.name, o.customer_name || "")}
@@ -174,16 +183,20 @@ export function PrintReceiptButton({
   logoUrl,
   locale,
   className,
+  docType = "receipt",
+  label,
 }: {
   order: ReceiptOrder;
   branchName: string;
   logoUrl: string | null;
   locale: Locale;
   className?: string;
+  docType?: "receipt" | "invoice";
+  label?: string;
 }) {
   const he = locale === "he";
   const print = () => {
-    const html = receiptHtml(order, branchName, logoUrl, he);
+    const html = receiptHtml(order, branchName, logoUrl, he, docType);
     const w = window.open("", "_blank", "width=480,height=720");
     if (!w) {
       alert(he ? "חלון ההדפסה נחסם — אפשרו חלונות קופצים" : "Print window blocked — allow pop-ups");
@@ -193,6 +206,15 @@ export function PrintReceiptButton({
     w.document.write(html);
     w.document.close();
   };
+  const text =
+    label ??
+    (docType === "invoice"
+      ? he
+        ? "הדפסת חשבונית"
+        : "Print invoice"
+      : he
+        ? "הדפסת קבלה"
+        : "Print receipt");
   return (
     <button
       type="button"
@@ -202,7 +224,19 @@ export function PrintReceiptButton({
         "inline-flex items-center justify-center gap-2 bg-white text-wine border border-wine font-bold rounded-lg px-3 py-1.5 text-sm hover:bg-wine hover:text-white transition"
       }
     >
-      🖨 {he ? "הדפסת קבלה" : "Print receipt"}
+      <svg
+        viewBox="0 0 24 24"
+        className="w-[18px] h-[18px]"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.7}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+      >
+        <path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2M6 14h12v7H6z" />
+      </svg>
+      {text}
     </button>
   );
 }

@@ -17,6 +17,11 @@ export function schedStorageKey(branch: number): string {
   return `${LEGACY_SCHED_KEY}:${branch}`;
 }
 
+/** גיבוי הסל בעת "הזמנה חוזרת" — נשמר עד שההזמנה החוזרת מבוצעת ואז מוחזר לסל. */
+export function cartBackupKey(branch: number): string {
+  return `jcafe_cart_backup:${branch}`;
+}
+
 /**
  * קיבוץ פריטי הסל הגלובלי הישן לפי תג הסניף שלהם (item.branch).
  * הפריטים כבר מתויגים נכון (addItem מתייג ב-branchCompany), לכן הפיצול lossless.

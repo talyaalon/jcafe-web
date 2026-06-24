@@ -5,7 +5,8 @@ import Link from "next/link";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { formatTHB } from "@/lib/format";
-import { useCart, type CartStoreRef } from "@/lib/cart/CartContext";
+import { useCart, type CartStoreRef, type CartItem } from "@/lib/cart/CartContext";
+import { cartBackupKey } from "@/lib/cart/cart-storage";
 import { branchHref } from "@/lib/branch-slugs";
 import { CheckoutFooter } from "./CheckoutFooter";
 import { CartThumb } from "./CartThumb";
@@ -37,7 +38,7 @@ interface BranchInfo {
 
 
 export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionary }) {
-  const { items, subtotal, remove, clear, branchCompany } = useCart();
+  const { items, subtotal, remove, clear, branchCompany, replaceCart } = useCart();
   const { user } = useAuth();
   // סניף ההזמנה נגזר מהפריטים בעגלה (לא מקובע לפוקט) — לחישוב המשלוח והסטטוס הנכון
   const cartBranch = items.find((i) => i.branch)?.branch ?? branchCompany;
@@ -404,6 +405,19 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
         }
       }
       clear();
+      // הזמנה חוזרת: אם גובה סל קודם של הסניף — מחזירים אותו לסל אחרי התשלום
+      if (cartBranch != null) {
+        try {
+          const bk = localStorage.getItem(cartBackupKey(cartBranch));
+          if (bk) {
+            const restored = JSON.parse(bk) as CartItem[];
+            localStorage.removeItem(cartBackupKey(cartBranch));
+            if (restored.length) replaceCart(cartBranch, restored);
+          }
+        } catch {
+          /* ignore */
+        }
+      }
       setStep("done");
     } catch (err) {
       setApiError(err instanceof Error ? err.message : String(err));
