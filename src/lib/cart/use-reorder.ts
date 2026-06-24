@@ -30,11 +30,12 @@ export function useReorder(locale: Locale) {
     if (o.company == null) return;
     const branch = o.company;
     try {
+      // שומרים את הסל המקורי פעם אחת בלבד: אם כבר קיים גיבוי (הזמנה חוזרת קודמת שטרם
+      // הושלמה) — לא דורסים אותו, כדי לא לאבד את הסל האמיתי של הלקוח.
+      const hasBackup = !!localStorage.getItem(cartBackupKey(branch));
       const cur = localStorage.getItem(cartStorageKey(branch));
-      if (cur && (JSON.parse(cur) as unknown[]).length) {
+      if (!hasBackup && cur && (JSON.parse(cur) as unknown[]).length) {
         localStorage.setItem(cartBackupKey(branch), cur);
-      } else {
-        localStorage.removeItem(cartBackupKey(branch));
       }
     } catch {
       /* ignore */

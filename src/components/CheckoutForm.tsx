@@ -379,7 +379,13 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
         // שמירת טלפון/כתובת לפרופיל הסניף — כדי שיושלמו אוטומטית בפעם הבאה (best-effort)
         if (cartBranch != null) {
           try {
-            const prof = getBranchProfile(user.user_metadata, cartBranch);
+            // קוראים metadata טרי מהשרת (לא מ-user שעלול להיות לא-מעודכן) — כדי לא
+            // "להחיות" כתובת שהמשתמש מחק במכשיר/לשונית אחרת בין הטעינה לתשלום.
+            const { data: fresh } = await supabaseBrowser.auth.getUser();
+            const meta0 = (fresh.user?.user_metadata ?? user.user_metadata) as
+              | Record<string, unknown>
+              | undefined;
+            const prof = getBranchProfile(meta0, cartBranch);
             const addresses = [...(prof.addresses ?? [])];
             if (method === "delivery" && form.addr1.trim()) {
               const exists = addresses.some((x) => x.addr1.trim() === form.addr1.trim());
@@ -394,7 +400,7 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
                 });
               }
             }
-            const meta = withBranchProfile(user.user_metadata, cartBranch, {
+            const meta = withBranchProfile(meta0, cartBranch, {
               phone: form.phone.trim() || prof.phone,
               addresses,
             });

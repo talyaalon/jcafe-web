@@ -53,6 +53,8 @@ interface CartContextValue {
   setBranchCompany: (n: number) => void;
   /** הזמנה חוזרת: מחליף את הסל בפריטים נתונים בסניף נתון (עגלה חדשה). */
   replaceCart: (branch: number, items: CartItem[]) => void;
+  /** הוספת מוצר לסל של סניף ספציפי (למשל מועדף שנשמר בסניף אחר) — מוסיף ועובר לאותו סניף. */
+  addItemForBranch: (branch: number, product: Product, store: CartStoreRef, qty?: number) => void;
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -205,6 +207,30 @@ export function CartProvider({
     }
   };
 
+  // הוספת פריט לסל של סניף נתון (לא בהכרח הפעיל). אם זה הסניף הפעיל — addItem רגיל;
+  // אחרת מוסיפים לסל של אותו סניף ב-localStorage ועוברים אליו (כמו replaceCart).
+  const addItemForBranch: CartContextValue["addItemForBranch"] = (branch, product, store, qty = 1) => {
+    if (branch === branchCompany) {
+      addItem(product, store, qty);
+      return;
+    }
+    const max = maxQtyFor(product);
+    try {
+      const raw = localStorage.getItem(cartStorageKey(branch));
+      const cur: CartItem[] = raw ? (JSON.parse(raw) as CartItem[]) : [];
+      const ex = cur.find((i) => i.product.id === product.id);
+      const next = ex
+        ? cur.map((i) =>
+            i.product.id === product.id ? { ...i, qty: Math.min(max, i.qty + qty), branch } : i,
+          )
+        : [...cur, { product, qty: Math.min(max, qty), store, branch }];
+      localStorage.setItem(cartStorageKey(branch), JSON.stringify(next));
+    } catch {
+      /* ignore */
+    }
+    setBranchCompany(branch);
+  };
+
   const setSchedule = (storeId: string, value: string) =>
     setSchedules((prev) => ({ ...prev, [storeId]: value }));
   const clearSchedule = (storeId: string) =>
@@ -235,6 +261,7 @@ export function CartProvider({
         branchCompany,
         setBranchCompany,
         replaceCart,
+        addItemForBranch,
       }}
     >
       {children}

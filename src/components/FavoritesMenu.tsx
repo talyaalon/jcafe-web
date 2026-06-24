@@ -21,8 +21,13 @@ function storeRefFor(p: Product): CartStoreRef {
 export function FavoritesMenu({ locale }: { locale: Locale }) {
   const he = locale === "he";
   const { favorites, count, toggle } = useFavorites();
-  const { addItem } = useCart();
+  const { branchCompany, addItemForBranch } = useCart();
   const { user } = useAuth();
+  const addFav = (p: Product) => {
+    const b = p.branch ?? branchCompany;
+    if (b == null) return;
+    addItemForBranch(b, p, storeRefFor(p), 1);
+  };
   const [open, setOpen] = useState(false);
   const pName = (p: Product) => (he ? p.nameHe : p.nameEn);
 
@@ -89,7 +94,7 @@ export function FavoritesMenu({ locale }: { locale: Locale }) {
                     </div>
                     <div className="flex flex-col items-end gap-1.5 flex-none">
                       <button
-                        onClick={() => addItem(p, storeRefFor(p), 1)}
+                        onClick={() => addFav(p)}
                         className="bg-wine text-white text-[11px] font-bold rounded-lg px-2.5 py-1 hover:bg-wine-hover"
                       >
                         {he ? "לעגלה" : "Add"}

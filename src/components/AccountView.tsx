@@ -52,7 +52,7 @@ export function AccountView({ locale, dict }: { locale: Locale; dict: Dictionary
   const reorder = useReorder(locale);
   const { user, displayName, loading, signOut } = useAuth();
   const { favorites, toggle } = useFavorites();
-  const { branchCompany, addItem } = useCart();
+  const { branchCompany, addItemForBranch } = useCart();
   const [section, setSection] = useState<Section>("dashboard");
   const [orders, setOrders] = useState<AcctOrder[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
@@ -119,11 +119,13 @@ export function AccountView({ locale, dict }: { locale: Locale; dict: Dictionary
   };
 
   const addFav = (p: Product) => {
-    if (branchCompany == null) {
+    // מוסיפים לסל של הסניף שבו המוצר נשמר (p.branch), לא של הסניף הנוכחי
+    const b = p.branch ?? branchCompany;
+    if (b == null) {
       router.push(branchHref(locale, branchCompany));
       return;
     }
-    addItem(p, storeRefFor(p), 1);
+    addItemForBranch(b, p, storeRefFor(p), 1);
   };
 
   const nav: { key: Section; label: string; Icon: (p: { className?: string }) => ReactNode }[] = [
@@ -338,7 +340,12 @@ function DetailsTab({
 
   // שמירה מיידית ל-user_metadata (פר-סניף) — כך נשמר בין מכשירים לפי החשבון
   const persist = async (addrs: SavedAddress[], ph: string, nm: string) => {
-    const baseMeta = (user?.user_metadata ?? {}) as Record<string, unknown>;
+    // קוראים metadata טרי מהשרת כדי לא לדרוס פרופיל של סניף אחר שעודכן במקביל
+    const { data: fresh } = await supabaseBrowser.auth.getUser();
+    const baseMeta = (fresh.user?.user_metadata ?? user?.user_metadata ?? {}) as Record<
+      string,
+      unknown
+    >;
     let data: Record<string, unknown> = { ...baseMeta, name: nm };
     if (branchCompany != null) {
       data = withBranchProfile(data, branchCompany, { phone: ph, addresses: addrs });
