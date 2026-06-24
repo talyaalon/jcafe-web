@@ -5,45 +5,22 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
-import { formatTHB } from "@/lib/format";
+import { formatTHB, orderDate, methodLabel } from "@/lib/format";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useFavorites } from "@/lib/favorites/FavoritesContext";
-import { useCart, type CartStoreRef } from "@/lib/cart/CartContext";
+import { useCart } from "@/lib/cart/CartContext";
 import { useReorder } from "@/lib/cart/use-reorder";
-import { branchHref, COMPANY_SLUG } from "@/lib/branch-slugs";
+import { storeRefFor } from "@/lib/cart/store-ref";
+import { branchHref, branchDisplayName } from "@/lib/branch-slugs";
 import { supabaseBrowser } from "@/lib/supabase/client";
-import { findPhuketStore } from "@/lib/odoo/phuket";
 import type { Product } from "@/lib/odoo/types";
+import { fetchAccountOrders } from "@/lib/account/fetch-orders";
+import type { AccountOrder } from "@/lib/account/order-types";
 import { getBranchProfile, withBranchProfile, type SavedAddress } from "@/lib/account/profile";
 import { AddressAutocomplete } from "./AddressAutocomplete";
-import { IconBox, IconGear, IconStore, IconCart } from "./Icons";
+import { IconBox, IconGear, IconStore, IconCart, IconHeart, IconLogout } from "./Icons";
 
 type Section = "dashboard" | "orders" | "favorites" | "details";
-
-interface AcctItem {
-  name: string;
-  qty: number;
-  price?: number;
-  storeName: string;
-  storeId: string;
-  templateId?: number;
-  image?: string;
-}
-interface AcctOrder {
-  order_name: string | null;
-  created_at: string;
-  company: number | null;
-  method: string | null;
-  total: number;
-  items: AcctItem[];
-}
-
-function storeRefFor(p: Product): CartStoreRef {
-  const s = findPhuketStore(p.storeId);
-  return s
-    ? { id: s.id, nameHe: s.nameHe, nameEn: s.nameEn, emoji: s.emoji }
-    : { id: p.storeId, nameHe: p.storeId, nameEn: p.storeId, emoji: "" };
-}
 
 export function AccountView({ locale, dict }: { locale: Locale; dict: Dictionary }) {
   const a = dict.account;
@@ -54,13 +31,10 @@ export function AccountView({ locale, dict }: { locale: Locale; dict: Dictionary
   const { favorites, toggle } = useFavorites();
   const { branchCompany, addItemForBranch } = useCart();
   const [section, setSection] = useState<Section>("dashboard");
-  const [orders, setOrders] = useState<AcctOrder[]>([]);
+  const [orders, setOrders] = useState<AccountOrder[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
 
-  const branchName =
-    branchCompany != null
-      ? (COMPANY_SLUG[branchCompany] ?? "").replace(/^\w/, (c) => c.toUpperCase())
-      : "";
+  const branchName = branchDisplayName(branchCompany);
 
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("tab");
@@ -77,25 +51,16 @@ export function AccountView({ locale, dict }: { locale: Locale; dict: Dictionary
     if (!user) return;
     let alive = true;
     setLoadingOrders(true);
-    (async () => {
-      const { data } = await supabaseBrowser.auth.getSession();
-      const token = data.session?.access_token;
-      if (!token) {
+    fetchAccountOrders({ company: branchCompany })
+      .then((list) => {
+        if (alive) {
+          setOrders(list);
+          setLoadingOrders(false);
+        }
+      })
+      .catch(() => {
         if (alive) setLoadingOrders(false);
-        return;
-      }
-      const q = branchCompany ? `?company=${branchCompany}` : "";
-      const res = await fetch(`/api/account/orders${q}`, {
-        headers: { Authorization: `Bearer ${token}` },
       });
-      const j = await res.json();
-      if (alive) {
-        setOrders((j.orders as AcctOrder[]) ?? []);
-        setLoadingOrders(false);
-      }
-    })().catch(() => {
-      if (alive) setLoadingOrders(false);
-    });
     return () => {
       alive = false;
     };
@@ -104,14 +69,6 @@ export function AccountView({ locale, dict }: { locale: Locale; dict: Dictionary
   if (loading || !user) {
     return <div className="max-w-5xl mx-auto w-full px-4 py-16 text-center text-ink/50">…</div>;
   }
-
-  const fmtDate = (iso: string) => {
-    const d = new Date(iso);
-    const p = (n: number) => String(n).padStart(2, "0");
-    return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
-  };
-  const methodLabel = (m: string | null) =>
-    m === "delivery" ? (he ? "משלוח" : "Delivery") : he ? "איסוף" : "Pickup";
 
   const logout = async () => {
     await signOut();
@@ -131,7 +88,7 @@ export function AccountView({ locale, dict }: { locale: Locale; dict: Dictionary
   const nav: { key: Section; label: string; Icon: (p: { className?: string }) => ReactNode }[] = [
     { key: "dashboard", label: a.dashboard, Icon: IconStore },
     { key: "orders", label: a.orders, Icon: IconBox },
-    { key: "favorites", label: he ? "מועדפים" : "Favorites", Icon: HeartIcon },
+    { key: "favorites", label: he ? "מועדפים" : "Favorites", Icon: IconHeart },
     { key: "details", label: a.accountDetails, Icon: IconGear },
   ];
 
@@ -169,7 +126,7 @@ export function AccountView({ locale, dict }: { locale: Locale; dict: Dictionary
             onClick={logout}
             className="w-full flex items-center gap-3 text-start px-4 py-3 text-sm text-ink/70 hover:bg-soft/60"
           >
-            <LogoutIcon className="w-[18px] h-[18px]" />
+            <IconLogout className="w-[18px] h-[18px]" />
             {a.logout}
           </button>
         </aside>
@@ -184,7 +141,7 @@ export function AccountView({ locale, dict }: { locale: Locale; dict: Dictionary
                 onClick={() => setSection("orders")}
               />
               <DashCard
-                Icon={HeartIcon}
+                Icon={IconHeart}
                 value={String(favorites.length)}
                 label={he ? "מועדפים" : "Favorites"}
                 onClick={() => setSection("favorites")}
@@ -205,40 +162,51 @@ export function AccountView({ locale, dict }: { locale: Locale; dict: Dictionary
                 </p>
               ) : (
                 <ul className="divide-y divide-line">
-                  {orders.map((o) => (
-                    <li key={o.order_name} className="p-4 sm:px-5">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <Link
-                            href={`/${locale}/account/orders/${encodeURIComponent(o.order_name ?? "")}`}
-                            className="font-extrabold text-wine hover:underline"
-                          >
-                            {o.order_name || "—"}
-                          </Link>
-                          <div className="text-[12px] text-ink/55 mt-0.5">
-                            {fmtDate(o.created_at)} · {methodLabel(o.method)} ·{" "}
-                            {o.items.reduce((s, i) => s + i.qty, 0)} {he ? "פריטים" : "items"}
+                  {orders.map((o) => {
+                    // קישור לעמוד ההזמנה רק כשיש מספר הזמנה תקין (מונע קישור שבור)
+                    const href = o.order_name
+                      ? `/${locale}/account/orders/${encodeURIComponent(o.order_name)}`
+                      : null;
+                    return (
+                      <li key={o.order_name ?? o.created_at} className="p-4 sm:px-5">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            {href ? (
+                              <Link href={href} className="font-extrabold text-wine hover:underline">
+                                {o.order_name}
+                              </Link>
+                            ) : (
+                              <span className="font-extrabold text-wine">—</span>
+                            )}
+                            <div className="text-[12px] text-ink/55 mt-0.5">
+                              {orderDate(o.created_at)} · {methodLabel(o.method, he)} ·{" "}
+                              {o.items.reduce((s, i) => s + i.qty, 0)} {he ? "פריטים" : "items"}
+                            </div>
                           </div>
+                          <span className="font-bold text-ink whitespace-nowrap">
+                            {formatTHB(o.total)}
+                          </span>
                         </div>
-                        <span className="font-bold text-ink whitespace-nowrap">{formatTHB(o.total)}</span>
-                      </div>
-                      <div className="flex gap-2 mt-3">
-                        <Link
-                          href={`/${locale}/account/orders/${encodeURIComponent(o.order_name ?? "")}`}
-                          className="flex-1 text-center text-xs font-bold border border-line rounded-lg py-2 hover:border-wine text-ink/70"
-                        >
-                          {a.view}
-                        </Link>
-                        <button
-                          onClick={() => reorder(o)}
-                          className="flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-bold rounded-lg py-2 bg-wine text-white hover:bg-wine-hover"
-                        >
-                          <IconCart className="w-4 h-4" />
-                          {he ? "הזמנה חוזרת" : "Reorder"}
-                        </button>
-                      </div>
-                    </li>
-                  ))}
+                        <div className="flex gap-2 mt-3">
+                          {href && (
+                            <Link
+                              href={href}
+                              className="flex-1 text-center text-xs font-bold border border-line rounded-lg py-2 hover:border-wine text-ink/70"
+                            >
+                              {a.view}
+                            </Link>
+                          )}
+                          <button
+                            onClick={() => reorder(o)}
+                            className="flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-bold rounded-lg py-2 bg-wine text-white hover:bg-wine-hover"
+                          >
+                            <IconCart className="w-4 h-4" />
+                            {he ? "הזמנה חוזרת" : "Reorder"}
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div>
@@ -283,7 +251,7 @@ export function AccountView({ locale, dict }: { locale: Locale; dict: Dictionary
                             aria-label={he ? "הסר ממועדפים" : "Remove favorite"}
                             className="w-9 h-9 grid place-items-center rounded-lg border border-line text-wine hover:bg-soft flex-none"
                           >
-                            <HeartIcon className="w-4 h-4" filled />
+                            <IconHeart className="w-4 h-4" filled />
                           </button>
                         </div>
                       </div>
@@ -567,39 +535,5 @@ function DashCard({
         <span className="block text-sm text-ink/60 mt-1">{label}</span>
       </span>
     </button>
-  );
-}
-
-function HeartIcon({ className = "w-5 h-5", filled = false }: { className?: string; filled?: boolean }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className={className}
-      fill={filled ? "currentColor" : "none"}
-      stroke="currentColor"
-      strokeWidth={1.8}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-    </svg>
-  );
-}
-
-function LogoutIcon({ className = "w-5 h-5" }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.7}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M15 12H4M8 8l-4 4 4 4M14 4h5a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-5" />
-    </svg>
   );
 }

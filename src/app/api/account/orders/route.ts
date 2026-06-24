@@ -34,15 +34,16 @@ export async function GET(req: Request) {
     .filter((n): n is string => !!n);
 
   if (myNames.length === 0) return NextResponse.json({ orders: [] });
-  // הזמנה בודדת — חייבת להיות של המשתמש
-  if (name && !myNames.includes(name)) {
+  // בקשת הזמנה בודדת (פרמטר name קיים) — חייבת להיות שם לא-ריק ששייך למשתמש,
+  // אחרת 404. בלי הבדיקה הזו name="" היה falsy ומחזיר את כל ההזמנות.
+  if (name !== null && (!name || !myNames.includes(name))) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 
   let q = admin
     .from("pos_orders")
     .select("*")
-    .in("order_name", name ? [name] : myNames)
+    .in("order_name", name !== null ? [name] : myNames)
     .order("created_at", { ascending: false });
   if (company) q = q.eq("company", company);
 

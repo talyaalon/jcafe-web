@@ -41,3 +41,9 @@ export function branchHref(locale: string, branchCompany: number | null): string
   const slug = branchCompany == null ? undefined : COMPANY_SLUG[branchCompany];
   return slug ? `/${locale}/s/${slug}` : `/${locale}/account`;
 }
+
+// שם סניף לתצוגה (Capitalized) לפי ה-slug — לכותרות באזור האישי. ריק אם אין סניף.
+export function branchDisplayName(branchCompany: number | null): string {
+  if (branchCompany == null) return "";
+  return (COMPANY_SLUG[branchCompany] ?? "").replace(/^\w/, (c) => c.toUpperCase());
+}

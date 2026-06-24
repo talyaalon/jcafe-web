@@ -4,37 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
-import { formatTHB } from "@/lib/format";
-import { supabaseBrowser } from "@/lib/supabase/client";
-import { COMPANY_SLUG } from "@/lib/branch-slugs";
+import { formatTHB, orderDate, methodLabel } from "@/lib/format";
+import { branchDisplayName } from "@/lib/branch-slugs";
+import { fetchAccountOrders } from "@/lib/account/fetch-orders";
+import type { AccountOrder } from "@/lib/account/order-types";
 import { useReorder } from "@/lib/cart/use-reorder";
 import { PrintReceiptButton } from "./staff/PrintReceiptButton";
 import { IconCart } from "./Icons";
-
-interface AcctItem {
-  name: string;
-  qty: number;
-  price?: number;
-  storeName: string;
-  storeId: string;
-  templateId?: number;
-}
-interface AcctOrder {
-  order_name: string | null;
-  created_at: string;
-  company: number | null;
-  method: string | null;
-  total: number;
-  delivery_fee?: number | null;
-  address?: string | null;
-  customer_name: string | null;
-  phone: string | null;
-  email: string | null;
-  status: string;
-  scheduled_for?: string | null;
-  notes?: string | null;
-  items: AcctItem[];
-}
 
 export function OrderDetailView({
   locale,
@@ -48,41 +24,25 @@ export function OrderDetailView({
   const a = dict.account;
   const he = locale === "he";
   const reorder = useReorder(locale);
-  const [order, setOrder] = useState<AcctOrder | null>(null);
+  const [order, setOrder] = useState<AccountOrder | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let alive = true;
-    (async () => {
-      const { data } = await supabaseBrowser.auth.getSession();
-      const token = data.session?.access_token;
-      if (!token) {
+    fetchAccountOrders({ name })
+      .then((list) => {
+        if (alive) {
+          setOrder(list[0] ?? null);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
         if (alive) setLoading(false);
-        return;
-      }
-      const res = await fetch(`/api/account/orders?name=${encodeURIComponent(name)}`, {
-        headers: { Authorization: `Bearer ${token}` },
       });
-      const j = await res.json();
-      if (alive) {
-        setOrder(((j.orders as AcctOrder[]) ?? [])[0] ?? null);
-        setLoading(false);
-      }
-    })().catch(() => {
-      if (alive) setLoading(false);
-    });
     return () => {
       alive = false;
     };
   }, [name]);
-
-  const fmtDate = (iso: string) => {
-    const d = new Date(iso);
-    const p = (n: number) => String(n).padStart(2, "0");
-    return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
-  };
-  const methodLabel = (m: string | null) =>
-    m === "delivery" ? (he ? "משלוח" : "Delivery") : he ? "איסוף" : "Pickup";
 
   const back = (
     <Link
@@ -105,10 +65,7 @@ export function OrderDetailView({
     );
   }
 
-  const branchName =
-    order.company != null
-      ? (COMPANY_SLUG[order.company] ?? "").replace(/^\w/, (c) => c.toUpperCase())
-      : "";
+  const branchName = branchDisplayName(order.company);
   const subtotal = order.items.reduce((s, i) => s + (i.price ?? 0) * i.qty, 0);
   const receipt = {
     order_name: order.order_name,
@@ -138,10 +95,10 @@ export function OrderDetailView({
         <div className="bg-wine text-white px-5 py-4 flex items-end justify-between gap-3 flex-wrap">
           <div>
             <h1 className="font-brand text-xl font-extrabold">{order.order_name || "—"}</h1>
-            <p className="text-white/70 text-sm mt-0.5">{fmtDate(order.created_at)}</p>
+            <p className="text-white/70 text-sm mt-0.5">{orderDate(order.created_at, true)}</p>
           </div>
           <div className="text-end text-sm">
-            <div>{methodLabel(order.method)}</div>
+            <div>{methodLabel(order.method, he)}</div>
             {branchName && <div className="text-white/70">{branchName}</div>}
           </div>
         </div>

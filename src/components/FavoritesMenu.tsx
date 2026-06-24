@@ -5,18 +5,11 @@ import Link from "next/link";
 import type { Locale } from "@/i18n/config";
 import type { Product } from "@/lib/odoo/types";
 import { useFavorites } from "@/lib/favorites/FavoritesContext";
-import { useCart, type CartStoreRef } from "@/lib/cart/CartContext";
+import { useCart } from "@/lib/cart/CartContext";
+import { storeRefFor } from "@/lib/cart/store-ref";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { findPhuketStore } from "@/lib/odoo/phuket";
 import { formatTHB } from "@/lib/format";
 import { CartThumb } from "./CartThumb";
-
-function storeRefFor(p: Product): CartStoreRef {
-  const s = findPhuketStore(p.storeId);
-  return s
-    ? { id: s.id, nameHe: s.nameHe, nameEn: s.nameEn, emoji: s.emoji }
-    : { id: p.storeId, nameHe: p.storeId, nameEn: p.storeId, emoji: "" };
-}
 
 export function FavoritesMenu({ locale }: { locale: Locale }) {
   const he = locale === "he";
