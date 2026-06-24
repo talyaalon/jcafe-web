@@ -19,6 +19,10 @@ export interface FloorOrder {
 
 type Stage = "new" | "picking" | "ready";
 type Tab = "all" | Stage | "future";
+
+// קטע הצלצול מתוך קובץ ההתרעה (שניות) — מנוגן בלולאה עד שלוחצים X.
+const RING_START = 6;
+const RING_END = 20;
 const stageOf = (o: FloorOrder): Stage =>
   o.done === 0 ? "new" : o.done >= o.total ? "ready" : "picking";
 
@@ -44,52 +48,68 @@ export function PosFloor({
   // לזכור אילו הזמנות כבר נראו ולזהות חדשות שנכנסו בין רענון לרענון.
   const [pendingNew, setPendingNew] = useState<FloorOrder[]>([]);
   const seenRef = useRef<Set<string> | null>(null);
-  const audioRef = useRef<AudioContext | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const wantRingRef = useRef(false);
 
-  const getCtx = useCallback(() => {
+  const getAudio = useCallback(() => {
     if (typeof window === "undefined") return null;
     if (!audioRef.current) {
-      const AC =
-        window.AudioContext ??
-        (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!AC) return null;
-      audioRef.current = new AC();
+      const a = new Audio("/new-order.mp3");
+      a.preload = "auto";
+      // לולאה על הקטע המבוקש: חזרה ל-START כשמגיעים ל-END (וגם אם מתחילים לפניו).
+      a.addEventListener("timeupdate", () => {
+        if (a.currentTime >= RING_END || a.currentTime < RING_START) {
+          a.currentTime = RING_START;
+        }
+      });
+      audioRef.current = a;
     }
     return audioRef.current;
   }, []);
 
-  const beep = useCallback(() => {
-    const ctx = getCtx();
-    if (!ctx) return;
-    if (ctx.state === "suspended") ctx.resume().catch(() => {});
-    const t0 = ctx.currentTime;
-    // פעמון דלת "דינג-דונג": צליל גבוה ואז נמוך, כל אחד עם דעיכה ארוכה כמו פעמון.
-    // הרמוניה שנייה עדינה מוסיפה עושר צליל; עוצמה גבוהה כדי שיהיה בולט.
-    const ring = (freq: number, start: number, dur: number) => {
-      [1, 2].forEach((harmonic, idx) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = "sine";
-        osc.frequency.value = freq * harmonic;
-        const peak = idx === 0 ? 0.6 : 0.18;
-        gain.gain.setValueAtTime(0.0001, t0 + start);
-        gain.gain.exponentialRampToValueAtTime(peak, t0 + start + 0.012);
-        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + start + dur);
-        osc.connect(gain).connect(ctx.destination);
-        osc.start(t0 + start);
-        osc.stop(t0 + start + dur + 0.02);
-      });
-    };
-    ring(659, 0, 0.7); // דינג (E5)
-    ring(523, 0.42, 0.95); // דונג (C5)
-  }, [getCtx]);
+  const startRing = useCallback(() => {
+    const a = getAudio();
+    if (!a) return;
+    wantRingRef.current = true;
+    try {
+      a.currentTime = RING_START;
+    } catch {
+      /* metadata עוד לא נטען — ה-timeupdate יתקן */
+    }
+    a.play().catch(() => {});
+  }, [getAudio]);
 
-  // "שחרור" האודיו בלחיצה/הקלדה ראשונה: יוצרים ומפעילים את ה-AudioContext בתוך
-  // מחווה אמיתית, כדי שהצפצוף יישמע אחר כך גם כשהוא מופעל אוטומטית.
+  const stopRing = useCallback(() => {
+    wantRingRef.current = false;
+    const a = audioRef.current;
+    if (a) {
+      a.pause();
+      try {
+        a.currentTime = RING_START;
+      } catch {
+        /* ignore */
+      }
+    }
+  }, []);
+
+  // "שחרור" האודיו בלחיצה/הקלדה ראשונה (דפדפנים חוסמים השמעה אוטומטית עד מחווה):
+  // מנגנים-ומשהים מיד כדי לקבל הרשאה, אלא אם כבר אמורים לצלצל.
   useEffect(() => {
     const unlock = () => {
-      const ctx = getCtx();
-      if (ctx?.state === "suspended") ctx.resume().catch(() => {});
+      const a = getAudio();
+      if (!a || wantRingRef.current) return;
+      a.play()
+        .then(() => {
+          if (!wantRingRef.current) {
+            a.pause();
+            try {
+              a.currentTime = RING_START;
+            } catch {
+              /* ignore */
+            }
+          }
+        })
+        .catch(() => {});
     };
     window.addEventListener("pointerdown", unlock);
     window.addEventListener("keydown", unlock);
@@ -97,7 +117,7 @@ export function PosFloor({
       window.removeEventListener("pointerdown", unlock);
       window.removeEventListener("keydown", unlock);
     };
-  }, [getCtx]);
+  }, [getAudio]);
 
   // זיהוי הזמנות חדשות בכל עדכון של רשימת ההזמנות הפעילות
   useEffect(() => {
@@ -115,35 +135,18 @@ export function PosFloor({
       const add = fresh.filter((o) => !existing.has(o.id));
       return add.length ? [...prev, ...add] : prev;
     });
-    beep(); // צפצוף מיידי על כל כניסה חדשה
-  }, [orders, beep]);
+  }, [orders]);
 
-  // חזרת צפצוף כל 7 שניות כל עוד יש התרעה פתוחה. שומרים את מזהה ה-interval ב-ref
-  // כדי שאפשר יהיה לעצור אותו מיידית בלחיצה על "אישור", בלי תלות בתזמון אפקטים.
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const stopBeeping = useCallback(() => {
-    if (intervalRef.current !== null) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-  }, []);
-
+  // מצלצלים כל עוד יש התרעה פתוחה; עוצרים מיד כשאין (וכן ביציאה מהמסך / בלחיצה על X).
   useEffect(() => {
-    if (pendingNew.length === 0) {
-      stopBeeping();
-      return;
-    }
-    if (intervalRef.current === null) {
-      intervalRef.current = setInterval(beep, 7000);
-    }
-    return stopBeeping;
-  }, [pendingNew.length, beep, stopBeeping]);
+    if (pendingNew.length > 0) startRing();
+    else stopRing();
+  }, [pendingNew.length, startRing, stopRing]);
 
-  // ניקוי בעת הסרת הקומפוננטה
-  useEffect(() => stopBeeping, [stopBeeping]);
+  useEffect(() => stopRing, [stopRing]);
 
   const dismissAlert = () => {
-    stopBeeping();
+    stopRing();
     setPendingNew([]);
   };
 
