@@ -15,6 +15,17 @@ export interface PrepItem {
   storeId: string;
 }
 
+// ההערה שמופיעה על קוביית ה-Preparation Display של ODOO: תג "מהאתר" + מספר ההזמנה,
+// ואם ההזמנה מתוזמנת — גם מועד ההכנה. נשלחת כ-general_note לכל מטבח (פר pos.order).
+export function kitchenNote(
+  orderName?: string | null,
+  scheduledFor?: string | null,
+): string | undefined {
+  const parts = [orderName ? `🌐 Website · #${orderName}` : "🌐 Website"];
+  if (scheduledFor) parts.push(`Scheduled: ${scheduledFor}`);
+  return parts.join(" · ");
+}
+
 // storeId → pos.config id + האם מטבח. תומך ב-slug של פוקט ובמזהה config ישיר (סניפים).
 function resolveConfig(
   storeId: string,

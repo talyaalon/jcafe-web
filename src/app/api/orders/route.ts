@@ -9,7 +9,7 @@ import { checkStock } from "@/lib/odoo/stock-check-server";
 import { serverDeliveryFee } from "@/lib/delivery-server";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "");
-import { pushKitchenToPrep } from "@/lib/odoo/pos-prep";
+import { pushKitchenToPrep, kitchenNote } from "@/lib/odoo/pos-prep";
 import { PHUKET_COMPANY_ID, PHUKET_PRICELIST_ID } from "@/lib/odoo/phuket";
 import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase/server";
 import { getBranchBranding, getActiveBanners } from "@/lib/supabase/data";
@@ -228,7 +228,7 @@ export async function POST(req: Request) {
           })),
           companyId,
           configs: branchConfigs,
-          note: body.scheduledFor ? `Scheduled: ${body.scheduledFor}` : undefined,
+          note: kitchenNote(order.name, body.scheduledFor),
         });
         prepPosOrderIds = prepResults.map((r) => r.posOrderId);
       } catch {

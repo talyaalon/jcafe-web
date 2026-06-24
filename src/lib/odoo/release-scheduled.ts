@@ -2,7 +2,7 @@ import "server-only";
 import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase/server";
 import type { PosOrder } from "@/lib/supabase/pos";
 import { getBranches } from "./branches";
-import { pushKitchenToPrep } from "./pos-prep";
+import { pushKitchenToPrep, kitchenNote } from "./pos-prep";
 import { PHUKET_COMPANY_ID } from "./phuket";
 
 // אזור הזמן של החנויות (תאילנד, UTC+7, ללא שעון קיץ)
@@ -63,7 +63,7 @@ export async function releaseDueOrders(company?: number): Promise<number> {
           })),
           companyId,
           configs,
-          note: o.scheduled_for ? `Scheduled: ${o.scheduled_for}` : undefined,
+          note: kitchenNote(o.order_name, o.scheduled_for),
         });
         await supabaseAdmin()
           .from("pos_orders")
