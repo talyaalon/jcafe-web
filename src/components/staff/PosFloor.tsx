@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { Locale } from "@/i18n/config";
 
@@ -38,6 +38,88 @@ export function PosFloor({
     const id = setInterval(() => setNow(Date.now()), 30000);
     return () => clearInterval(id);
   }, []);
+
+  // ===== התרעת הזמנה חדשה: צפצוף + חלון מתמשך עד שלוחצים X =====
+  // הרענון של AutoRefresh הוא רך (router.refresh) ושומר את ה-state כאן, לכן אפשר
+  // לזכור אילו הזמנות כבר נראו ולזהות חדשות שנכנסו בין רענון לרענון.
+  const [pendingNew, setPendingNew] = useState<FloorOrder[]>([]);
+  const seenRef = useRef<Set<string> | null>(null);
+  const audioRef = useRef<AudioContext | null>(null);
+
+  const getCtx = useCallback(() => {
+    if (typeof window === "undefined") return null;
+    if (!audioRef.current) {
+      const AC =
+        window.AudioContext ??
+        (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AC) return null;
+      audioRef.current = new AC();
+    }
+    return audioRef.current;
+  }, []);
+
+  const beep = useCallback(() => {
+    const ctx = getCtx();
+    if (!ctx) return;
+    if (ctx.state === "suspended") ctx.resume().catch(() => {});
+    const t0 = ctx.currentTime;
+    // צמד צלילים קצר ובולט
+    [0, 0.18].forEach((offset, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = i === 0 ? 880 : 1175;
+      gain.gain.setValueAtTime(0.0001, t0 + offset);
+      gain.gain.exponentialRampToValueAtTime(0.35, t0 + offset + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + offset + 0.16);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t0 + offset);
+      osc.stop(t0 + offset + 0.17);
+    });
+  }, [getCtx]);
+
+  // "שחרור" האודיו בלחיצה/הקלדה ראשונה: יוצרים ומפעילים את ה-AudioContext בתוך
+  // מחווה אמיתית, כדי שהצפצוף יישמע אחר כך גם כשהוא מופעל אוטומטית.
+  useEffect(() => {
+    const unlock = () => {
+      const ctx = getCtx();
+      if (ctx?.state === "suspended") ctx.resume().catch(() => {});
+    };
+    window.addEventListener("pointerdown", unlock);
+    window.addEventListener("keydown", unlock);
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, [getCtx]);
+
+  // זיהוי הזמנות חדשות בכל עדכון של רשימת ההזמנות הפעילות
+  useEffect(() => {
+    const ids = orders.map((o) => o.id);
+    if (seenRef.current === null) {
+      // טעינה ראשונה — לא מתריעים על הזמנות קיימות
+      seenRef.current = new Set(ids);
+      return;
+    }
+    const fresh = orders.filter((o) => !seenRef.current!.has(o.id));
+    if (!fresh.length) return;
+    fresh.forEach((o) => seenRef.current!.add(o.id));
+    setPendingNew((prev) => {
+      const existing = new Set(prev.map((p) => p.id));
+      const add = fresh.filter((o) => !existing.has(o.id));
+      return add.length ? [...prev, ...add] : prev;
+    });
+  }, [orders]);
+
+  // צפצוף כשנכנסות חדשות, וחזרה כל 7 שניות עד שמאשרים
+  useEffect(() => {
+    if (!pendingNew.length) return;
+    beep();
+    const id = setInterval(beep, 7000);
+    return () => clearInterval(id);
+  }, [pendingNew.length, beep]);
+
+  const dismissAlert = () => setPendingNew([]);
 
   const tabs: { key: Tab; label: string; badge?: number }[] = [
     { key: "all", label: he ? "הכל" : "All" },
@@ -80,6 +162,66 @@ export function PosFloor({
 
   return (
     <div>
+      {/* התרעת הזמנה חדשה — מודאל מתמשך שנסגר רק ב-X */}
+      {pendingNew.length > 0 && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl border-t-8 border-t-wine overflow-hidden">
+            <div className="flex items-center justify-between gap-3 bg-wine text-white px-5 py-3">
+              <span className="font-extrabold text-lg flex items-center gap-2">
+                🔔 {he ? "הזמנה חדשה!" : "New order!"}
+                {pendingNew.length > 1 && (
+                  <span className="text-sm font-bold bg-white/25 rounded-full px-2 py-0.5">
+                    {pendingNew.length}
+                  </span>
+                )}
+              </span>
+              <button
+                onClick={dismissAlert}
+                aria-label={he ? "סגירה" : "Close"}
+                className="text-white/90 hover:text-white text-2xl leading-none font-bold px-2"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="max-h-[50vh] overflow-y-auto divide-y divide-line">
+              {pendingNew.map((o) => (
+                <Link
+                  key={o.id}
+                  href={`/${locale}/picker/${o.id}`}
+                  onClick={dismissAlert}
+                  className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-soft"
+                >
+                  <span>
+                    <span className="font-extrabold text-wine">{o.order_name || "—"}</span>
+                    <span className="block text-sm text-ink/70">{o.customer || "—"}</span>
+                    {o.stores.length > 0 && (
+                      <span className="block text-[12px] text-ink/45 line-clamp-1">
+                        {o.stores.join(" · ")}
+                      </span>
+                    )}
+                  </span>
+                  <span
+                    className={`text-[11px] font-bold rounded-full px-2 py-0.5 shrink-0 ${
+                      o.method === "delivery" ? "bg-wine/10 text-wine" : "bg-soft text-ink/70"
+                    }`}
+                  >
+                    {o.method === "delivery" ? (he ? "משלוח" : "Delivery") : he ? "איסוף" : "Pickup"}
+                  </span>
+                </Link>
+              ))}
+            </div>
+            <div className="p-4">
+              <button
+                onClick={dismissAlert}
+                className="w-full bg-wine text-white font-bold rounded-xl py-3 hover:bg-wine-hover"
+              >
+                {he ? "הבנתי, סגור" : "Got it, dismiss"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* filter tabs */}
       <div className="flex gap-2 px-4 sm:px-6 py-3 flex-wrap">
         {tabs.map((t) => (
