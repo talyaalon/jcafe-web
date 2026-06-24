@@ -51,6 +51,8 @@ interface CartContextValue {
    *  null = אין סניף פעיל (משתמש בעמוד auth ללא Cookie). אין יותר fallback שקט ל-14. */
   branchCompany: number | null;
   setBranchCompany: (n: number) => void;
+  /** הזמנה חוזרת: מחליף את הסל בפריטים נתונים בסניף נתון (עגלה חדשה). */
+  replaceCart: (branch: number, items: CartItem[]) => void;
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -185,6 +187,24 @@ export function CartProvider({
     setSchedules({});
   };
 
+  // הזמנה חוזרת: כותב את הפריטים לסל הסניף ב-localStorage ואז עובר אליו, כך שאפקט
+  // טעינת הסל לא ידרוס אותם (הוא טוען מ-localStorage = אותם פריטים).
+  const replaceCart: CartContextValue["replaceCart"] = (branch, newItems) => {
+    try {
+      localStorage.setItem(cartStorageKey(branch), JSON.stringify(newItems));
+      localStorage.setItem(schedStorageKey(branch), JSON.stringify({}));
+    } catch {
+      /* ignore */
+    }
+    if (branch === branchCompany) {
+      loadedBranchRef.current = branch;
+      setItems(newItems);
+      setSchedules({});
+    } else {
+      setBranchCompany(branch);
+    }
+  };
+
   const setSchedule = (storeId: string, value: string) =>
     setSchedules((prev) => ({ ...prev, [storeId]: value }));
   const clearSchedule = (storeId: string) =>
@@ -214,6 +234,7 @@ export function CartProvider({
         clearSchedule,
         branchCompany,
         setBranchCompany,
+        replaceCart,
       }}
     >
       {children}

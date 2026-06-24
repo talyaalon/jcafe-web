@@ -43,7 +43,7 @@ export function AccountMenu({ locale, loginLabel }: { locale: Locale; loginLabel
               onClick={() => setOpen(false)}
               className="flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-soft text-ink/80"
             >
-              <span className="text-wine">🪪</span> {he ? "החשבון שלי" : "My Account"}
+              <IconAccount className="w-[18px] h-[18px] text-wine" /> {he ? "החשבון שלי" : "My Account"}
             </Link>
             <button
               onClick={async () => {
@@ -53,7 +53,19 @@ export function AccountMenu({ locale, loginLabel }: { locale: Locale; loginLabel
               }}
               className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-soft text-ink/80 border-t border-line"
             >
-              <span className="text-wine">➡️</span> {he ? "התנתקות" : "Logout"}
+              <svg
+                viewBox="0 0 24 24"
+                className="w-[18px] h-[18px] text-wine"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.7}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <path d="M15 12H4M8 8l-4 4 4 4M14 4h5a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-5" />
+              </svg>
+              {he ? "התנתקות" : "Logout"}
             </button>
           </div>
         </>

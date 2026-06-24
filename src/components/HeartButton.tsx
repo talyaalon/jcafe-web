@@ -2,17 +2,20 @@
 
 import type { Product } from "@/lib/odoo/types";
 import { useFavorites } from "@/lib/favorites/FavoritesContext";
+import { useCart } from "@/lib/cart/CartContext";
 
 // כפתור שמירה למועדפים (לב) ליד מוצר.
 export function HeartButton({ product, className = "" }: { product: Product; className?: string }) {
   const { isFavorite, toggle } = useFavorites();
+  const { branchCompany } = useCart();
   const fav = isFavorite(product.id);
   return (
     <button
       type="button"
       onClick={(e) => {
         e.stopPropagation();
-        toggle(product);
+        // שומרים את הסניף הנוכחי על המועדף — כדי לדעת לאיזה סל להוסיף בהמשך
+        toggle(branchCompany != null ? { ...product, branch: branchCompany } : product);
       }}
       aria-label={fav ? "Remove from favorites" : "Add to favorites"}
       aria-pressed={fav}

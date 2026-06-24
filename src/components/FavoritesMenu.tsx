@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import type { Locale } from "@/i18n/config";
 import type { Product } from "@/lib/odoo/types";
 import { useFavorites } from "@/lib/favorites/FavoritesContext";
 import { useCart, type CartStoreRef } from "@/lib/cart/CartContext";
+import { useAuth } from "@/lib/auth/AuthContext";
 import { findPhuketStore } from "@/lib/odoo/phuket";
 import { formatTHB } from "@/lib/format";
 import { CartThumb } from "./CartThumb";
@@ -20,6 +22,7 @@ export function FavoritesMenu({ locale }: { locale: Locale }) {
   const he = locale === "he";
   const { favorites, count, toggle } = useFavorites();
   const { addItem } = useCart();
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const pName = (p: Product) => (he ? p.nameHe : p.nameEn);
 
@@ -56,7 +59,18 @@ export function FavoritesMenu({ locale }: { locale: Locale }) {
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute end-0 top-full mt-3 w-80 max-w-[90vw] bg-white border border-line rounded-xl shadow-2xl z-50 overflow-hidden">
             <div className="px-4 py-3 border-b border-line font-extrabold text-ink flex items-center justify-between">
-              <span>{he ? "המועדפים שלי" : "My favorites"}</span>
+              {/* כותרת לחיצה — משתמש מחובר עובר ללשונית המועדפים באזור האישי */}
+              {user ? (
+                <Link
+                  href={`/${locale}/account?tab=favorites`}
+                  onClick={() => setOpen(false)}
+                  className="hover:text-wine underline decoration-dotted underline-offset-4"
+                >
+                  {he ? "המועדפים שלי" : "My favorites"}
+                </Link>
+              ) : (
+                <span>{he ? "המועדפים שלי" : "My favorites"}</span>
+              )}
               <span className="text-xs text-ink/45">{count}</span>
             </div>
 

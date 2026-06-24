@@ -53,4 +53,6 @@ export interface Product {
   reference?: string;
   /** URL לתמונת המוצר מ-ODOO (/web/image/...) */
   image?: string;
+  /** הסניף (company id) שממנו נשמר המוצר למועדפים — לקביעת סל הסניף הנכון בהוספה לסל */
+  branch?: number;
 }

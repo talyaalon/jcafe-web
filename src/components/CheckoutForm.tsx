@@ -18,6 +18,7 @@ import type { Shortage } from "@/lib/odoo/stock-check";
 import { isOpenAt, minDateTime } from "@/lib/schedule";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { getBranchProfile, defaultAddress, withBranchProfile } from "@/lib/account/profile";
 import { CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
 type Method = "delivery" | "pickup";
@@ -88,6 +89,8 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
   const [prefilledFor, setPrefilledFor] = useState<string | null>(null);
   if (user && prefilledFor !== user.id) {
     setPrefilledFor(user.id);
+    const prof = getBranchProfile(user.user_metadata, cartBranch);
+    const def = defaultAddress(prof);
     setForm((f) => ({
       ...f,
       name:
@@ -96,7 +99,11 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
         user.email?.split("@")[0] ||
         "",
       email: f.email || user.email || "",
-      phone: f.phone || (user.user_metadata?.phone as string | undefined) || "",
+      phone: f.phone || prof.phone || (user.user_metadata?.phone as string | undefined) || "",
+      addr1: f.addr1 || def?.addr1 || "",
+      addr2: f.addr2 || def?.addr2 || "",
+      city: f.city || def?.city || "",
+      postcode: f.postcode || def?.postcode || "",
     }));
     // משתמש מחובר מדלג על בורר האורח — ישר לעמוד השילוח/תשלום
     setStep((s) => (s === "contact" ? "review" : s));
@@ -368,6 +375,33 @@ export function CheckoutForm({ locale, dict }: { locale: Locale; dict: Dictionar
           item_count: items.reduce((s, i) => s + i.qty, 0),
           method,
         });
+        // שמירת טלפון/כתובת לפרופיל הסניף — כדי שיושלמו אוטומטית בפעם הבאה (best-effort)
+        if (cartBranch != null) {
+          try {
+            const prof = getBranchProfile(user.user_metadata, cartBranch);
+            const addresses = [...(prof.addresses ?? [])];
+            if (method === "delivery" && form.addr1.trim()) {
+              const exists = addresses.some((x) => x.addr1.trim() === form.addr1.trim());
+              if (!exists) {
+                addresses.push({
+                  id: globalThis.crypto?.randomUUID?.() ?? String(Date.now()),
+                  addr1: form.addr1.trim(),
+                  addr2: form.addr2.trim() || undefined,
+                  city: form.city.trim() || undefined,
+                  postcode: form.postcode.trim() || undefined,
+                  isDefault: addresses.length === 0,
+                });
+              }
+            }
+            const meta = withBranchProfile(user.user_metadata, cartBranch, {
+              phone: form.phone.trim() || prof.phone,
+              addresses,
+            });
+            await supabaseBrowser.auth.updateUser({ data: meta });
+          } catch {
+            /* ignore */
+          }
+        }
       }
       clear();
       setStep("done");
