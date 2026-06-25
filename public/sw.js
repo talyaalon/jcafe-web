@@ -20,14 +20,14 @@ self.addEventListener("push", (event) => {
     requireInteraction: true,
     tag: data.tag || "new-order",
     renotify: true,
-    data: { url: data.url || "/he/picker" },
+    data: { url: data.url || "/en/picker" },
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || "/he/picker";
+  const url = (event.notification.data && event.notification.data.url) || "/en/picker";
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
       for (const c of list) {

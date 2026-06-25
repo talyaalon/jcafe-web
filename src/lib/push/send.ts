@@ -39,7 +39,7 @@ export async function sendNewOrderPush(
     const payload = JSON.stringify({
       title: "🔔 הזמנה חדשה",
       body: [customer, orderName].filter(Boolean).join(" · ") || "הזמנה חדשה התקבלה",
-      url: company ? `/he/picker?company=${company}` : "/he/picker",
+      url: company ? `/en/picker?company=${company}` : "/en/picker",
       tag: orderName || "new-order",
     });
     await Promise.all(

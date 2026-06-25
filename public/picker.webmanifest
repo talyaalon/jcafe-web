@@ -2,7 +2,7 @@
   "name": "J Cafe — מלקט",
   "short_name": "מלקט",
   "description": "מסך ליקוט הזמנות — J Cafe",
-  "start_url": "/he/picker",
+  "start_url": "/en/picker",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
