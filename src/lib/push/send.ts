@@ -48,6 +48,7 @@ export async function sendNewOrderPush(
           await webpush.sendNotification(
             { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
             payload,
+            { urgency: "high", TTL: 120 },
           );
         } catch (e) {
           const code = (e as { statusCode?: number }).statusCode ?? 0;

@@ -16,13 +16,23 @@ self.addEventListener("push", (event) => {
     body: data.body || "",
     icon: "/app-logo.png",
     badge: "/app-logo.png",
-    vibrate: [250, 120, 250, 120, 250],
-    requireInteraction: true,
+    // רטט חזק וארוך — מורגש יותר
+    vibrate: [400, 150, 400, 150, 400, 150, 500],
+    requireInteraction: true, // נשארת עד שלוחצים
     tag: data.tag || "new-order",
     renotify: true,
+    silent: false,
     data: { url: data.url || "/en/picker" },
   };
-  event.waitUntil(self.registration.showNotification(title, options));
+  // "צלצול" — מציגים את ההתראה כמה פעמים ברצף כדי לחזור על הצליל+הרטט (בגבולות ה-Web)
+  event.waitUntil(
+    (async () => {
+      for (let i = 0; i < 3; i++) {
+        await self.registration.showNotification(title, options);
+        if (i < 2) await new Promise((r) => setTimeout(r, 2500));
+      }
+    })(),
+  );
 });
 
 self.addEventListener("notificationclick", (event) => {
