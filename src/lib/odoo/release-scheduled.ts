@@ -3,6 +3,7 @@ import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase/server";
 import type { PosOrder } from "@/lib/supabase/pos";
 import { getBranches } from "./branches";
 import { pushKitchenToPrep, kitchenNote } from "./pos-prep";
+import { sendNewOrderPush } from "@/lib/push/send";
 import { PHUKET_COMPANY_ID } from "./phuket";
 
 // אזור הזמן של החנויות (תאילנד, UTC+7, ללא שעון קיץ)
@@ -69,6 +70,8 @@ export async function releaseDueOrders(company?: number): Promise<number> {
           .from("pos_orders")
           .update({ prep_pos_order_ids: prep.map((r) => r.posOrderId) })
           .eq("id", o.id);
+        // התרעת רקע למלקטים — ההזמנה העתידית נכנסה עכשיו למסך
+        await sendNewOrderPush(companyId, o.order_name, o.customer_name);
         released++;
       } catch (e) {
         console.error("[releaseDueOrders] push failed, rolling back claim", o.id, e);

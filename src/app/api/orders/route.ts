@@ -10,6 +10,7 @@ import { serverDeliveryFee } from "@/lib/delivery-server";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "");
 import { pushKitchenToPrep, kitchenNote } from "@/lib/odoo/pos-prep";
+import { sendNewOrderPush } from "@/lib/push/send";
 import { PHUKET_COMPANY_ID, PHUKET_PRICELIST_ID } from "@/lib/odoo/phuket";
 import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase/server";
 import { getBranchBranding, getActiveBanners } from "@/lib/supabase/data";
@@ -271,6 +272,11 @@ export async function POST(req: Request) {
       } catch {
         /* ignore — לא לשבור את ההזמנה */
       }
+    }
+
+    // התרעת רקע (Web Push) למלקטים — רק להזמנות שנכנסות מיד למסך (לא מוחזקות/עתידיות)
+    if (!hold) {
+      await sendNewOrderPush(companyId, order.name, body.customer.name);
     }
 
     // התראת מייל/וואטסאפ לצוות הסניף שממנו נוצרה ההזמנה — best-effort, לא חוסם

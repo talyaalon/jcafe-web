@@ -18,6 +18,7 @@ import { ManagerLogin } from "@/components/manager/ManagerLogin";
 import { BranchSelect } from "@/components/manager/BranchSelect";
 import { LangMenu } from "@/components/LangMenu";
 import { PosFloor, type FloorOrder } from "@/components/staff/PosFloor";
+import { PushToggle } from "@/components/staff/PushToggle";
 import { AutoRefresh } from "@/components/AutoRefresh";
 
 export default async function PickerPage({
@@ -87,6 +88,7 @@ export default async function PickerPage({
           <span className="text-sm opacity-85">
             {he ? "שולחנות פעילים" : "Active"}: {summaries.length}
           </span>
+          <PushToggle company={company} he={he} />
           <LangMenu locale={locale} />
         </div>
       </header>
