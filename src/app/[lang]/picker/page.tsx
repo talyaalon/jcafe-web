@@ -1,6 +1,15 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { isLocale, type Locale } from "@/i18n/config";
 import { isAdmin } from "@/lib/admin/session";
+
+// PWA — מאפשר התקנת מסך המלקט כאפליקציה (אנדרואיד + iOS) במסך מלא
+export const metadata: Metadata = {
+  title: "מלקט · J Cafe",
+  manifest: "/picker.webmanifest",
+  appleWebApp: { capable: true, title: "מלקט", statusBarStyle: "default" },
+  icons: { apple: "/picker-icon?s=180" },
+};
 import { getPosOrders, itemStatus } from "@/lib/supabase/pos";
 import { syncActiveKitchenStatuses } from "@/lib/odoo/prep-sync";
 import { releaseDueOrders } from "@/lib/odoo/release-scheduled";

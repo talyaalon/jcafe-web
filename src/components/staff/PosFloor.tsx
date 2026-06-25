@@ -126,6 +126,31 @@ export function PosFloor({
     };
   }, [getCtx, ensureBuffer]);
 
+  // Wake Lock — שומר שהמסך לא ייכבה כל עוד מסך המלקט פתוח (טאבלט ייעודי).
+  // נרכש מחדש כשחוזרים ללשונית (הנעילה משתחררת אוטומטית כשהמסך מוסתר).
+  useEffect(() => {
+    type Sentinel = { release: () => Promise<void> };
+    const nav = navigator as Navigator & {
+      wakeLock?: { request: (t: "screen") => Promise<Sentinel> };
+    };
+    if (!nav.wakeLock) return;
+    let lock: Sentinel | null = null;
+    const acquire = () => {
+      nav.wakeLock!.request("screen")
+        .then((l) => (lock = l))
+        .catch(() => {});
+    };
+    acquire();
+    const onVis = () => {
+      if (document.visibilityState === "visible") acquire();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      lock?.release().catch(() => {});
+    };
+  }, []);
+
   // זיהוי הזמנות חדשות בכל עדכון של רשימת ההזמנות הפעילות
   useEffect(() => {
     const ids = orders.map((o) => o.id);
