@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   title: "מלקט · J Cafe",
   manifest: "/picker.webmanifest",
   appleWebApp: { capable: true, title: "מלקט", statusBarStyle: "default" },
-  icons: { apple: "/app-icon.png?s=180" },
+  icons: { apple: "/app-logo.png" },
 };
 import { getPosOrders, itemStatus } from "@/lib/supabase/pos";
 import { syncActiveKitchenStatuses } from "@/lib/odoo/prep-sync";
