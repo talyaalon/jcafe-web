@@ -14,6 +14,11 @@ const STORE_PATH_RE = /^\/(?:he|en)\/s\/[^/?#]+/;
 // המנהל נכנס דרך /manager (כולל /manager/preview לבדיקה), המלקט דרך /picker.
 const MAINT_ALLOW_RE = /^\/(?:he|en)\/(?:manager|picker|maintenance)(?:\/|$)/;
 
+// הדומיין הראשי מייצג סניף בנגקוק בלבד — שורש הדומיין (וקידומת-שפה עירומה)
+// מפנה לחנות בנגקוק. שאר הסניפים נשארים על קישורי ה-vercel.app הרגילים.
+const PRIMARY_HOSTS = ["jcafekosher.com", "www.jcafekosher.com"];
+const PRIMARY_BRANCH_SLUG = "bangkok";
+
 // Proxy (לשעבר middleware ב-Next ≤15): מפנה נתיב ללא קידומת שפה ל-/he או /en.
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -22,12 +27,18 @@ export async function proxy(request: NextRequest) {
     (l) => pathname === `/${l}` || pathname.startsWith(`/${l}/`),
   );
 
-  // ===== לוגיקת redirect-השפה הקיימת — לא נגעתי בה =====
+  const host = (request.headers.get("host") ?? "").toLowerCase();
+  const isPrimary = PRIMARY_HOSTS.includes(host);
+
+  // ===== לוגיקת redirect-השפה הקיימת (+ הדומיין הראשי → בנגקוק) =====
   if (!hasLocale) {
     const accept = (request.headers.get("accept-language") ?? "").toLowerCase();
     const locale = accept.startsWith("en") ? "en" : i18n.defaultLocale;
 
-    request.nextUrl.pathname = `/${locale}${pathname === "/" ? "" : pathname}`;
+    // הדומיין הראשי = סניף בנגקוק: השורש מפנה ישירות לחנות בנגקוק.
+    request.nextUrl.pathname = isPrimary
+      ? `/${locale}/s/${PRIMARY_BRANCH_SLUG}`
+      : `/${locale}${pathname === "/" ? "" : pathname}`;
     return NextResponse.redirect(request.nextUrl);
   }
 
@@ -39,6 +50,14 @@ export async function proxy(request: NextRequest) {
     url.pathname = `/${locale}/maintenance`;
     url.search = "";
     return NextResponse.rewrite(url);
+  }
+
+  // ===== הדומיין הראשי = בנגקוק: קידומת-שפה עירומה (/he, /en) → חנות בנגקוק. =====
+  if (isPrimary && (pathname === "/he" || pathname === "/en")) {
+    const locale = pathname.slice(1);
+    const url = request.nextUrl.clone();
+    url.pathname = `/${locale}/s/${PRIMARY_BRANCH_SLUG}`;
+    return NextResponse.redirect(url);
   }
 
   // ===== סבב 2א (additive) — אך ורק על /{lang}/s/{branch}: =====
