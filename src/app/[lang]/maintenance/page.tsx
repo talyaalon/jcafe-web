@@ -21,10 +21,10 @@ export default async function MaintenancePage({
     <main className="min-h-screen flex items-center justify-center bg-gradient-to-b from-wine to-wine-dark text-white px-6">
       <div className="text-center max-w-md">
         <img
-          src="/app-logo.png"
-          alt="J Cafe"
-          width={110}
-          height={110}
+          src="/jcafe-online-logo.png"
+          alt="J Cafe Online — Kosher Shoppe"
+          width={170}
+          height={170}
           className="mx-auto mb-6 rounded-2xl shadow-lg"
         />
         <h1 className="font-brand text-3xl sm:text-4xl mb-3">
@@ -35,7 +35,6 @@ export default async function MaintenancePage({
             ? "אנחנו עובדים על משהו טעים וכשר. נחזור בקרוב — תודה על הסבלנות!"
             : "We're working on something delicious & kosher. We'll be back soon — thanks for your patience!"}
         </p>
-        <p className="mt-6 text-xs tracking-[3px] text-gold/80">THE KOSHER PLACE</p>
       </div>
     </main>
   );
