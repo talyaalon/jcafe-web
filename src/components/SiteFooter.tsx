@@ -1,24 +1,32 @@
+import Link from "next/link";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
 
 // Footer מלא (כהה) — אתר, Auth ודפי תוכן.
 export function SiteFooter({ dict, locale }: { dict: Dictionary; locale: Locale }) {
   const he = locale === "he";
-  const cols: { title: string; links: string[] }[] = [
-    { title: dict.footer.about, links: [he ? "אודות J Cafe" : "About Jcafe"] },
+  type FooterLink = { label: string; href?: string };
+  const cols: { title: string; links: FooterLink[] }[] = [
+    { title: dict.footer.about, links: [{ label: he ? "אודות J Cafe" : "About Jcafe" }] },
     {
       title: dict.footer.services,
-      links: he
+      links: (he
         ? ["איסוף עצמי", "קייטרינג כשר", "קבוצות תיירים", "משלוחים"]
-        : ["Take away", "Kosher Catering", "Travel Groups", "Delivery"],
+        : ["Take away", "Kosher Catering", "Travel Groups", "Delivery"]
+      ).map((label) => ({ label })),
     },
     {
       title: dict.footer.policy,
-      links: he
-        ? ["מדיניות מסחר", "מדיניות פרטיות", "תקנון שימוש"]
-        : ["Business policy", "Privacy policy", "Terms of service"],
+      links: [
+        { label: he ? "מדיניות מסחר" : "Business policy" },
+        { label: he ? "מדיניות פרטיות" : "Privacy policy", href: `/${locale}/privacy` },
+        { label: he ? "תקנון שימוש" : "Terms of service", href: `/${locale}/terms` },
+      ],
     },
-    { title: dict.footer.connect, links: he ? ["אימייל", "מצא אותנו"] : ["Email", "Find us"] },
+    {
+      title: dict.footer.connect,
+      links: (he ? ["אימייל", "מצא אותנו"] : ["Email", "Find us"]).map((label) => ({ label })),
+    },
   ];
 
   return (
@@ -33,8 +41,19 @@ export function SiteFooter({ dict, locale }: { dict: Dictionary; locale: Locale 
             <h4 className="text-white font-bold mb-3">{c.title}</h4>
             <ul className="space-y-2">
               {c.links.map((l) => (
-                <li key={l}>
-                  <a className="text-gold-soft/80 hover:text-white text-[13px] cursor-pointer">{l}</a>
+                <li key={l.label}>
+                  {l.href ? (
+                    <Link
+                      href={l.href}
+                      className="text-gold-soft/80 hover:text-white text-[13px] cursor-pointer"
+                    >
+                      {l.label}
+                    </Link>
+                  ) : (
+                    <a className="text-gold-soft/80 hover:text-white text-[13px] cursor-pointer">
+                      {l.label}
+                    </a>
+                  )}
                 </li>
               ))}
             </ul>
