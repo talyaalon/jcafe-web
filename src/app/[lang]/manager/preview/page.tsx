@@ -14,6 +14,7 @@ import {
 } from "@/lib/supabase/data";
 import { ManagerLogin } from "@/components/manager/ManagerLogin";
 import { BranchSelect } from "@/components/manager/BranchSelect";
+import { MaintenanceToggle } from "@/components/manager/MaintenanceToggle";
 import { Storefront, type StoreBundle } from "@/components/Storefront";
 
 export default async function ManagerPreview({
@@ -77,11 +78,14 @@ export default async function ManagerPreview({
           </Link>
           <span className="font-extrabold">{he ? "תצוגת אתר — סניף" : "Site preview — Branch"}</span>
         </div>
-        <BranchSelect
-          locale={locale}
-          current={current}
-          branches={branches.map((b) => ({ companyId: b.companyId, name: b.name, count: b.configs.length }))}
-        />
+        <div className="flex items-center gap-3 flex-wrap">
+          <MaintenanceToggle he={he} />
+          <BranchSelect
+            locale={locale}
+            current={current}
+            branches={branches.map((b) => ({ companyId: b.companyId, name: b.name, count: b.configs.length }))}
+          />
+        </div>
       </header>
 
       <div className="bg-soft border-b border-line px-4 sm:px-6 py-2 text-sm text-ink/70">

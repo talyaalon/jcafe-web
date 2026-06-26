@@ -3,14 +3,19 @@ import type { NextRequest } from "next/server";
 import { i18n } from "@/i18n/config";
 import { BRANCH_SLUGS, COMPANY_SLUG } from "@/lib/branch-slugs";
 import { resolveBranchFromRequest } from "@/lib/resolve-branch-from-request";
+import { getMaintenanceOn } from "@/lib/site/maintenance";
 
 // שם ה-Cookie נבדל מ-localStorage הקיים (jcafe_branch) כדי לא להתבלבל ביניהם.
 const BRANCH_COOKIE = "jcafe_branch_v2";
 const VALID_COMPANY_IDS = Object.keys(COMPANY_SLUG).map(Number);
 const STORE_PATH_RE = /^\/(?:he|en)\/s\/[^/?#]+/;
 
+// נתיבים שלעולם לא נחסמים ע"י "מצב בנייה" (צוות + דף הבנייה עצמו):
+// המנהל נכנס דרך /manager (כולל /manager/preview לבדיקה), המלקט דרך /picker.
+const MAINT_ALLOW_RE = /^\/(?:he|en)\/(?:manager|picker|maintenance)(?:\/|$)/;
+
 // Proxy (לשעבר middleware ב-Next ≤15): מפנה נתיב ללא קידומת שפה ל-/he או /en.
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const hasLocale = i18n.locales.some(
@@ -24,6 +29,16 @@ export function proxy(request: NextRequest) {
 
     request.nextUrl.pathname = `/${locale}${pathname === "/" ? "" : pathname}`;
     return NextResponse.redirect(request.nextUrl);
+  }
+
+  // ===== "מצב בנייה" (additive) — הציבור מופנה לדף בנייה; הצוות עובר חופשי. =====
+  // fail-open: getMaintenanceOn מחזיר false בכל תקלה ⇒ האתר לעולם לא נחסם בטעות.
+  if (!MAINT_ALLOW_RE.test(pathname) && (await getMaintenanceOn())) {
+    const locale = pathname.split("/")[1] || i18n.defaultLocale;
+    const url = request.nextUrl.clone();
+    url.pathname = `/${locale}/maintenance`;
+    url.search = "";
+    return NextResponse.rewrite(url);
   }
 
   // ===== סבב 2א (additive) — אך ורק על /{lang}/s/{branch}: =====
