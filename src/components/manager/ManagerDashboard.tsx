@@ -26,6 +26,7 @@ import {
 import type { PickerProduct } from "./ProductPicker";
 import { ProductBlocker, type BlockedRow } from "./ProductBlocker";
 import { CategoryBlocker, type BlockedCatRow, type StoreCats } from "./CategoryBlocker";
+import { PasswordsTab } from "./PasswordsTab";
 import { PaymentEditor, type PaymentValue } from "./PaymentEditor";
 import { ThemeEditor, type ThemeValue } from "./ThemeEditor";
 import { ZoneAreaField } from "./ZoneAreaField";
@@ -117,6 +118,7 @@ type Section =
   | "notifications"
   | "products"
   | "payments"
+  | "passwords"
   | "settings";
 
 export function ManagerDashboard({
@@ -139,6 +141,8 @@ export function ManagerDashboard({
   blockedProducts,
   blockedCategories,
   storeCategories,
+  allBranches,
+  pickerPasswords,
 }: {
   locale: "he" | "en";
   branch: number;
@@ -159,6 +163,8 @@ export function ManagerDashboard({
   blockedProducts: BlockedRow[];
   blockedCategories: BlockedCatRow[];
   storeCategories: StoreCats[];
+  allBranches: { companyId: number; name: string }[];
+  pickerPasswords: Record<string, string>;
 }) {
   const he = locale === "he";
   const [section, setSection] = useState<Section>("orders");
@@ -179,6 +185,7 @@ export function ManagerDashboard({
     { key: "payments" as const, Icon: IconCard, label: he ? "תשלומים" : "Payments" },
     { key: "products" as const, Icon: IconBox, label: he ? "מוצרים" : "Products" },
     { key: "notifications" as const, Icon: IconBell, label: he ? "התראות" : "Notifications" },
+    { key: "passwords" as const, Icon: IconGear, label: he ? "סיסמאות" : "Passwords" },
     { key: "settings" as const, Icon: IconGear, label: he ? "הגדרות וצבעים" : "Settings & colors" },
   ];
 
@@ -976,6 +983,20 @@ export function ManagerDashboard({
               stores={storeCategories}
               blocked={blockedCategories}
             />
+          </section>
+        )}
+
+        {section === "passwords" && (
+          <section>
+            <h2 className="text-xl font-extrabold text-wine mb-1">
+              {he ? "הגדרת סיסמאות" : "Passwords"}
+            </h2>
+            <p className="text-ink/55 text-sm mb-4">
+              {he
+                ? "סיסמת מלקט לכל סניף — 👁️ להצגה, 📋 להעתקה. שמירת סיסמה ריקה = מחיקה. מלקט-המנהל (כל הסניפים) משתמש בסיסמת המנהל."
+                : "Picker password per branch — 👁️ to reveal, 📋 to copy. Saving an empty password removes it. The manager picker uses the manager password."}
+            </p>
+            <PasswordsTab locale={locale} branches={allBranches} passwords={pickerPasswords} />
           </section>
         )}
 

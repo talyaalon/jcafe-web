@@ -1,17 +1,12 @@
 import "server-only";
 import crypto from "node:crypto";
 
-// סיסמאות מלקט פר-סניף — מאוחסנות (hash בלבד) ב-bucket פרטי "config" ב-Supabase Storage.
-// ה-hash הוא HMAC עם ADMIN_SESSION_SECRET, כך שגם אם הקובץ ידלוף אי-אפשר לשחזר סיסמה.
+// סיסמאות מלקט פר-סניף — מאוחסנות ב-bucket פרטי "config" ב-Supabase Storage
+// (נגיש רק לשרת עם service key, לא ציבורי). נשמרות כטקסט כדי שהמנהל יוכל לראות/להעתיק
+// אותן במסך הניהול (כפי שהתבקש). אלו סיסמאות תפעוליות לצוות הסניף.
 
 const BASE = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const OBJECT_URL = `${BASE}/storage/v1/object/config/picker-passwords.json`;
-const secret = () =>
-  process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_PASSWORD || "dev-insecure-secret";
-
-function hash(pw: string): string {
-  return crypto.createHmac("sha256", secret()).update(pw).digest("hex");
-}
 
 async function getAll(): Promise<Record<string, string>> {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -53,7 +48,7 @@ async function writeAll(map: Record<string, string>): Promise<boolean> {
 export async function setPickerPassword(branch: number, pw: string): Promise<boolean> {
   const map = await getAll();
   const clean = pw.trim();
-  if (clean) map[String(branch)] = hash(clean);
+  if (clean) map[String(branch)] = clean;
   else delete map[String(branch)];
   return writeAll(map);
 }
@@ -62,13 +57,12 @@ export async function setPickerPassword(branch: number, pw: string): Promise<boo
 export async function verifyPickerPassword(branch: number, pw: string): Promise<boolean> {
   const stored = (await getAll())[String(branch)];
   if (!stored) return false;
-  const given = hash(pw.trim());
   const a = Buffer.from(stored);
-  const b = Buffer.from(given);
+  const b = Buffer.from(pw.trim());
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
-// אילו סניפים כבר הוגדרה להם סיסמה (לתצוגה במסך המנהל).
-export async function getBranchesWithPickerPassword(): Promise<Set<number>> {
-  return new Set(Object.keys(await getAll()).map(Number));
+// כל סיסמאות המלקט (לתצוגה/העתקה במסך המנהל בלבד — admin-gated).
+export async function getPickerPasswords(): Promise<Record<string, string>> {
+  return getAll();
 }

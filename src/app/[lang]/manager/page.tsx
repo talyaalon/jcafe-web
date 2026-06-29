@@ -26,8 +26,7 @@ import {
 import { PHUKET_COMPANY_ID } from "@/lib/odoo/phuket";
 import { CopyLink } from "@/components/manager/CopyLink";
 import { CopyPath } from "@/components/manager/CopyPath";
-import { PickerPasswordEditor } from "@/components/manager/PickerPasswordEditor";
-import { getBranchesWithPickerPassword } from "@/lib/picker/passwords";
+import { getPickerPasswords } from "@/lib/picker/passwords";
 import { ManagerLogin } from "@/components/manager/ManagerLogin";
 import { ManagerDashboard, type StoreHours } from "@/components/manager/ManagerDashboard";
 import { BranchSelect } from "@/components/manager/BranchSelect";
@@ -83,7 +82,7 @@ export default async function ManagerPage({
     blockedProducts,
     blockedCategories,
     branchBundles,
-    pickerPwSet,
+    pickerPasswords,
   ] = await Promise.all([
     getAllBanners(branch),
     getBannerSettings(branch),
@@ -119,9 +118,8 @@ export default async function ManagerPage({
     getBlockedProducts(branch),
     getBlockedCategories(branch),
     getBranchDataCached(branch).catch(() => []),
-    getBranchesWithPickerPassword(),
+    getPickerPasswords(),
   ]);
-  const pickerHasPassword = (pickerPwSet as Set<number>).has(branch);
 
   // קטגוריות פר-חנות לחסימה (רק קטגוריות שיש להן מוצרים — תואם למוצג בחזית)
   const storeCategories = (branchBundles ?? [])
@@ -197,15 +195,6 @@ export default async function ManagerPage({
         </span>
       </div>
 
-      <div className="px-4 sm:px-6 pt-3">
-        <PickerPasswordEditor
-          locale={locale}
-          branch={branch}
-          branchName={branchName}
-          hasPassword={pickerHasPassword}
-        />
-      </div>
-
       <ManagerDashboard
         locale={locale}
         branch={branch}
@@ -226,6 +215,8 @@ export default async function ManagerPage({
         blockedProducts={blockedProducts}
         blockedCategories={blockedCategories}
         storeCategories={storeCategories}
+        allBranches={branches.map((b) => ({ companyId: b.companyId, name: b.name }))}
+        pickerPasswords={pickerPasswords}
       />
     </div>
   );
