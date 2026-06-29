@@ -82,7 +82,10 @@ export default async function ManagerPreview({
           products: d.products.filter((p) => {
             if (blockedIds.has(String(p.id).split("|")[0])) return false;
             if (blockedCats.has(`cat:${p.storeId}:${p.categoryId}`)) return false;
-            const th = thresholds.get(`${p.storeId}:${p.categoryId}`);
+            if (p.subCategoryId && blockedCats.has(`cat:${p.storeId}:${p.subCategoryId}`)) return false;
+            const th =
+              (p.subCategoryId ? thresholds.get(`${p.storeId}:${p.subCategoryId}`) : undefined) ??
+              thresholds.get(`${p.storeId}:${p.categoryId}`);
             if (th != null && p.qtyAvailable != null && p.qtyAvailable <= th) return false;
             return true;
           }),

@@ -8,7 +8,8 @@ import { useState } from "react";
 export interface StoreCats {
   storeId: string;
   storeName: string;
-  categories: { id: string; name: string }[];
+  // parentId: null = קטגוריה ראשית; אחרת = תת-קטגוריה תחת אותו id
+  categories: { id: string; name: string; parentId?: string | null }[];
 }
 export interface BlockedCatRow {
   id: number;
@@ -30,6 +31,9 @@ export function CategoryBlocker({
   const [storeId, setStoreId] = useState(stores[0]?.storeId ?? "");
   const store = stores.find((s) => s.storeId === storeId) ?? stores[0];
   const blockedKeys = new Set(blocked.map((b) => b.key));
+  const cats = store?.categories ?? [];
+  const roots = cats.filter((c) => c.parentId == null);
+  const subsOf = (rootId: string) => cats.filter((c) => c.parentId === rootId);
 
   const selectCls =
     "w-full border border-line rounded-lg px-3 py-2 text-sm focus:border-wine outline-none bg-white";
@@ -76,14 +80,35 @@ export function CategoryBlocker({
                 <option value="" disabled>
                   {he ? "— בחרו קטגוריה —" : "— select a category —"}
                 </option>
-                {(store?.categories ?? []).map((c) => {
-                  const key = `cat:${store!.storeId}:${c.id}`;
-                  const isBlocked = blockedKeys.has(key);
+                {roots.map((root) => {
+                  const subs = subsOf(root.id);
+                  const rootKey = `cat:${store!.storeId}:${root.id}`;
+                  const rootBlocked = blockedKeys.has(rootKey);
                   return (
-                    <option key={c.id} value={`${key}|${store!.storeName} · ${c.name}`} disabled={isBlocked}>
-                      {c.name}
-                      {isBlocked ? (he ? " (חסום)" : " (blocked)") : ""}
-                    </option>
+                    <optgroup key={root.id} label={root.name}>
+                      <option
+                        value={`${rootKey}|${store!.storeName} · ${root.name}`}
+                        disabled={rootBlocked}
+                      >
+                        {he ? `כל ${root.name}` : `All ${root.name}`}
+                        {rootBlocked ? (he ? " (חסום)" : " (blocked)") : ""}
+                      </option>
+                      {subs.map((sub) => {
+                        const subKey = `cat:${store!.storeId}:${sub.id}`;
+                        const subBlocked = blockedKeys.has(subKey);
+                        return (
+                          <option
+                            key={sub.id}
+                            value={`${subKey}|${store!.storeName} · ${root.name} · ${sub.name}`}
+                            disabled={subBlocked}
+                          >
+                            {" "}
+                            {sub.name}
+                            {subBlocked ? (he ? " (חסום)" : " (blocked)") : ""}
+                          </option>
+                        );
+                      })}
+                    </optgroup>
                   );
                 })}
               </select>

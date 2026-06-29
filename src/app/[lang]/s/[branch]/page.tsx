@@ -84,9 +84,13 @@ export default async function BranchStore({
           ...d,
           products: d.products.filter((p) => {
             if (blocked.has(String(p.id).split("|")[0])) return false;
+            // חסימת קטגוריה — לפי קטגוריית-העל או תת-הקטגוריה
             if (blockedCats.has(`cat:${p.storeId}:${p.categoryId}`)) return false;
-            // סף מלאי לקטגוריה — מוצר שמלאיו <= הסף מוסתר (מנות מטבח ללא מלאי לא מושפעות)
-            const th = thresholds.get(`${p.storeId}:${p.categoryId}`);
+            if (p.subCategoryId && blockedCats.has(`cat:${p.storeId}:${p.subCategoryId}`)) return false;
+            // סף מלאי — תת-קטגוריה גוברת על קטגוריית-העל; מנות מטבח (ללא מלאי) לא מושפעות
+            const th =
+              (p.subCategoryId ? thresholds.get(`${p.storeId}:${p.subCategoryId}`) : undefined) ??
+              thresholds.get(`${p.storeId}:${p.categoryId}`);
             if (th != null && p.qtyAvailable != null && p.qtyAvailable <= th) return false;
             return true;
           }),

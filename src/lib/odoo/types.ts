@@ -24,12 +24,16 @@ export interface Category {
   nameHe: string;
   nameEn: string;
   storeId: string;
+  /** קטגוריית-העל (null/undefined = קטגוריה ראשית). משמש להיררכיה (תת-קטגוריות). */
+  parentId?: string | null;
 }
 
 export interface Product {
   id: string;
   storeId: string;
   categoryId: string;
+  /** תת-הקטגוריה האמיתית מתחת לקטגוריית-העל (אם קיימת) — לחסימה/סף ברמת תת-קטגוריה */
+  subCategoryId?: string;
   nameHe: string;
   nameEn: string;
   descHe?: string;

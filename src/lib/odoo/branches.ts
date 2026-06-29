@@ -437,12 +437,26 @@ export async function getGroceryBundle(
     }
     return null;
   };
+  // תת-הקטגוריה: הצומת הישיר מתחת לשורש מכולת (או השורש עצמו אם אין תת-קטגוריה).
+  const subOf = (id: number): number | null => {
+    let cur: number | null = id;
+    const seen = new Set<number>();
+    while (cur != null && !seen.has(cur)) {
+      seen.add(cur);
+      const par: number | null = parentOf.get(cur) ?? null;
+      if (par != null && rootSet.has(par)) return cur; // ילד ישיר של שורש → תת-קטגוריה
+      if (rootSet.has(cur)) return cur; // שורש בלי תת-קטגוריה
+      cur = par;
+    }
+    return null;
+  };
 
+  // שמות עבריים לכל הקטגוריות הציבוריות (שורשים + תת-קטגוריות)
   const heCats = await searchRead<{ id: number; name: string }>(
     "product.public.category",
-    [["id", "in", GROCERY_ROOT_IDS]],
+    [],
     ["id", "name"],
-    { context: { lang: HE } },
+    { context: { lang: HE }, limit: 600 },
   );
   const heCatName = new Map(heCats.map((c) => [c.id, c.name]));
 
@@ -479,11 +493,23 @@ export async function getGroceryBundle(
   const products: Product[] = rows
     .filter((r) => !isTakeAway(r.name) && hasStock(r))
     .map((r) => {
-      const root = (r.public_categ_ids ?? []).map(rootOf).find((x) => x != null) ?? null;
+      // root + תת-קטגוריה מאותו מסלול ציבורי (כדי שיהיו עקביים)
+      let root: number | null = null;
+      let sub: number | null = null;
+      for (const pid of r.public_categ_ids ?? []) {
+        const rt = rootOf(pid);
+        if (rt != null) {
+          root = rt;
+          const sb = subOf(pid);
+          sub = sb != null && sb !== rt ? sb : null;
+          break;
+        }
+      }
       return {
         id: String(r.id),
         storeId: STORE_ID,
         categoryId: root != null ? String(root) : SHOP_CAT,
+        subCategoryId: sub != null ? String(sub) : undefined,
         nameHe: heMap.get(r.id)?.name ?? r.name,
         nameEn: r.name,
         descHe: heMap.get(r.id)?.desc || undefined,
@@ -500,21 +526,37 @@ export async function getGroceryBundle(
       } satisfies Product;
     });
 
-  // קטגוריות בשימוש (שורשי מכולת + ברירת מחדל "מוצרי חנות"), עם "חנות" בסוף.
-  const usedIds = [...new Set(products.map((p) => p.categoryId))];
-  const categories: Category[] = usedIds
+  // קטגוריות-על בשימוש (שורשי מכולת + ברירת מחדל "מוצרי חנות") + תת-קטגוריות בשימוש.
+  const usedRoots = [...new Set(products.map((p) => p.categoryId))];
+  const usedSubs = [...new Set(products.map((p) => p.subCategoryId).filter((x): x is string => !!x))];
+  const rootCats: Category[] = usedRoots
     .map((id) =>
       id === SHOP_CAT
-        ? { id: SHOP_CAT, slug: SHOP_CAT, nameHe: "מוצרי חנות", nameEn: "Shop Items", storeId: STORE_ID }
+        ? { id: SHOP_CAT, slug: SHOP_CAT, nameHe: "מוצרי חנות", nameEn: "Shop Items", storeId: STORE_ID, parentId: null }
         : {
             id,
             slug: id,
             nameHe: heCatName.get(Number(id)) ?? nameOf.get(Number(id)) ?? "",
             nameEn: nameOf.get(Number(id)) ?? "",
             storeId: STORE_ID,
+            parentId: null,
           },
     )
     .sort((a, b) => groceryCatRank(a.id) - groceryCatRank(b.id));
+  // תת-קטגוריות (parentId = השורש) — לא מוצגות כגלולות בחזית (אין מוצר עם categoryId=תת),
+  // אך זמינות להיררכיה במסך המנהל (חסימה/סף).
+  const subCats: Category[] = usedSubs.map((id) => {
+    const root = rootOf(Number(id));
+    return {
+      id,
+      slug: id,
+      nameHe: heCatName.get(Number(id)) ?? nameOf.get(Number(id)) ?? "",
+      nameEn: nameOf.get(Number(id)) ?? "",
+      storeId: STORE_ID,
+      parentId: root != null ? String(root) : null,
+    };
+  });
+  const categories: Category[] = [...rootCats, ...subCats];
 
   const store: Store = {
     id: STORE_ID,

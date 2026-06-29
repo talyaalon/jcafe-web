@@ -20,6 +20,9 @@ export function CategoryThresholds({
   const he = locale === "he";
   const [storeId, setStoreId] = useState(stores[0]?.storeId ?? "");
   const store = stores.find((s) => s.storeId === storeId) ?? stores[0];
+  const cats = store?.categories ?? [];
+  const roots = cats.filter((c) => c.parentId == null);
+  const subsOf = (rootId: string) => cats.filter((c) => c.parentId === rootId);
 
   const selectCls =
     "w-full border border-line rounded-lg px-3 py-2 text-sm focus:border-wine outline-none bg-white";
@@ -75,13 +78,25 @@ export function CategoryThresholds({
                 <option value="" disabled>
                   {he ? "— בחרו קטגוריה —" : "— select a category —"}
                 </option>
-                {(store?.categories ?? []).map((c) => {
-                  const cur = thresholds[`${store!.storeId}:${c.id}`];
+                {roots.map((root) => {
+                  const rootCur = thresholds[`${store!.storeId}:${root.id}`];
                   return (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                      {cur != null ? (he ? ` (סף ${cur})` : ` (min ${cur})`) : ""}
-                    </option>
+                    <optgroup key={root.id} label={root.name}>
+                      <option value={root.id}>
+                        {he ? `כל ${root.name}` : `All ${root.name}`}
+                        {rootCur != null ? (he ? ` (סף ${rootCur})` : ` (min ${rootCur})`) : ""}
+                      </option>
+                      {subsOf(root.id).map((sub) => {
+                        const cur = thresholds[`${store!.storeId}:${sub.id}`];
+                        return (
+                          <option key={sub.id} value={sub.id}>
+                            {" "}
+                            {sub.name}
+                            {cur != null ? (he ? ` (סף ${cur})` : ` (min ${cur})`) : ""}
+                          </option>
+                        );
+                      })}
+                    </optgroup>
                   );
                 })}
               </select>

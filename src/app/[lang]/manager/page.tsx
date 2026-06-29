@@ -130,8 +130,10 @@ export default async function ManagerPage({
       storeId: b.store.id,
       storeName: he ? b.store.nameHe : b.store.nameEn,
       categories: b.categories
-        .filter((c) => b.products.some((p) => p.categoryId === c.id))
-        .map((c) => ({ id: c.id, name: he ? c.nameHe : c.nameEn })),
+        .filter((c) =>
+          b.products.some((p) => p.categoryId === c.id || p.subCategoryId === c.id),
+        )
+        .map((c) => ({ id: c.id, name: he ? c.nameHe : c.nameEn, parentId: c.parentId ?? null })),
     }))
     .filter((s) => s.categories.length > 0);
 
