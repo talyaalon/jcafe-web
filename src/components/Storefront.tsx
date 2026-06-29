@@ -80,6 +80,7 @@ export function Storefront({
   ) as CSSProperties | undefined;
   const [activeStoreId, setActiveStoreId] = useState(data[0]?.store.id ?? "");
   const [activeCat, setActiveCat] = useState<string | null>(null);
+  const [activeSub, setActiveSub] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   // מסך קבלת פנים — ריבועי חנויות; לחיצה נכנסת לחנות הנבחרת
   const [showWelcome, setShowWelcome] = useState(true);
@@ -154,7 +155,8 @@ export function Storefront({
 
   const products = useMemo(() => {
     let list = bundle ? bundle.products.map((p) => applyBannerDiscount(p, discountMap)) : [];
-    if (activeCat) list = list.filter((p) => p.categoryId === activeCat);
+    if (activeSub) list = list.filter((p) => p.subCategoryId === activeSub);
+    else if (activeCat) list = list.filter((p) => p.categoryId === activeCat);
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter(
@@ -182,7 +184,15 @@ export function Storefront({
         break;
     }
     return list;
-  }, [bundle, activeCat, search, sort, locale, discountMap]);
+  }, [bundle, activeCat, activeSub, search, sort, locale, discountMap]);
+
+  // תת-הקטגוריות של הקטגוריה הפעילה (שיש להן מוצרים) — לשורת הניווט השנייה
+  const activeRoot = activeCat ? (bundle?.categories.find((c) => c.id === activeCat) ?? null) : null;
+  const subsOfActive = activeCat
+    ? (bundle?.categories ?? []).filter(
+        (c) => c.parentId === activeCat && bundle!.products.some((p) => p.subCategoryId === c.id),
+      )
+    : [];
 
   // חיפוש בכל חנויות הסניף (לא רק החנות הפעילה)
   const searching = search.trim().length > 0;
@@ -349,17 +359,44 @@ export function Storefront({
 
       {/* category pills */}
       <div className="shrink-0 flex gap-2 px-4 sm:px-7 py-3 overflow-x-auto no-scrollbar border-b border-line bg-white">
-        <Pill active={activeCat === null} onClick={() => setActiveCat(null)}>
+        <Pill
+          active={activeCat === null}
+          onClick={() => {
+            setActiveCat(null);
+            setActiveSub(null);
+          }}
+        >
           {dict.filters.all}
         </Pill>
         {bundle?.categories
           .filter((c) => bundle.products.some((p) => p.categoryId === c.id))
           .map((c) => (
-          <Pill key={c.id} active={activeCat === c.id} onClick={() => setActiveCat(c.id)}>
-            {cName(c)}
-          </Pill>
-        ))}
+            <Pill
+              key={c.id}
+              active={activeCat === c.id}
+              onClick={() => {
+                setActiveCat(c.id);
+                setActiveSub(null);
+              }}
+            >
+              {cName(c)}
+            </Pill>
+          ))}
       </div>
+
+      {/* שורת תת-קטגוריות — מופיעה כשבוחרים קטגוריה שיש לה תת-קטגוריות */}
+      {activeRoot && subsOfActive.length > 0 && (
+        <div className="shrink-0 flex gap-2 px-4 sm:px-7 py-2 overflow-x-auto no-scrollbar border-b border-line bg-soft">
+          <Pill active={activeSub === null} onClick={() => setActiveSub(null)}>
+            {locale === "he" ? `כל ${cName(activeRoot)}` : `All ${cName(activeRoot)}`}
+          </Pill>
+          {subsOfActive.map((sc) => (
+            <Pill key={sc.id} active={activeSub === sc.id} onClick={() => setActiveSub(sc.id)}>
+              {cName(sc)}
+            </Pill>
+          ))}
+        </div>
+      )}
 
       {/* breadcrumb + sort */}
       <div className="shrink-0 flex justify-between items-center px-4 sm:px-7 pt-3 text-[13px] text-ink/60">
