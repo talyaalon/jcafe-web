@@ -26,12 +26,15 @@ export default async function PickerPage({
   searchParams,
 }: {
   params: Promise<{ lang: string }>;
-  searchParams: Promise<{ company?: string }>;
+  searchParams: Promise<{ company?: string; manager?: string }>;
 }) {
   const { lang } = await params;
   if (!isLocale(lang)) notFound();
   const locale = lang as Locale;
   const he = locale === "he";
+  const sp = await searchParams;
+  // מצב מנהל (?manager=1) — מתג החלפת סניפים. אחרת — קישור סניף נעול (ללא החלפה).
+  const isManager = sp.manager === "1" || sp.manager === "true";
 
   if (!(await isAdmin())) {
     return (
@@ -45,8 +48,9 @@ export default async function PickerPage({
     );
   }
 
-  const company = Number((await searchParams).company) || 0;
+  const company = Number(sp.company) || 0;
   const branches = (await getBranches()).map((b) => ({ companyId: b.companyId, name: b.name }));
+  const branchName = branches.find((b) => b.companyId === company)?.name ?? null;
 
   // שחרור הזמנות עתידיות שהגיע מועדן (שעה לפני) — נכנסות למטבח ולהזמנות הפעילות
   await releaseDueOrders(company || undefined);
@@ -78,13 +82,20 @@ export default async function PickerPage({
       <header className="bg-wine text-white px-6 py-3 flex items-center justify-between gap-3 flex-wrap">
         <span className="font-extrabold">🧺 J-Cafe POS — {he ? "ליקוט" : "Picking"}</span>
         <div className="flex items-center gap-3">
-          <BranchSelect
-            locale={locale}
-            path="picker"
-            current={company}
-            branches={branches}
-            allLabel={he ? "כל הסניפים" : "All branches"}
-          />
+          {isManager ? (
+            <BranchSelect
+              locale={locale}
+              path="picker"
+              current={company}
+              branches={branches}
+              allLabel={he ? "כל הסניפים" : "All branches"}
+              manager
+            />
+          ) : (
+            <span className="text-sm font-bold bg-white/15 border border-white/30 rounded-lg px-3 py-1.5">
+              {branchName ?? (he ? "כל הסניפים" : "All branches")}
+            </span>
+          )}
           <span className="text-sm opacity-85">
             {he ? "שולחנות פעילים" : "Active"}: {summaries.length}
           </span>

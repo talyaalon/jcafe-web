@@ -25,6 +25,7 @@ import {
 } from "@/lib/odoo/branches";
 import { PHUKET_COMPANY_ID } from "@/lib/odoo/phuket";
 import { CopyLink } from "@/components/manager/CopyLink";
+import { CopyPath } from "@/components/manager/CopyPath";
 import { ManagerLogin } from "@/components/manager/ManagerLogin";
 import { ManagerDashboard, type StoreHours } from "@/components/manager/ManagerDashboard";
 import { BranchSelect } from "@/components/manager/BranchSelect";
@@ -170,6 +171,24 @@ export default async function ManagerPage({
         <span className="flex items-center gap-1">
           {he ? "קישור ללקוחות:" : "Customer link:"}{" "}
           <CopyLink locale={locale} slug={COMPANY_SLUG[branch] ?? branch} />
+        </span>
+        <span className="text-ink/40">·</span>
+        <span className="flex items-center gap-1">
+          {he ? "מלקט (סניף זה):" : "Picker (this branch):"}{" "}
+          <CopyPath
+            path={`/${locale}/picker?company=${branch}`}
+            label={he ? "קישור מלקט" : "Picker link"}
+            he={he}
+          />
+        </span>
+        <span className="text-ink/40">·</span>
+        <span className="flex items-center gap-1">
+          {he ? "מלקט-מנהל (כל הסניפים):" : "Manager picker (all):"}{" "}
+          <CopyPath
+            path={`/${locale}/picker?manager=1`}
+            label={he ? "קישור מנהל" : "Manager link"}
+            he={he}
+          />
         </span>
       </div>
 
