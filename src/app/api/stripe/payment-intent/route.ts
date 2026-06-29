@@ -30,6 +30,7 @@ export async function POST(req: Request) {
     const body = (await req.json()) as Body;
 
     let baht: number;
+    let companyForMeta: number | undefined;
     if (Array.isArray(body.items) && body.items.length) {
       // אותה גזירה אוטוריטטיבית כמו ב-/api/orders: החברה נגזרת מה-branch של
       // הפריטים בלבד — כדי שהחברה שמחויבת ב-PaymentIntent זהה לזו של ההזמנה.
@@ -48,6 +49,7 @@ export async function POST(req: Request) {
         }
         throw e;
       }
+      companyForMeta = companyId;
       let pricelistId = PHUKET_PRICELIST_ID;
       if (companyId !== PHUKET_COMPANY_ID) {
         const branch = branches.find((b) => b.companyId === companyId);
@@ -96,6 +98,14 @@ export async function POST(req: Request) {
         currency: "thb",
         payment_method_types: ["card"],
         description: "J-Cafe order",
+        // metadata לרשת-הביטחון של ה-webhook: אם הלקוח שילם אך ההזמנה לא נקלטה,
+        // ה-webhook יזהה (לפי idem מול order_idempotency) ויתריע לצוות הסניף.
+        metadata: {
+          idem: body.idempotencyKey ?? "",
+          company: companyForMeta != null ? String(companyForMeta) : "",
+          method: body.method ?? "",
+          baht: String(baht),
+        },
       },
       // מפתח idempotency: retry עם אותו מפתח מחזיר את אותו PI (ללא חיוב כפול)
       body.idempotencyKey ? { idempotencyKey: `pi_${body.idempotencyKey}` } : undefined,
