@@ -3,7 +3,8 @@ import Link from "next/link";
 import { isLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
 import { isAdmin } from "@/lib/admin/session";
-import { getBranches, getBranchData } from "@/lib/odoo/branches";
+import { getBranches, getBranchData, getAvailability } from "@/lib/odoo/branches";
+import { overlayAvailability } from "@/lib/odoo/availability";
 import { applyStoreBranding } from "@/lib/odoo/branding";
 import {
   getActiveBanners,
@@ -51,9 +52,17 @@ export default async function ManagerPreview({
     0;
 
   const rawBundles = current ? await getBranchData(current) : [];
+  // מלאי חי (כמו באתר) — כדי שסף-מלאי לקטגוריה ישתקף גם בתצוגה המקדימה
+  const availIds = rawBundles.flatMap((b) =>
+    b.products.map((p) => Number(String(p.id).split("|")[0])),
+  );
+  const avail = current
+    ? await getAvailability(current, availIds).catch(() => new Map<number, number>())
+    : new Map<number, number>();
+  const liveBundles = overlayAvailability(rawBundles, avail);
   // הוספת סטטוס פתוח/סגור לכל חנות (לפי שעות הסניף)
   const bundles0 = (await Promise.all(
-    rawBundles.map(async (b) => ({
+    liveBundles.map(async (b) => ({
       ...b,
       open: (await getStoreOpenStatus(b.store.id)).open,
     })),
