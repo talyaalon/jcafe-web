@@ -25,6 +25,7 @@ import {
 } from "./StoreBrandingEditor";
 import type { PickerProduct } from "./ProductPicker";
 import { ProductBlocker, type BlockedRow } from "./ProductBlocker";
+import { CategoryBlocker, type BlockedCatRow, type StoreCats } from "./CategoryBlocker";
 import { PaymentEditor, type PaymentValue } from "./PaymentEditor";
 import { ThemeEditor, type ThemeValue } from "./ThemeEditor";
 import { ZoneAreaField } from "./ZoneAreaField";
@@ -136,6 +137,8 @@ export function ManagerDashboard({
   payment,
   theme,
   blockedProducts,
+  blockedCategories,
+  storeCategories,
 }: {
   locale: "he" | "en";
   branch: number;
@@ -154,6 +157,8 @@ export function ManagerDashboard({
   payment: PaymentValue;
   theme: ThemeValue | null;
   blockedProducts: BlockedRow[];
+  blockedCategories: BlockedCatRow[];
+  storeCategories: StoreCats[];
 }) {
   const he = locale === "he";
   const [section, setSection] = useState<Section>("orders");
@@ -949,6 +954,12 @@ export function ManagerDashboard({
                 : "Block products from this branch's store — search by name or reference, above ODOO and regardless of stock."}
             </p>
             <ProductBlocker branch={branch} he={he} blocked={blockedProducts} products={products} />
+            <CategoryBlocker
+              branch={branch}
+              he={he}
+              stores={storeCategories}
+              blocked={blockedCategories}
+            />
           </section>
         )}
 

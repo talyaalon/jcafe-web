@@ -16,6 +16,7 @@ import {
   getStoreBranding,
   getBannerSettings,
   getBlockedProductIds,
+  getBlockedCategoryKeys,
   getBranchTheme,
 } from "@/lib/supabase/data";
 import { Storefront, type StoreBundle } from "@/components/Storefront";
@@ -35,18 +36,29 @@ export default async function BranchStore({
   if (!companyId) notFound();
 
   // B-3 — כל הקריאות הבלתי-תלויות במקביל (במקום בטור): קטלוג מ-cache + 7 קריאות Supabase/ODOO.
-  const [branches, dict, rawCached, banners, storeBranding, bannerSettings, blocked, theme, bb] =
-    await Promise.all([
-      getBranchesCached(),
-      getDictionary(locale),
-      getBranchDataCached(companyId),
-      getActiveBanners(companyId),
-      getStoreBranding(companyId),
-      getBannerSettings(companyId),
-      getBlockedProductIds(companyId),
-      getBranchTheme(companyId),
-      getBranchBranding(companyId),
-    ]);
+  const [
+    branches,
+    dict,
+    rawCached,
+    banners,
+    storeBranding,
+    bannerSettings,
+    blocked,
+    blockedCats,
+    theme,
+    bb,
+  ] = await Promise.all([
+    getBranchesCached(),
+    getDictionary(locale),
+    getBranchDataCached(companyId),
+    getActiveBanners(companyId),
+    getStoreBranding(companyId),
+    getBannerSettings(companyId),
+    getBlockedProductIds(companyId),
+    getBlockedCategoryKeys(companyId),
+    getBranchTheme(companyId),
+    getBranchBranding(companyId),
+  ]);
   if (!branches.find((b) => b.companyId === companyId)) notFound();
 
   // תלויים בקטלוג: מלאי חי (ממוקד למוצרים המוצגים) + סטטוס פתיחה לכל חנות — במקביל.
@@ -63,12 +75,17 @@ export default async function BranchStore({
     open: openMap.get(b.store.id) ?? true,
   })) as StoreBundle[];
   const dataBranded = applyStoreBranding(data0, storeBranding, locale);
-  const data = blocked.size
-    ? dataBranded.map((d) => ({
-        ...d,
-        products: d.products.filter((p) => !blocked.has(String(p.id).split("|")[0])),
-      }))
-    : dataBranded;
+  const data =
+    blocked.size || blockedCats.size
+      ? dataBranded.map((d) => ({
+          ...d,
+          products: d.products.filter(
+            (p) =>
+              !blocked.has(String(p.id).split("|")[0]) &&
+              !blockedCats.has(`cat:${p.storeId}:${p.categoryId}`),
+          ),
+        }))
+      : dataBranded;
 
 
   const branding = bb

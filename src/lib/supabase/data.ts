@@ -179,12 +179,41 @@ export async function getBlockedProducts(branch: number): Promise<BlockedProduct
     .from("blocked_products")
     .select("id,template_id,name,reference")
     .eq("branch", branch)
+    // קטגוריות חסומות נשמרות באותה טבלה עם קידומת "cat:" — מסננים אותן כאן
+    .not("template_id", "like", "cat:%")
     .order("created_at", { ascending: false });
   return (data as BlockedProduct[]) ?? [];
 }
 export async function getBlockedProductIds(branch: number): Promise<Set<string>> {
   const rows = await getBlockedProducts(branch);
   return new Set(rows.map((r) => String(r.template_id)));
+}
+
+// ===== קטגוריות חסומות פר-סניף =====
+// נשמרות בטבלת blocked_products עם template_id = "cat:<storeId>:<categoryId>".
+export interface BlockedCategory {
+  id: number;
+  key: string; // ה-template_id המלא: "cat:<storeId>:<categoryId>"
+  name: string | null; // "שם חנות · שם קטגוריה"
+}
+export async function getBlockedCategories(branch: number): Promise<BlockedCategory[]> {
+  if (!supabaseConfigured) return [];
+  const { data } = await supabasePublic
+    .from("blocked_products")
+    .select("id,template_id,name")
+    .eq("branch", branch)
+    .like("template_id", "cat:%")
+    .order("created_at", { ascending: false });
+  return ((data as { id: number; template_id: string; name: string | null }[]) ?? []).map((r) => ({
+    id: r.id,
+    key: r.template_id,
+    name: r.name,
+  }));
+}
+// סט מפתחות "cat:<storeId>:<categoryId>" לסינון בחזית.
+export async function getBlockedCategoryKeys(branch: number): Promise<Set<string>> {
+  const rows = await getBlockedCategories(branch);
+  return new Set(rows.map((r) => r.key));
 }
 
 export interface DayHours {

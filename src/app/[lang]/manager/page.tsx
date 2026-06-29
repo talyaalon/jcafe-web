@@ -12,6 +12,7 @@ import {
   getBranchPayment,
   getBranchTheme,
   getBlockedProducts,
+  getBlockedCategories,
 } from "@/lib/supabase/data";
 import { getPosOrders, getNotificationRecipients } from "@/lib/supabase/pos";
 import { getWebsiteCustomers } from "@/lib/odoo/orders";
@@ -19,6 +20,7 @@ import {
   getBranchesCached,
   getBranchProducts,
   getBranchStores,
+  getBranchDataCached,
   COMPANY_SLUG,
 } from "@/lib/odoo/branches";
 import { PHUKET_COMPANY_ID } from "@/lib/odoo/phuket";
@@ -76,6 +78,8 @@ export default async function ManagerPage({
     payment,
     theme,
     blockedProducts,
+    blockedCategories,
+    branchBundles,
   ] = await Promise.all([
     getAllBanners(branch),
     getBannerSettings(branch),
@@ -109,7 +113,20 @@ export default async function ManagerPage({
     getBranchPayment(branch),
     getBranchTheme(branch),
     getBlockedProducts(branch),
+    getBlockedCategories(branch),
+    getBranchDataCached(branch).catch(() => []),
   ]);
+
+  // קטגוריות פר-חנות לחסימה (רק קטגוריות שיש להן מוצרים — תואם למוצג בחזית)
+  const storeCategories = (branchBundles ?? [])
+    .map((b) => ({
+      storeId: b.store.id,
+      storeName: he ? b.store.nameHe : b.store.nameEn,
+      categories: b.categories
+        .filter((c) => b.products.some((p) => p.categoryId === c.id))
+        .map((c) => ({ id: c.id, name: he ? c.nameHe : c.nameEn })),
+    }))
+    .filter((s) => s.categories.length > 0);
 
   return (
     <div className="min-h-screen bg-[#f7f6f8]">
@@ -174,6 +191,8 @@ export default async function ManagerPage({
         payment={payment}
         theme={theme}
         blockedProducts={blockedProducts}
+        blockedCategories={blockedCategories}
+        storeCategories={storeCategories}
       />
     </div>
   );
