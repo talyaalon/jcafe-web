@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { isLocale, type Locale } from "@/i18n/config";
 import { isAdmin } from "@/lib/admin/session";
+import { hasPickerAccess } from "@/lib/admin/picker-session";
+import { PickerLogin } from "@/components/staff/PickerLogin";
 
 // PWA — מאפשר התקנת מסך המלקט כאפליקציה (אנדרואיד + iOS) במסך מלא
 export const metadata: Metadata = {
@@ -26,7 +28,7 @@ export default async function PickerPage({
   searchParams,
 }: {
   params: Promise<{ lang: string }>;
-  searchParams: Promise<{ company?: string; manager?: string }>;
+  searchParams: Promise<{ company?: string; manager?: string; err?: string }>;
 }) {
   const { lang } = await params;
   if (!isLocale(lang)) notFound();
@@ -35,22 +37,36 @@ export default async function PickerPage({
   const sp = await searchParams;
   // מצב מנהל (?manager=1) — מתג החלפת סניפים. אחרת — קישור סניף נעול (ללא החלפה).
   const isManager = sp.manager === "1" || sp.manager === "true";
-
-  if (!(await isAdmin())) {
-    return (
-      <div className="min-h-screen grid place-items-center bg-[#f7f6f8] p-4">
-        <ManagerLogin
-          locale={locale}
-          next={`/${locale}/picker`}
-          title={he ? "כניסת מלקט (POS)" : "Picker login (POS)"}
-        />
-      </div>
-    );
-  }
-
   const company = Number(sp.company) || 0;
   const branches = (await getBranches()).map((b) => ({ companyId: b.companyId, name: b.name }));
   const branchName = branches.find((b) => b.companyId === company)?.name ?? null;
+  const admin = await isAdmin();
+
+  // הרשאה:
+  // - מלקט-מנהל / קישור כללי (ללא סניף) → סיסמת מנהל.
+  // - קישור סניף ספציפי → סיסמת המלקט של אותו סניף (או מנהל).
+  if (isManager || company === 0) {
+    if (!admin) {
+      return (
+        <div className="min-h-screen grid place-items-center bg-[#f7f6f8] p-4">
+          <ManagerLogin
+            locale={locale}
+            next={isManager ? `/${locale}/picker?manager=1` : `/${locale}/picker`}
+            title={he ? "כניסת מלקט-מנהל" : "Manager picker login"}
+          />
+        </div>
+      );
+    }
+  } else if (!admin && !(await hasPickerAccess(company))) {
+    return (
+      <PickerLogin
+        locale={locale}
+        branch={company}
+        branchName={branchName ?? String(company)}
+        error={sp.err === "1"}
+      />
+    );
+  }
 
   // שחרור הזמנות עתידיות שהגיע מועדן (שעה לפני) — נכנסות למטבח ולהזמנות הפעילות
   await releaseDueOrders(company || undefined);
