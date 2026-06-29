@@ -109,11 +109,15 @@ export async function syncActiveKitchenStatuses(): Promise<void> {
 
       // המסכים הרלוונטיים למוצר (לפי קטגוריה) מתוך שלבי ההזמנה
       const categs = tmplCategs.get(tmpl) ?? [];
-      const relevant = (stagesByPrep.get(prepId) ?? []).filter((s) => {
+      const allStages = stagesByPrep.get(prepId) ?? [];
+      const relevant = allStages.filter((s) => {
         const dc = displayCategs.get(s.displayId);
-        return dc && categs.some((c) => dc.has(c));
+        return dc && dc.size > 0 && categs.some((c) => dc.has(c));
       });
-      const stageDone = relevant.length > 0 && relevant.every((s) => s.ready);
+      // אם לא נמצא מסך תואם-קטגוריה (קטגוריות ריקות/לא תואמות) — נופלים לכל שלבי ההזמנה,
+      // כך ש-"Ready/Completed" יזוהה גם כשהניתוב לפי קטגוריה לא נתפס (למשל מטבח יחיד).
+      const useStages = relevant.length > 0 ? relevant : allStages;
+      const stageDone = useStages.length > 0 && useStages.every((s) => s.ready);
       const lineDone = l.todo === false || stageDone;
 
       if (!byPos.has(posId)) byPos.set(posId, new Map());

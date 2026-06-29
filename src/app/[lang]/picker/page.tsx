@@ -4,14 +4,24 @@ import { isLocale, type Locale } from "@/i18n/config";
 import { isAdmin } from "@/lib/admin/session";
 import { hasPickerAccess } from "@/lib/admin/picker-session";
 import { PickerLogin } from "@/components/staff/PickerLogin";
+import { COMPANY_SLUG } from "@/lib/branch-slugs";
 
-// PWA — מאפשר התקנת מסך המלקט כאפליקציה (אנדרואיד + iOS) במסך מלא
-export const metadata: Metadata = {
-  title: "מלקט · J Cafe",
-  manifest: "/picker.webmanifest",
-  appleWebApp: { capable: true, title: "מלקט", statusBarStyle: "default" },
-  icons: { apple: "/app-logo.png" },
-};
+// PWA — manifest דינמי per-סניף, כך שהתקנה למסך הבית של מלקט סניף תיפתח על אותו סניף בלבד.
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ company?: string }>;
+}): Promise<Metadata> {
+  const company = Number((await searchParams).company) || 0;
+  const slug = company ? (COMPANY_SLUG[company] ?? String(company)) : "";
+  const label = slug ? slug.replace(/^\w/, (c) => c.toUpperCase()) : "";
+  return {
+    title: label ? `מלקט · ${label}` : "מלקט · J Cafe",
+    manifest: company ? `/api/picker-manifest?company=${company}` : "/picker.webmanifest",
+    appleWebApp: { capable: true, title: label ? `מלקט ${label}` : "מלקט", statusBarStyle: "default" },
+    icons: { apple: "/app-logo.png" },
+  };
+}
 import { getPosOrders, itemStatus } from "@/lib/supabase/pos";
 import { syncActiveKitchenStatuses } from "@/lib/odoo/prep-sync";
 import { releaseDueOrders } from "@/lib/odoo/release-scheduled";

@@ -95,18 +95,22 @@ export async function pushKitchenToPrep(opts: {
       const variant = await variantOf(it.templateId);
       if (!variant) continue;
       const sub = it.price * it.qty;
-      lines.push([
-        0,
-        0,
-        {
-          product_id: variant,
-          qty: it.qty,
-          price_unit: it.price,
-          price_subtotal: sub,
-          price_subtotal_incl: sub,
-          full_product_name: it.name,
-        },
-      ]);
+      // תוספות/אופציות מקודדות בסוגריים בסוף שם המוצר (למשל "בייגל טוסט (זיתים)").
+      // נשלחות כהערה (customer_note + note) כדי שיופיעו על מסך ההכנה במטבח.
+      const optMatch = it.name.match(/\(([^)]+)\)\s*$/);
+      const lineVals: Record<string, unknown> = {
+        product_id: variant,
+        qty: it.qty,
+        price_unit: it.price,
+        price_subtotal: sub,
+        price_subtotal_incl: sub,
+        full_product_name: it.name,
+      };
+      if (optMatch) {
+        lineVals.customer_note = optMatch[1];
+        lineVals.note = optMatch[1];
+      }
+      lines.push([0, 0, lineVals]);
     }
     if (!lines.length) continue;
 
