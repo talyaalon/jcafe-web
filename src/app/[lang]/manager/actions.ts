@@ -191,17 +191,22 @@ export async function blockProductAction(formData: FormData) {
   const branch = Number(formData.get("branch")) || 14;
   const template_id = String(formData.get("template_id") ?? "").trim();
   if (!template_id) return;
-  await supabaseAdmin()
+  // check-then-insert (אין אילוץ ייחודי על branch,template_id בטבלה, לכן לא upsert)
+  const sb = supabaseAdmin();
+  const { data: existing } = await sb
     .from("blocked_products")
-    .upsert(
-      {
-        branch,
-        template_id,
-        name: String(formData.get("name") ?? "").trim() || null,
-        reference: String(formData.get("reference") ?? "").trim() || null,
-      },
-      { onConflict: "branch,template_id" },
-    );
+    .select("id")
+    .eq("branch", branch)
+    .eq("template_id", template_id)
+    .maybeSingle();
+  if (!existing) {
+    await sb.from("blocked_products").insert({
+      branch,
+      template_id,
+      name: String(formData.get("name") ?? "").trim() || null,
+      reference: String(formData.get("reference") ?? "").trim() || null,
+    });
+  }
   revalidatePath("/", "layout");
 }
 export async function unblockProductAction(formData: FormData) {

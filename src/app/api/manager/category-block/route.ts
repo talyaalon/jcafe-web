@@ -24,9 +24,17 @@ export async function POST(req: Request) {
         const template_id = (sep >= 0 ? cat.slice(0, sep) : cat).trim();
         const name = sep >= 0 ? cat.slice(sep + 1).trim() : null;
         if (template_id.startsWith("cat:")) {
-          await supabaseAdmin()
+          // check-then-insert (אין אילוץ ייחודי בטבלה, לכן לא upsert) — מונע כפילויות
+          const sb = supabaseAdmin();
+          const { data: existing } = await sb
             .from("blocked_products")
-            .upsert({ branch, template_id, name }, { onConflict: "branch,template_id" });
+            .select("id")
+            .eq("branch", branch)
+            .eq("template_id", template_id)
+            .maybeSingle();
+          if (!existing) {
+            await sb.from("blocked_products").insert({ branch, template_id, name });
+          }
         }
       }
       revalidatePath("/", "layout");
