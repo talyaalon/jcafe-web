@@ -1,8 +1,10 @@
-import { blockProductAction, unblockProductAction } from "@/app/[lang]/manager/actions";
+"use client";
+
+import { useState } from "react";
 
 // קטגוריות חסומות נשמרות בטבלת blocked_products עם key = "cat:<storeId>:<categoryId>".
-// רכיב ללא state בצד-לקוח — כל חסימה היא טופס עם ערכים מוטמעים (עובד גם בלי JS,
-// בדיוק כמו חסימת המוצרים), כך שלא תלוי ב-hydration.
+// בחירת החנות מסננת את הקטגוריות (state בצד-לקוח), אך השליחה עצמה היא טופס POST רגיל
+// ל-API (עובד תמיד, גם אם ה-JS תקוע) — לא תלוי ב-server-action wiring/hydration.
 export interface StoreCats {
   storeId: string;
   storeName: string;
@@ -25,17 +27,22 @@ export function CategoryBlocker({
   stores: StoreCats[];
   blocked: BlockedCatRow[];
 }) {
+  const [storeId, setStoreId] = useState(stores[0]?.storeId ?? "");
+  const store = stores.find((s) => s.storeId === storeId) ?? stores[0];
   const blockedKeys = new Set(blocked.map((b) => b.key));
+
+  const selectCls =
+    "w-full border border-line rounded-lg px-3 py-2 text-sm focus:border-wine outline-none bg-white";
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 max-w-4xl mt-6">
-      {/* categories by store + block */}
+      {/* choose store → category → block */}
       <div className="bg-white border border-line rounded-xl p-4">
         <h3 className="font-bold text-ink mb-1">{he ? "חסימת קטגוריה" : "Block a category"}</h3>
         <p className="text-ink/55 text-[13px] mb-3">
           {he
-            ? "הקטגוריות לפי חנות. חסימת קטגוריה מסתירה אותה (וכל מוצריה) מחנות הסניף."
-            : "Categories by store. Blocking a category hides it (and all its products) from this branch's store."}
+            ? "בחרו חנות ואז קטגוריה. קטגוריה חסומה (וכל מוצריה) לא תוצג בחנות הסניף."
+            : "Pick a store, then a category. A blocked category (and all its products) is hidden from this branch's store."}
         </p>
 
         {stores.length === 0 ? (
@@ -43,38 +50,51 @@ export function CategoryBlocker({
             {he ? "אין קטגוריות לחנויות בסניף זה." : "No categories for this branch's stores."}
           </p>
         ) : (
-          <div className="space-y-4 max-h-96 overflow-y-auto">
-            {stores.map((s) => (
-              <div key={s.storeId}>
-                <div className="text-sm font-extrabold text-wine mb-1">{s.storeName}</div>
-                <div className="divide-y divide-line/60">
-                  {s.categories.map((c) => {
-                    const key = `cat:${s.storeId}:${c.id}`;
-                    const isBlocked = blockedKeys.has(key);
-                    return (
-                      <div key={c.id} className="flex items-center justify-between gap-2 py-1.5">
-                        <span className="text-sm text-ink truncate">{c.name}</span>
-                        {isBlocked ? (
-                          <span className="text-[11px] text-ink/40 font-bold flex-none">
-                            {he ? "חסום" : "Blocked"}
-                          </span>
-                        ) : (
-                          <form action={blockProductAction} className="flex-none">
-                            <input type="hidden" name="branch" value={branch} />
-                            <input type="hidden" name="template_id" value={key} />
-                            <input type="hidden" name="name" value={`${s.storeName} · ${c.name}`} />
-                            <button className="text-xs font-bold text-red-600 border border-red-200 rounded-lg px-3 py-1 hover:bg-red-50">
-                              {he ? "חסום" : "Block"}
-                            </button>
-                          </form>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
+          <form method="POST" action="/api/manager/category-block" className="space-y-3">
+            <input type="hidden" name="branch" value={branch} />
+            <div>
+              <label className="block text-[12px] font-bold text-ink/70 mb-1">
+                {he ? "חנות" : "Store"}
+              </label>
+              <select
+                value={storeId}
+                onChange={(e) => setStoreId(e.target.value)}
+                className={selectCls}
+              >
+                {stores.map((s) => (
+                  <option key={s.storeId} value={s.storeId}>
+                    {s.storeName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[12px] font-bold text-ink/70 mb-1">
+                {he ? "קטגוריה" : "Category"}
+              </label>
+              <select name="cat" required defaultValue="" className={selectCls}>
+                <option value="" disabled>
+                  {he ? "— בחרו קטגוריה —" : "— select a category —"}
+                </option>
+                {(store?.categories ?? []).map((c) => {
+                  const key = `cat:${store!.storeId}:${c.id}`;
+                  const isBlocked = blockedKeys.has(key);
+                  return (
+                    <option key={c.id} value={`${key}|${store!.storeName} · ${c.name}`} disabled={isBlocked}>
+                      {c.name}
+                      {isBlocked ? (he ? " (חסום)" : " (blocked)") : ""}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+            <button
+              type="submit"
+              className="text-xs font-bold text-red-600 border border-red-200 rounded-lg px-4 py-1.5 hover:bg-red-50"
+            >
+              {he ? "חסום קטגוריה" : "Block category"}
+            </button>
+          </form>
         )}
       </div>
 
@@ -96,8 +116,9 @@ export function CategoryBlocker({
             {blocked.map((b) => (
               <div key={b.id} className="flex items-center justify-between gap-2 py-2">
                 <div className="text-sm font-semibold text-ink truncate">{b.name || b.key}</div>
-                <form action={unblockProductAction} className="flex-none">
-                  <input type="hidden" name="id" value={b.id} />
+                <form method="POST" action="/api/manager/category-block" className="flex-none">
+                  <input type="hidden" name="branch" value={branch} />
+                  <input type="hidden" name="unblock_id" value={b.id} />
                   <button className="text-xs font-bold text-brand-green border border-brand-green/40 rounded-lg px-3 py-1 hover:bg-brand-green/10">
                     {he ? "בטל חסימה" : "Unblock"}
                   </button>

@@ -187,8 +187,16 @@ export function ManagerDashboard({
 
   // נגזרות: סטטיסטיקה + לקוחות (מתוך ההזמנות)
   const totalRevenue = orders.reduce((s, o) => s + Number(o.total || 0), 0);
-  const todayKey = new Date().toDateString();
-  const todayCount = orders.filter((o) => new Date(o.created_at).toDateString() === todayKey).length;
+  // תאריך בשעון תאילנד — זהה בשרת ובלקוח (מונע hydration mismatch / React #418)
+  const bkkDay = (d: Date) =>
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Bangkok",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(d);
+  const todayKey = bkkDay(new Date());
+  const todayCount = orders.filter((o) => bkkDay(new Date(o.created_at)) === todayKey).length;
 
   // לקוחות אתר מ-ODOO + סינון לפי סניף
   const branchTags = [...new Set(webCustomers.flatMap((c) => c.branches))].sort();
@@ -199,9 +207,17 @@ export function ManagerDashboard({
   );
 
   const fmtDateTime = (iso: string) => {
-    const d = new Date(iso);
-    const p = (n: number) => String(n).padStart(2, "0");
-    return `${p(d.getDate())}/${p(d.getMonth() + 1)} ${p(d.getHours())}:${p(d.getMinutes())}`;
+    // שעון תאילנד קבוע — פלט זהה בשרת ובדפדפן (מונע hydration mismatch / React #418)
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Bangkok",
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).formatToParts(new Date(iso));
+    const g = (t: string) => parts.find((x) => x.type === t)?.value ?? "";
+    return `${g("day")}/${g("month")} ${g("hour")}:${g("minute")}`;
   };
   const statusLabel = (s: string) =>
     ({
