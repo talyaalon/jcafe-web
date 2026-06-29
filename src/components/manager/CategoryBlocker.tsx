@@ -1,9 +1,8 @@
-"use client";
-
-import { useState } from "react";
 import { blockProductAction, unblockProductAction } from "@/app/[lang]/manager/actions";
 
 // קטגוריות חסומות נשמרות בטבלת blocked_products עם key = "cat:<storeId>:<categoryId>".
+// רכיב ללא state בצד-לקוח — כל חסימה היא טופס עם ערכים מוטמעים (עובד גם בלי JS,
+// בדיוק כמו חסימת המוצרים), כך שלא תלוי ב-hydration.
 export interface StoreCats {
   storeId: string;
   storeName: string;
@@ -26,25 +25,17 @@ export function CategoryBlocker({
   stores: StoreCats[];
   blocked: BlockedCatRow[];
 }) {
-  const [storeId, setStoreId] = useState(stores[0]?.storeId ?? "");
-  const [catId, setCatId] = useState("");
-
-  const store = stores.find((s) => s.storeId === storeId);
-  const cat = store?.categories.find((c) => c.id === catId);
   const blockedKeys = new Set(blocked.map((b) => b.key));
-  const templateId = store && cat ? `cat:${store.storeId}:${cat.id}` : "";
-  const name = store && cat ? `${store.storeName} · ${cat.name}` : "";
-  const alreadyBlocked = !!templateId && blockedKeys.has(templateId);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 max-w-4xl mt-6">
-      {/* choose + block */}
+      {/* categories by store + block */}
       <div className="bg-white border border-line rounded-xl p-4">
         <h3 className="font-bold text-ink mb-1">{he ? "חסימת קטגוריה" : "Block a category"}</h3>
         <p className="text-ink/55 text-[13px] mb-3">
           {he
-            ? "בחרו חנות ואז קטגוריה. קטגוריה חסומה (וכל מוצריה) לא תוצג בחנות הסניף."
-            : "Pick a store, then a category. A blocked category (and all its products) is hidden from this branch's store."}
+            ? "הקטגוריות לפי חנות. חסימת קטגוריה מסתירה אותה (וכל מוצריה) מחנות הסניף."
+            : "Categories by store. Blocking a category hides it (and all its products) from this branch's store."}
         </p>
 
         {stores.length === 0 ? (
@@ -52,60 +43,37 @@ export function CategoryBlocker({
             {he ? "אין קטגוריות לחנויות בסניף זה." : "No categories for this branch's stores."}
           </p>
         ) : (
-          <div className="space-y-3">
-            <div>
-              <label className="block text-[12px] font-bold text-ink/70 mb-1">
-                {he ? "חנות" : "Store"}
-              </label>
-              <select
-                value={storeId}
-                onChange={(e) => {
-                  setStoreId(e.target.value);
-                  setCatId("");
-                }}
-                className="w-full border border-line rounded-lg px-3 py-2 text-sm focus:border-wine outline-none bg-white"
-              >
-                {stores.map((s) => (
-                  <option key={s.storeId} value={s.storeId}>
-                    {s.storeName}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-[12px] font-bold text-ink/70 mb-1">
-                {he ? "קטגוריה" : "Category"}
-              </label>
-              <select
-                value={catId}
-                onChange={(e) => setCatId(e.target.value)}
-                className="w-full border border-line rounded-lg px-3 py-2 text-sm focus:border-wine outline-none bg-white"
-              >
-                <option value="">{he ? "— בחרו קטגוריה —" : "— select a category —"}</option>
-                {(store?.categories ?? []).map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {alreadyBlocked ? (
-              <p className="text-[13px] text-ink/45 font-bold">{he ? "כבר חסום" : "Already blocked"}</p>
-            ) : (
-              <form action={blockProductAction}>
-                <input type="hidden" name="branch" value={branch} />
-                <input type="hidden" name="template_id" value={templateId} />
-                <input type="hidden" name="name" value={name} />
-                <button
-                  disabled={!templateId}
-                  className="text-xs font-bold text-red-600 border border-red-200 rounded-lg px-4 py-1.5 hover:bg-red-50 disabled:opacity-40"
-                >
-                  {he ? "חסום קטגוריה" : "Block category"}
-                </button>
-              </form>
-            )}
+          <div className="space-y-4 max-h-96 overflow-y-auto">
+            {stores.map((s) => (
+              <div key={s.storeId}>
+                <div className="text-sm font-extrabold text-wine mb-1">{s.storeName}</div>
+                <div className="divide-y divide-line/60">
+                  {s.categories.map((c) => {
+                    const key = `cat:${s.storeId}:${c.id}`;
+                    const isBlocked = blockedKeys.has(key);
+                    return (
+                      <div key={c.id} className="flex items-center justify-between gap-2 py-1.5">
+                        <span className="text-sm text-ink truncate">{c.name}</span>
+                        {isBlocked ? (
+                          <span className="text-[11px] text-ink/40 font-bold flex-none">
+                            {he ? "חסום" : "Blocked"}
+                          </span>
+                        ) : (
+                          <form action={blockProductAction} className="flex-none">
+                            <input type="hidden" name="branch" value={branch} />
+                            <input type="hidden" name="template_id" value={key} />
+                            <input type="hidden" name="name" value={`${s.storeName} · ${c.name}`} />
+                            <button className="text-xs font-bold text-red-600 border border-red-200 rounded-lg px-3 py-1 hover:bg-red-50">
+                              {he ? "חסום" : "Block"}
+                            </button>
+                          </form>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -124,7 +92,7 @@ export function CategoryBlocker({
             {he ? "אין קטגוריות חסומות." : "No blocked categories."}
           </p>
         ) : (
-          <div className="max-h-80 overflow-y-auto divide-y divide-line/60">
+          <div className="max-h-96 overflow-y-auto divide-y divide-line/60">
             {blocked.map((b) => (
               <div key={b.id} className="flex items-center justify-between gap-2 py-2">
                 <div className="text-sm font-semibold text-ink truncate">{b.name || b.key}</div>
