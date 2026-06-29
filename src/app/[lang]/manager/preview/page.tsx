@@ -14,6 +14,7 @@ import {
   getBlockedProductIds,
   getBlockedCategoryKeys,
 } from "@/lib/supabase/data";
+import { getThresholdMap } from "@/lib/category/thresholds";
 import { ManagerLogin } from "@/components/manager/ManagerLogin";
 import { BranchSelect } from "@/components/manager/BranchSelect";
 import { MaintenanceToggle } from "@/components/manager/MaintenanceToggle";
@@ -60,19 +61,22 @@ export default async function ManagerPreview({
   const storeBranding = current ? await getStoreBranding(current) : {};
   const bundles = applyStoreBranding(bundles0, storeBranding, locale);
   // אכיפת חסימות (כמו באתר האמיתי) — מוצרים וקטגוריות חסומים מוסתרים גם בתצוגה המקדימה
-  const [blockedIds, blockedCats] = await Promise.all([
+  const [blockedIds, blockedCats, thresholds] = await Promise.all([
     getBlockedProductIds(current),
     getBlockedCategoryKeys(current),
+    getThresholdMap(current),
   ]);
   const data =
-    blockedIds.size || blockedCats.size
+    blockedIds.size || blockedCats.size || thresholds.size
       ? bundles.map((d) => ({
           ...d,
-          products: d.products.filter(
-            (p) =>
-              !blockedIds.has(String(p.id).split("|")[0]) &&
-              !blockedCats.has(`cat:${p.storeId}:${p.categoryId}`),
-          ),
+          products: d.products.filter((p) => {
+            if (blockedIds.has(String(p.id).split("|")[0])) return false;
+            if (blockedCats.has(`cat:${p.storeId}:${p.categoryId}`)) return false;
+            const th = thresholds.get(`${p.storeId}:${p.categoryId}`);
+            if (th != null && p.qtyAvailable != null && p.qtyAvailable <= th) return false;
+            return true;
+          }),
         }))
       : bundles;
   const banners = await getActiveBanners(current);

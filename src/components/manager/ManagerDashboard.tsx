@@ -26,6 +26,7 @@ import {
 import type { PickerProduct } from "./ProductPicker";
 import { ProductBlocker, type BlockedRow } from "./ProductBlocker";
 import { CategoryBlocker, type BlockedCatRow, type StoreCats } from "./CategoryBlocker";
+import { CategoryThresholds } from "./CategoryThresholds";
 import { PasswordsTab } from "./PasswordsTab";
 import { PaymentEditor, type PaymentValue } from "./PaymentEditor";
 import { ThemeEditor, type ThemeValue } from "./ThemeEditor";
@@ -143,6 +144,7 @@ export function ManagerDashboard({
   storeCategories,
   allBranches,
   pickerPasswords,
+  categoryThresholds,
 }: {
   locale: "he" | "en";
   branch: number;
@@ -165,6 +167,7 @@ export function ManagerDashboard({
   storeCategories: StoreCats[];
   allBranches: { companyId: number; name: string }[];
   pickerPasswords: Record<string, string>;
+  categoryThresholds: Record<string, number>;
 }) {
   const he = locale === "he";
   const [section, setSection] = useState<Section>("orders");
@@ -982,6 +985,12 @@ export function ManagerDashboard({
               he={he}
               stores={storeCategories}
               blocked={blockedCategories}
+            />
+            <CategoryThresholds
+              locale={locale}
+              branch={branch}
+              stores={storeCategories}
+              thresholds={categoryThresholds}
             />
           </section>
         )}

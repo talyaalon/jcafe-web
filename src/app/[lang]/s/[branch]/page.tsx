@@ -19,6 +19,7 @@ import {
   getBlockedCategoryKeys,
   getBranchTheme,
 } from "@/lib/supabase/data";
+import { getThresholdMap } from "@/lib/category/thresholds";
 import { Storefront, type StoreBundle } from "@/components/Storefront";
 
 // ISR — קאש קטלוג הסניף ל-5 דקות; שינויי מנהל מרעננים דרך revalidatePath.
@@ -45,6 +46,7 @@ export default async function BranchStore({
     bannerSettings,
     blocked,
     blockedCats,
+    thresholds,
     theme,
     bb,
   ] = await Promise.all([
@@ -56,6 +58,7 @@ export default async function BranchStore({
     getBannerSettings(companyId),
     getBlockedProductIds(companyId),
     getBlockedCategoryKeys(companyId),
+    getThresholdMap(companyId),
     getBranchTheme(companyId),
     getBranchBranding(companyId),
   ]);
@@ -76,14 +79,17 @@ export default async function BranchStore({
   })) as StoreBundle[];
   const dataBranded = applyStoreBranding(data0, storeBranding, locale);
   const data =
-    blocked.size || blockedCats.size
+    blocked.size || blockedCats.size || thresholds.size
       ? dataBranded.map((d) => ({
           ...d,
-          products: d.products.filter(
-            (p) =>
-              !blocked.has(String(p.id).split("|")[0]) &&
-              !blockedCats.has(`cat:${p.storeId}:${p.categoryId}`),
-          ),
+          products: d.products.filter((p) => {
+            if (blocked.has(String(p.id).split("|")[0])) return false;
+            if (blockedCats.has(`cat:${p.storeId}:${p.categoryId}`)) return false;
+            // סף מלאי לקטגוריה — מוצר שמלאיו <= הסף מוסתר (מנות מטבח ללא מלאי לא מושפעות)
+            const th = thresholds.get(`${p.storeId}:${p.categoryId}`);
+            if (th != null && p.qtyAvailable != null && p.qtyAvailable <= th) return false;
+            return true;
+          }),
         }))
       : dataBranded;
 

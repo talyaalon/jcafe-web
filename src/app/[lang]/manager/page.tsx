@@ -27,6 +27,7 @@ import { PHUKET_COMPANY_ID } from "@/lib/odoo/phuket";
 import { CopyLink } from "@/components/manager/CopyLink";
 import { CopyPath } from "@/components/manager/CopyPath";
 import { getPickerPasswords } from "@/lib/picker/passwords";
+import { getThresholds } from "@/lib/category/thresholds";
 import { ManagerLogin } from "@/components/manager/ManagerLogin";
 import { ManagerDashboard, type StoreHours } from "@/components/manager/ManagerDashboard";
 import { BranchSelect } from "@/components/manager/BranchSelect";
@@ -83,6 +84,7 @@ export default async function ManagerPage({
     blockedCategories,
     branchBundles,
     pickerPasswords,
+    categoryThresholds,
   ] = await Promise.all([
     getAllBanners(branch),
     getBannerSettings(branch),
@@ -119,6 +121,7 @@ export default async function ManagerPage({
     getBlockedCategories(branch),
     getBranchDataCached(branch).catch(() => []),
     getPickerPasswords(),
+    getThresholds(branch),
   ]);
 
   // קטגוריות פר-חנות לחסימה (רק קטגוריות שיש להן מוצרים — תואם למוצג בחזית)
@@ -217,6 +220,7 @@ export default async function ManagerPage({
         storeCategories={storeCategories}
         allBranches={branches.map((b) => ({ companyId: b.companyId, name: b.name }))}
         pickerPasswords={pickerPasswords}
+        categoryThresholds={categoryThresholds}
       />
     </div>
   );
