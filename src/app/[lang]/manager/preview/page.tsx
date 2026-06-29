@@ -11,6 +11,8 @@ import {
   getBranchBranding,
   getStoreBranding,
   getBannerSettings,
+  getBlockedProductIds,
+  getBlockedCategoryKeys,
 } from "@/lib/supabase/data";
 import { ManagerLogin } from "@/components/manager/ManagerLogin";
 import { BranchSelect } from "@/components/manager/BranchSelect";
@@ -57,6 +59,22 @@ export default async function ManagerPreview({
   )) as StoreBundle[];
   const storeBranding = current ? await getStoreBranding(current) : {};
   const bundles = applyStoreBranding(bundles0, storeBranding, locale);
+  // אכיפת חסימות (כמו באתר האמיתי) — מוצרים וקטגוריות חסומים מוסתרים גם בתצוגה המקדימה
+  const [blockedIds, blockedCats] = await Promise.all([
+    getBlockedProductIds(current),
+    getBlockedCategoryKeys(current),
+  ]);
+  const data =
+    blockedIds.size || blockedCats.size
+      ? bundles.map((d) => ({
+          ...d,
+          products: d.products.filter(
+            (p) =>
+              !blockedIds.has(String(p.id).split("|")[0]) &&
+              !blockedCats.has(`cat:${p.storeId}:${p.categoryId}`),
+          ),
+        }))
+      : bundles;
   const banners = await getActiveBanners(current);
   const bannerSettings = current ? await getBannerSettings(current) : {};
   const bb = current ? await getBranchBranding(current) : null;
@@ -103,7 +121,7 @@ export default async function ManagerPreview({
             key={current}
             locale={locale}
             dict={dict}
-            data={bundles}
+            data={data}
             banners={banners}
             branch={current}
             branding={branding}
